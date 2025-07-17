@@ -1,15 +1,18 @@
 import logging
 from fastapi import FastAPI
 from app.api.endpoints import performance
+from app.core.config import get_settings
 
- 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+
+settings = get_settings()
+
 app = FastAPI(
-    title="Portfolio Performance Analytics API",
-    description="API for calculating portfolio performance metrics.",
-    version="0.1.0",
+    title=settings.APP_NAME,        
+    description=settings.APP_DESCRIPTION, 
+    version=settings.APP_VERSION,
 )
 
 app.include_router(performance.router)
