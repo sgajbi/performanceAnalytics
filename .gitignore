@@ -1,0 +1,37 @@
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Distribution / packaging
+.Python
+env/
+venv/
+*.egg-info/
+.coverage
+.tox/
+dist/
+build/
+*.egg
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.bak
+*.swo
+
+# OS generated files
+.DS_Store
+.Trashes
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.sqlite3
+
+# Project specific
+# output.json might be generated and should typically be ignored
+output.json
+
+# If input.json is purely for local testing and not part of the deployable source, uncomment below
+# input.json
