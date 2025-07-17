@@ -1,5 +1,10 @@
+import logging
 from fastapi import FastAPI
 from app.api.endpoints import performance
+
+ 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 app = FastAPI(
     title="Portfolio Performance Analytics API",
@@ -9,7 +14,6 @@ app = FastAPI(
 
 app.include_router(performance.router)
 
-# You can add root endpoint or other global configurations here if needed
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Portfolio Performance Analytics API. Access /docs for API documentation."}
