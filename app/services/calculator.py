@@ -2,43 +2,32 @@ import pandas as pd
 from datetime import datetime, date
 from decimal import Decimal, getcontext
 import calendar
-import numpy as np # Import numpy for NaT checks
+import numpy as np
 
 # Set global precision for Decimal calculations
 getcontext().prec = 28
 
 class PortfolioPerformanceCalculator:
     def __init__(self, config):
-        """
-        Initializes the calculator with global configuration parameters.
-        :param config: Dictionary containing 'performance_start_date', 'metric_basis', 'period_type',
-                       'report_start_date', 'report_end_date'.
-        Note: Dates in config (performance_start_date, report_start_date, report_end_date) are expected to be
-        datetime.date objects due to Pydantic parsing in main.py, but this class defensively converts them.
-        """
         self.performance_start_date = self._parse_date(config.get("performance_start_date"))
-        self.metric_basis = config["metric_basis"] # "NET" or "GROSS"
-        self.period_type = config.get("period_type", "Explicit") # "MTD", "QTD", "YTD", "Explicit"
+        self.metric_basis = config["metric_basis"]
+        self.period_type = config.get("period_type", "Explicit")
         self.report_start_date = self._parse_date(config.get("report_start_date"))
         self.report_end_date = self._parse_date(config.get("report_end_date"))
 
-
     def _parse_date(self, date_val):
-        """Helper to safely parse various date inputs (str, date, NaT) to datetime.date objects."""
         if isinstance(date_val, date):
             return date_val
         elif isinstance(date_val, str):
             try:
                 return datetime.strptime(date_val, "%Y-%m-%d").date()
             except ValueError:
-                return None # Or raise a more specific error if a date is mandatory
-        elif pd.isna(date_val) if isinstance(date_val, (pd.Timestamp, float)) else False: # Handles NaT from pandas, and float for NaN
+                return None
+        elif pd.isna(date_val) if isinstance(date_val, (pd.Timestamp, float)) else False:
             return None
-        return None # For None or any other unexpected type
-
+        return None
 
     def _get_sign(self, value):
-        """Replicates Excel's SIGN function for Decimal values."""
         if value > 0:
             return Decimal(1)
         elif value < 0:
@@ -47,35 +36,50 @@ class PortfolioPerformanceCalculator:
             return Decimal(0)
 
     def _is_eomonth(self, date_obj):
-        """Checks if a given date is the end of its month."""
         return date_obj.day == calendar.monthrange(date_obj.year, date_obj.month)[1]
 
     def _get_start_of_quarter(self, date_obj):
-        """Returns the first day of the quarter for a given date."""
         quarter_month = (date_obj.month - 1) // 3 * 3 + 1
         return date(date_obj.year, quarter_month, 1)
 
     def _parse_decimal(self, value):
-        """Helper to safely parse values to Decimal, handling potential non-numeric inputs."""
         try:
             return Decimal(str(value))
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, SystemError):
             return Decimal(0)
 
-    def _calculate_nip(self, current_data):
-        """Calculates NIP for a single row based on the corrected formula."""
-        current_begin_mv = self._parse_decimal(current_data['Begin Market Value'])
-        current_bod_cf = self._parse_decimal(current_data['BOD Cashflow'])
-        current_eod_cf = self._parse_decimal(current_data['Eod Cashflow'])
-        current_end_mv = self._parse_decimal(current_data['End Market Value'])
+    # Vectorized NIP calculation
+    def _calculate_nip_vectorized(self, df):
+        cond1 = (df['Begin Market Value'] + df['BOD Cashflow'] + df['End Market Value'] + df['Eod Cashflow'] == 0) & \
+                (df['Eod Cashflow'] == df['BOD Cashflow'].apply(self._get_sign))
+        
+        cond2 = (df['Eod Cashflow'] + df['End Market Value'] == 0) & (df['Eod Cashflow'] != 0)
+        
+        return (cond1 | cond2).astype(int)
 
-        if (current_begin_mv + current_bod_cf + current_end_mv + current_eod_cf == 0) and \
-           (current_eod_cf == self._get_sign(current_bod_cf)):
-            return 1
-        elif (current_eod_cf + current_end_mv == 0) and current_eod_cf != 0:
-            return 1
-        else:
-            return 0
+
+    def _calculate_daily_ror_vectorized(self, df, effective_start_date_series):
+        """
+        Vectorized calculation of 'daily ror %'.
+        Returns 0 if the current performance date is before the effective start date of the period.
+        """
+        daily_ror = pd.Series([Decimal(0)] * len(df), index=df.index, dtype=object)
+
+        condition = (df['Perf. Date'] >= effective_start_date_series) & \
+                    (df['Begin Market Value'] + df['BOD Cashflow'] != 0)
+
+        numerator = df['End Market Value'] - df['BOD Cashflow'] - df['Begin Market Value'] - df['Eod Cashflow']
+        if self.metric_basis == "NET":
+            numerator += df['Mgmt fees']
+
+        denominator = abs(df['Begin Market Value'] + df['BOD Cashflow'])
+
+        ror_calc = (numerator / denominator * 100).where(denominator != 0, Decimal(0))
+        
+        daily_ror = daily_ror.mask(condition, ror_calc)
+
+        return daily_ror
+
 
     def _calculate_sign(self, current_day, val_for_sign, prev_day_calculated):
         """
@@ -101,27 +105,6 @@ class PortfolioPerformanceCalculator:
                 return prev_sign
         return self._get_sign(val_for_sign)
 
-
-    def _calculate_daily_ror(self, current_perf_date, current_begin_mv,
-                             current_bod_cf, current_end_mv, current_eod_cf, current_mgmt_fees,
-                             effective_start_date):
-        """
-        Calculates 'daily ror %' for the current row.
-        Returns 0 if the current performance date is before the effective start date of the period.
-        """
-        if current_perf_date < effective_start_date:
-            return Decimal(0)
-        elif (current_begin_mv + current_bod_cf) == 0:
-            return Decimal(0)
-        else:
-            mgmt_fee_deduction = Decimal(0)
-            if self.metric_basis == "NET":
-                mgmt_fee_deduction = current_mgmt_fees
-
-            numerator = current_end_mv - current_bod_cf - current_begin_mv - (current_eod_cf - mgmt_fee_deduction)
-            denominator = abs(current_begin_mv + current_bod_cf)
-
-            return (numerator / denominator * 100) if denominator != 0 else Decimal(0)
 
     def _calculate_temp_long_cum_ror(self, current_sign, current_daily_ror, current_perf_date, prev_day_calculated, current_bmv_bcf_sign, effective_period_start_date):
         """Calculates 'Temp Long Cum Ror %' for the current row, resetting at effective_period_start_date."""
@@ -166,18 +149,15 @@ class PortfolioPerformanceCalculator:
 
         next_date_beyond_period = False
         if next_date_val_raw is not None and report_end_date is not None:
-            # Robustly convert next_date_val_raw to datetime.date object
             try:
-                # Use errors='coerce' to turn unparseable dates into NaT
                 next_date_val = pd.to_datetime(next_date_val_raw, errors='coerce').date()
             except Exception:
-                # Fallback if pd.to_datetime itself fails or if it's already a date object
                 if isinstance(next_date_val_raw, date):
                     next_date_val = next_date_val_raw
                 else:
-                    next_date_val = None # Set to None if it cannot be converted to a valid date
+                    next_date_val = None
 
-            if next_date_val is not None: # Only compare if next_date_val is a valid date
+            if next_date_val is not None:
                 next_date_beyond_period = next_date_val > report_end_date
 
 
@@ -245,7 +225,15 @@ class PortfolioPerformanceCalculator:
         :return: List of dictionaries with all calculated performance metrics.
         """
         df = pd.DataFrame(daily_data_list)
-        # Convert to datetime.date objects, coercing errors to NaT
+        
+        numeric_cols_to_parse = [
+            'Day', 'Begin Market Value', 'BOD Cashflow', 'Eod Cashflow',
+            'Mgmt fees', 'End Market Value'
+        ]
+        for col in numeric_cols_to_parse:
+            if col in df.columns:
+                df[col] = df[col].apply(self._parse_decimal)
+
         df['Perf. Date'] = pd.to_datetime(df['Perf. Date'], errors='coerce').dt.date
 
         overall_effective_report_start_date = self.performance_start_date
@@ -253,17 +241,7 @@ class PortfolioPerformanceCalculator:
              overall_effective_report_start_date = max(self.performance_start_date, self.report_start_date)
 
         if self.report_end_date:
-            # self.report_end_date is now guaranteed to be a datetime.date object or None due to _parse_date in __init__
             temp_report_end_date = self.report_end_date
-            
-            # --- DEBUGGING PRINTS ---
-            print(f"DEBUG: Type of df['Perf. Date'] series elements before filter: {type(df['Perf. Date'].iloc[0]) if not df['Perf. Date'].empty else 'Empty Series'}")
-            print(f"DEBUG: Value of df['Perf. Date'].iloc[0] (if not empty): {df['Perf. Date'].iloc[0] if not df['Perf. Date'].empty else 'N/A'}")
-            print(f"DEBUG: Type of temp_report_end_date: {type(temp_report_end_date)}")
-            print(f"DEBUG: Value of temp_report_end_date: {temp_report_end_date}")
-            # --- END DEBUGGING PRINTS ---
-
-            # Perform the filtering with guaranteed date types
             df = df[df['Perf. Date'] <= temp_report_end_date].copy()
 
         cols_to_init = ['sign', 'daily ror %', 'Temp Long Cum Ror %', 'Temp short Cum RoR %',
@@ -280,89 +258,101 @@ class PortfolioPerformanceCalculator:
         df['Long /Short'] = ""
 
 
-        df['NIP'] = df.apply(self._calculate_nip, axis=1)
-
-        for i, row in df.iterrows():
-            current_day = self._parse_decimal(row['Day'])
-            current_perf_date = row['Perf. Date'] # This is already a date object or NaT/None
-            current_begin_mv = self._parse_decimal(row['Begin Market Value'])
-            current_bod_cf = self._parse_decimal(row['BOD Cashflow'])
-            current_eod_cf = self._parse_decimal(row['Eod Cashflow'])
-            current_mgmt_fees = self._parse_decimal(row['Mgmt fees'])
-            current_end_mv = self._parse_decimal(row['End Market Value'])
-            current_nip = self._parse_decimal(row['NIP'])
+        # Vectorized NIP calculation
+        df['NIP'] = self._calculate_nip_vectorized(df)
 
 
-            prev_day_calculated = df.loc[i-1] if i > 0 and (i-1) in df.index else None
-            # next_day_data will have 'Perf. Date' as a date object or NaT/None
-            next_day_data = df.iloc[i+1].to_dict() if i + 1 < len(df) else None
-
-            effective_period_start_date = None
-            if self.period_type == "MTD":
-                effective_period_start_date = date(current_perf_date.year, current_perf_date.month, 1)
-            elif self.period_type == "QTD":
-                effective_period_start_date = self._get_start_of_quarter(current_perf_date)
-            elif self.period_type == "YTD":
-                effective_period_start_date = date(current_perf_date.year, 1, 1)
-            elif self.period_type == "Explicit":
-                effective_period_start_date = overall_effective_report_start_date
+        # --- Vectorized Daily ROR Calculation ---
+        def get_effective_period_start_date_for_row(row_date, period_type, performance_start_date, report_start_date):
+            if pd.isna(row_date):
+                return pd.NaT
+            
+            effective_date = performance_start_date
+            if period_type == "MTD":
+                effective_date = date(row_date.year, row_date.month, 1)
+            elif period_type == "QTD":
+                quarter_month = (row_date.month - 1) // 3 * 3 + 1
+                effective_date = date(row_date.year, quarter_month, 1)
+            elif period_type == "YTD":
+                effective_date = date(row_date.year, 1, 1)
+            elif period_type == "Explicit":
+                effective_date = max(performance_start_date, report_start_date if report_start_date else performance_start_date)
             else:
-                effective_period_start_date = self.performance_start_date
+                effective_date = performance_start_date
+            
+            return max(effective_date, performance_start_date)
 
-            # If current_perf_date became NaT, skip calculations for this row
+
+        df['effective_period_start_date'] = df['Perf. Date'].apply(
+            lambda x: get_effective_period_start_date_for_row(x, self.period_type, self.performance_start_date, self.report_start_date)
+        )
+
+        df['daily ror %'] = self._calculate_daily_ror_vectorized(df, df['effective_period_start_date'])
+
+        # --- Iterative Calculations (if strict row-by-row dependency remains) ---
+        # The following calculations remain in a loop due to their complex dependencies on
+        # previously calculated rows' *final* values, or lookahead conditions that are
+        # challenging to vectorize directly without altering the Excel logic's behavior.
+        # This approach provides significant performance gains where possible while
+        # maintaining correctness for complex iterative logic.
+        
+        for i in range(len(df)):
+            current_data = df.iloc[i]
+            current_day = current_data['Day']
+            current_perf_date = current_data['Perf. Date']
+            current_begin_mv = current_data['Begin Market Value']
+            current_bod_cf = current_data['BOD Cashflow']
+            current_eod_cf = current_data['Eod Cashflow']
+            current_mgmt_fees = current_data['Mgmt fees']
+            current_end_mv = current_data['End Market Value']
+            current_nip = current_data['NIP']
+
+            prev_day_calculated = df.iloc[i-1] if i > 0 else None
+            next_day_data = df.iloc[i+1].to_dict() if i + 1 < len(df) else None
+            
+            effective_period_start_date = current_data['effective_period_start_date']
+
             if pd.isna(current_perf_date):
-                # Optionally, set this row's calculated values to defaults/NaNs
-                # For now, let's just continue
                 continue
-
-            effective_period_start_date = max(effective_period_start_date, self.performance_start_date)
-
-
+            
             val_for_sign = current_begin_mv + current_bod_cf
-            df.at[i, 'sign'] = self._calculate_sign(current_day, val_for_sign, prev_day_calculated)
-            current_sign = df.at[i, 'sign']
+            df.at[df.index[i], 'sign'] = self._calculate_sign(current_day, val_for_sign, prev_day_calculated)
+            current_sign = df.at[df.index[i], 'sign']
 
+            current_daily_ror = df.at[df.index[i], 'daily ror %']
 
-            df.at[i, 'daily ror %'] = self._calculate_daily_ror(
-                current_perf_date, current_begin_mv,
-                current_bod_cf, current_end_mv, current_eod_cf, current_mgmt_fees,
-                effective_period_start_date
-            )
-            current_daily_ror = df.at[i, 'daily ror %']
-
-            # This comparison is now correctly between date objects
             if current_perf_date < overall_effective_report_start_date:
-                df.at[i, 'Temp Long Cum Ror %'] = Decimal(0)
-                df.at[i, 'Temp short Cum RoR %'] = Decimal(0)
-                df.at[i, 'Long Cum Ror %'] = Decimal(0)
-                df.at[i, 'Short Cum RoR %'] = Decimal(0)
-                df.at[i, 'Final Cummulative ROR %'] = Decimal(0)
-                df.at[i, 'NCTRL 1'] = 0
-                df.at[i, 'NCTRL 2'] = 0
-                df.at[i, 'NCTRL 3'] = 0
-                df.at[i, 'NCTRL 4'] = 0
-                df.at[i, 'Perf Reset'] = 0
+                df.at[df.index[i], 'Temp Long Cum Ror %'] = Decimal(0)
+                df.at[df.index[i], 'Temp short Cum RoR %'] = Decimal(0)
+                df.at[df.index[i], 'Long Cum Ror %'] = Decimal(0)
+                df.at[df.index[i], 'Short Cum RoR %'] = Decimal(0)
+                df.at[df.index[i], 'Final Cummulative ROR %'] = Decimal(0)
+                df.at[df.index[i], 'NCTRL 1'] = 0
+                df.at[df.index[i], 'NCTRL 2'] = 0
+                df.at[df.index[i], 'NCTRL 3'] = 0
+                df.at[df.index[i], 'NCTRL 4'] = 0
+                df.at[df.index[i], 'Perf Reset'] = 0
                 continue
 
-            df.at[i, 'Temp Long Cum Ror %'] = self._calculate_temp_long_cum_ror(
+            df.at[df.index[i], 'Temp Long Cum Ror %'] = self._calculate_temp_long_cum_ror(
                 current_sign, current_daily_ror, current_perf_date, prev_day_calculated, current_sign, effective_period_start_date
             )
-            current_temp_long_cum_ror = df.at[i, 'Temp Long Cum Ror %']
+            current_temp_long_cum_ror = df.at[df.index[i], 'Temp Long Cum Ror %']
 
 
-            df.at[i, 'Temp short Cum RoR %'] = self._calculate_temp_short_cum_ror(
+            df.at[df.index[i], 'Temp short Cum RoR %'] = self._calculate_temp_short_cum_ror(
                 current_sign, current_daily_ror, current_perf_date, prev_day_calculated, current_sign, effective_period_start_date
             )
-            current_temp_short_cum_ror = df.at[i, 'Temp short Cum RoR %']
+            current_temp_short_cum_ror = df.at[df.index[i], 'Temp short Cum RoR %']
 
 
             nctrl1, nctrl2, nctrl3 = self._calculate_nctrls(
                 current_temp_long_cum_ror, current_temp_short_cum_ror,
                 current_bod_cf, current_eod_cf, current_perf_date, next_day_data, self.report_end_date
             )
-            df.at[i, 'NCTRL 1'] = nctrl1
-            df.at[i, 'NCTRL 2'] = nctrl2
-            df.at[i, 'NCTRL 3'] = nctrl3
+            df.at[df.index[i], 'NCTRL 1'] = nctrl1
+            df.at[df.index[i], 'NCTRL 2'] = nctrl2
+            df.at[df.index[i], 'NCTRL 3'] = nctrl3
 
             cond_n4 = False
             if prev_day_calculated is not None:
@@ -373,39 +363,35 @@ class PortfolioPerformanceCalculator:
                 if (prev_temp_long_cum_ror_temp <= Decimal(-100) or prev_temp_short_cum_ror_temp >= Decimal(100)) and \
                    (current_bod_cf != 0 or prev_eod_cf_val != 0):
                     cond_n4 = True
-            df.at[i, 'NCTRL 4'] = 1 if cond_n4 else 0
-            current_nctrl4 = df.at[i, 'NCTRL 4']
+            df.at[df.index[i], 'NCTRL 4'] = 1 if cond_n4 else 0
+            current_nctrl4 = df.at[df.index[i], 'NCTRL 4']
 
-            df.at[i, 'Perf Reset'] = self._calculate_perf_reset(nctrl1, nctrl2, nctrl3, current_nctrl4)
-            current_perf_reset = df.at[i, 'Perf Reset']
+            df.at[df.index[i], 'Perf Reset'] = self._calculate_perf_reset(nctrl1, nctrl2, nctrl3, current_nctrl4)
+            current_perf_reset = df.at[df.index[i], 'Perf Reset']
 
             long_cum_ror, short_cum_ror = self._calculate_long_short_cum_ror_final(
                 current_nip, current_perf_reset,
                 current_temp_long_cum_ror, current_temp_short_cum_ror,
                 current_bod_cf,
                 prev_day_calculated, next_day_data, effective_period_start_date, current_perf_date
-
             )
-            df.at[i, 'Long Cum Ror %'] = long_cum_ror
-            df.at[i, 'Short Cum RoR %'] = short_cum_ror
-            current_long_cum_ror_final = df.at[i, 'Long Cum Ror %']
-            current_short_cum_ror_final = df.at[i, 'Short Cum RoR %']
+            df.at[df.index[i], 'Long Cum Ror %'] = long_cum_ror
+            df.at[df.index[i], 'Short Cum RoR %'] = short_cum_ror
+            current_long_cum_ror_final = df.at[df.index[i], 'Long Cum Ror %']
+            current_short_cum_ror_final = df.at[df.index[i], 'Short Cum RoR %']
 
-            df.at[i, 'Long /Short'] = "S" if current_sign == -1 else "L"
+            df.at[df.index[i], 'Long /Short'] = "S" if current_sign == -1 else "L"
 
-            df.at[i, 'Final Cummulative ROR %'] = ((Decimal(1) + current_long_cum_ror_final/100) * \
-                                                   (Decimal(1) + current_short_cum_ror_final/100) - Decimal(1)) * 100
+            df.at[df.index[i], 'Final Cummulative ROR %'] = ((Decimal(1) + current_long_cum_ror_final/100) * \
+                                                           (Decimal(1) + current_short_cum_ror_final/100) - Decimal(1)) * 100
 
-        # Filter the final DataFrame by overall_effective_report_start_date
-        # Both df['Perf. Date'] and overall_effective_report_start_date are date objects here.
+        # Remove the temporary column used for vectorized period start dates
+        df.drop(columns=['effective_period_start_date'], inplace=True)
+
         final_df = df[df['Perf. Date'] >= overall_effective_report_start_date].copy()
-
 
         # Convert Decimal columns to float for JSON serialization
         for col in final_df.columns:
-            # Check if the column is of 'object' dtype (which Decimal columns often are)
-            # and if it contains at least one Decimal instance.
-            # This ensures we only convert Decimal objects, preserving other 'object' types like strings.
             if final_df[col].dtype == object and len(final_df) > 0 and any(isinstance(x, Decimal) for x in final_df[col]):
                 final_df[col] = final_df[col].apply(lambda x: float(x) if isinstance(x, Decimal) else x)
 
