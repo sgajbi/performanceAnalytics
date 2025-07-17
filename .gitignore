@@ -1,37 +1,19 @@
-# Byte-code files
-*.pyc
+# Python
 __pycache__/
-
-# Distribution / packaging
+*.pyc
+*.pyo
+*.pyd
 .Python
 env/
 venv/
-*.egg-info/
-.coverage
-.tox/
-dist/
-build/
-*.egg
-
-# IDE specific files
-.vscode/
-.idea/
-*.swp
-*.bak
-*.swo
-
-# OS generated files
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
 .DS_Store
-.Trashes
-Thumbs.db
-
-# Logs and temporary files
+*.ipynb_checkpoints
 *.log
-*.sqlite3
-
-# Project specific
-# output.json might be generated and should typically be ignored
-output.json
-
-# If input.json is purely for local testing and not part of the deployable source, uncomment below
-# input.json
+poetry.lock # Keep this if you want to explicitly manage lock file changes, but generally committed
+/dist/
+/.vscode/

@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "performanceAnalytics"
+version = "0.1.0"
+description = "API for calculating portfolio performance metrics."
+authors = ["sandeepgajbi@gmail.com"]
+license = "MIT"
+readme = "README.md"
+
+# CORRECTED: This tells Poetry to treat the 'app' directory as a package.
+# It's an array of package definitions within the [tool.poetry] section.
+packages = [
+    { include = "app" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.14"
+fastapi = ">=0.100.0"
+uvicorn = ">=0.20.0"
+pandas = ">=1.0.0"
+pydantic = ">=2.0.0"
+# Add pydantic-settings if you use BaseSettings from it (which we do in app/core/config.py)
+pydantic-settings = "^2.0.0" # Make sure this is added
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+isort = "^6.0.1"
+flake8 = "^7.3.0"
+pytest = "^8.4.1"
+python-dotenv = "^1.1.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
