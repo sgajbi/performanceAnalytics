@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = (
         "API for calculating portfolio performance metrics."  # Corrected to uppercase APP_DESCRIPTION
     )
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: str = "DEBUG"  # DEBUG INFO
     decimal_precision: int = 28
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

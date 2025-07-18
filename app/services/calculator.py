@@ -1,6 +1,5 @@
-# app/services/calculator.py
-
 import calendar
+import logging
 from datetime import date, datetime
 from decimal import Decimal, getcontext
 
@@ -37,43 +36,66 @@ from app.core.constants import (
 )
 from app.core.exceptions import CalculationLogicError, InvalidInputDataError, MissingConfigurationError
 
+logger = logging.getLogger(__name__)
+
 
 class PortfolioPerformanceCalculator:
     def __init__(self, config):
+        logger.info("Initializing PortfolioPerformanceCalculator with config: %s", config)
         if not config:
+            logger.error("Calculator configuration is empty.")
             raise MissingConfigurationError("Calculator configuration cannot be empty.")
 
         self.settings = get_settings()
         getcontext().prec = self.settings.decimal_precision
+        logger.debug("Decimal precision set to: %s", getcontext().prec)
 
         self.performance_start_date = self._parse_date(config.get("performance_start_date"))
         if not self.performance_start_date:
+            logger.error("'performance_start_date' is missing in calculator config.")
             raise MissingConfigurationError("'performance_start_date' is required in calculator config.")
+        logger.info("Performance start date: %s", self.performance_start_date)
 
         self.metric_basis = config.get("metric_basis")
         if self.metric_basis not in [METRIC_BASIS_NET, METRIC_BASIS_GROSS]:
+            logger.error("Invalid 'metric_basis': %s", self.metric_basis)
             raise InvalidInputDataError(
                 f"Invalid 'metric_basis': {self.metric_basis}. Must be '{METRIC_BASIS_NET}' or '{METRIC_BASIS_GROSS}'."
             )
+        logger.info("Metric basis: %s", self.metric_basis)
 
         self.period_type = config.get("period_type", PERIOD_TYPE_EXPLICIT)
         if self.period_type not in [PERIOD_TYPE_MTD, PERIOD_TYPE_QTD, PERIOD_TYPE_YTD, PERIOD_TYPE_EXPLICIT]:
+            logger.error("Invalid 'period_type': %s", self.period_type)
             raise InvalidInputDataError(
                 f"Invalid 'period_type': {self.period_type}. Must be '{PERIOD_TYPE_MTD}', '{PERIOD_TYPE_QTD}', '{PERIOD_TYPE_YTD}', or '{PERIOD_TYPE_EXPLICIT}'."
             )
+        logger.info("Period type: %s", self.period_type)
 
         self.report_start_date = self._parse_date(config.get("report_start_date"))
         self.report_end_date = self._parse_date(config.get("report_end_date"))
         if not self.report_end_date:
+            logger.error("'report_end_date' is missing in calculator config.")
             raise MissingConfigurationError("'report_end_date' is required in calculator config.")
+        logger.info("Report start date: %s, Report end date: %s", self.report_start_date, self.report_end_date)
+
+        if self.performance_start_date > self.report_end_date:
+            logger.error(
+                "'performance_start_date' (%s) cannot be after 'report_end_date' (%s).",
+                self.performance_start_date,
+                self.report_end_date,
+            )
+            raise InvalidInputDataError("'performance_start_date' must not be after 'report_end_date'.")
 
     def _parse_date(self, date_val):
         if isinstance(date_val, date):
             return date_val
         elif isinstance(date_val, str):
             try:
-                return datetime.strptime(date_val, "%Y-%m-%d").date()
+                parsed_date = datetime.strptime(date_val, "%Y-%m-%d").date()
+                return parsed_date
             except ValueError:
+                logger.warning("Could not parse date string: %s", date_val)
                 return None
         elif pd.isna(date_val) if isinstance(date_val, (pd.Timestamp, float)) else False:
             return None
@@ -98,6 +120,7 @@ class PortfolioPerformanceCalculator:
         try:
             return Decimal(str(value))
         except (ValueError, TypeError, SystemError):
+            logger.warning("Could not parse value to Decimal: %s", value)
             return Decimal(0)
 
     # Vectorized NIP calculation
@@ -548,7 +571,11 @@ class PortfolioPerformanceCalculator:
                     (Decimal(1) + current_long_cum_ror_final / 100) * (Decimal(1) + current_short_cum_ror_final / 100)
                     - Decimal(1)
                 ) * 100
+                logger.debug(
+                    "Row %d: Final Cumulative ROR: %s", i, df.at[df.index[i], FINAL_CUMULATIVE_ROR_PERCENT_FIELD]
+                )
         except Exception as e:
+            logger.exception("Error during iterative calculation loop.")
             raise CalculationLogicError(f"Error during iterative calculation loop: {e}")
 
         # Remove the temporary column used for vectorized period start dates
@@ -569,5 +596,104 @@ class PortfolioPerformanceCalculator:
         final_df[PERF_DATE_FIELD] = final_df[PERF_DATE_FIELD].apply(
             lambda x: x.strftime("%Y-%m-%d") if isinstance(x, date) else x
         )
-
+        logger.info("Performance calculation complete. Returning results.")
         return final_df.to_dict(orient="records")
+
+    def get_summary_performance(self, calculated_results):
+        if not calculated_results:
+            return {
+                "report_start_date": self.report_start_date.strftime("%Y-%m-%d") if self.report_start_date else None,
+                "report_end_date": self.report_end_date.strftime("%Y-%m-%d"),
+                BEGIN_MARKET_VALUE_FIELD: 0.0,
+                BOD_CASHFLOW_FIELD: 0.0,
+                EOD_CASHFLOW_FIELD: 0.0,
+                MGMT_FEES_FIELD: 0.0,
+                END_MARKET_VALUE_FIELD: 0.0,
+                FINAL_CUMULATIVE_ROR_PERCENT_FIELD: 0.0,
+                NCTRL_1_FIELD: 0,
+                NCTRL_2_FIELD: 0,
+                NCTRL_3_FIELD: 0,
+                NCTRL_4_FIELD: 0,
+                PERF_RESET_FIELD: 0,
+                NIP_FIELD: 0,
+            }
+
+        try:
+            first_day = next(
+                (
+                    day
+                    for day in calculated_results
+                    if date.fromisoformat(day[PERF_DATE_FIELD]) >= (self.report_start_date or date.min)
+                ),
+                None,
+            )
+            last_day = next(
+                (
+                    day
+                    for day in reversed(calculated_results)
+                    if date.fromisoformat(day[PERF_DATE_FIELD]) <= self.report_end_date
+                ),
+                None,
+            )
+
+            if not first_day or not last_day:
+                raise ValueError("No data in report range.")
+
+            summary = {
+                "report_start_date": self.report_start_date.strftime("%Y-%m-%d") if self.report_start_date else None,
+                "report_end_date": self.report_end_date.strftime("%Y-%m-%d"),
+                BEGIN_MARKET_VALUE_FIELD: first_day.get(BEGIN_MARKET_VALUE_FIELD, 0.0),
+                END_MARKET_VALUE_FIELD: last_day.get(END_MARKET_VALUE_FIELD, 0.0),
+                BOD_CASHFLOW_FIELD: 0.0,
+                EOD_CASHFLOW_FIELD: 0.0,
+                MGMT_FEES_FIELD: 0.0,
+                FINAL_CUMULATIVE_ROR_PERCENT_FIELD: last_day.get(FINAL_CUMULATIVE_ROR_PERCENT_FIELD, 0.0),
+                NCTRL_1_FIELD: 0,
+                NCTRL_2_FIELD: 0,
+                NCTRL_3_FIELD: 0,
+                NCTRL_4_FIELD: 0,
+                PERF_RESET_FIELD: 0,
+                NIP_FIELD: 0,
+            }
+
+            for day in calculated_results:
+                d = date.fromisoformat(day[PERF_DATE_FIELD])
+                if self.report_start_date and d < self.report_start_date:
+                    continue
+                if d > self.report_end_date:
+                    continue
+
+                summary[BOD_CASHFLOW_FIELD] += day.get(BOD_CASHFLOW_FIELD, 0.0)
+                summary[EOD_CASHFLOW_FIELD] += day.get(EOD_CASHFLOW_FIELD, 0.0)
+                summary[MGMT_FEES_FIELD] += day.get(MGMT_FEES_FIELD, 0.0)
+
+                for ctrl_field in [
+                    NCTRL_1_FIELD,
+                    NCTRL_2_FIELD,
+                    NCTRL_3_FIELD,
+                    NCTRL_4_FIELD,
+                    PERF_RESET_FIELD,
+                    NIP_FIELD,
+                ]:
+                    if day.get(ctrl_field) == 1:
+                        summary[ctrl_field] = 1
+
+            return summary
+        except Exception as e:
+            logger.exception("Failed to calculate summary performance: %s", e)
+            return {
+                "report_start_date": self.report_start_date.strftime("%Y-%m-%d") if self.report_start_date else None,
+                "report_end_date": self.report_end_date.strftime("%Y-%m-%d"),
+                BEGIN_MARKET_VALUE_FIELD: 0.0,
+                BOD_CASHFLOW_FIELD: 0.0,
+                EOD_CASHFLOW_FIELD: 0.0,
+                MGMT_FEES_FIELD: 0.0,
+                END_MARKET_VALUE_FIELD: 0.0,
+                FINAL_CUMULATIVE_ROR_PERCENT_FIELD: 0.0,
+                NCTRL_1_FIELD: 0,
+                NCTRL_2_FIELD: 0,
+                NCTRL_3_FIELD: 0,
+                NCTRL_4_FIELD: 0,
+                PERF_RESET_FIELD: 0,
+                NIP_FIELD: 0,
+            }
