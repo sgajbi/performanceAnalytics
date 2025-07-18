@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 import os
+from decimal import Decimal, getcontext # Import Decimal and getcontext
 
 class Settings(BaseSettings):
     """
@@ -11,10 +12,9 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "API for calculating portfolio performance metrics."
     LOG_LEVEL: str = "INFO"
 
-    # Example of a sensitive setting, loaded from .env or environment variable
-    # This would typically be for a database URL, API key, etc.
-    # We don't have one yet, but this shows how to structure it.
-    # SECRET_KEY: str = os.getenv("SECRET_KEY", "your-super-secret-key")
+    # New: Setting for decimal precision in financial calculations
+    # Defaulting to 10 for now, but can be overridden by env variable
+    DECIMAL_PRECISION: int = 10
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -22,5 +22,8 @@ class Settings(BaseSettings):
 def get_settings():
     """
     Caches the settings object for efficient access.
+    Initializes Decimal context precision here as it's a global setting for Decimal operations.
     """
-    return Settings()
+    settings = Settings()
+    getcontext().prec = settings.DECIMAL_PRECISION # Set the global precision for Decimal
+    return settings
