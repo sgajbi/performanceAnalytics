@@ -1,23 +1,31 @@
+
+
 from pydantic import BaseModel, Field
 from datetime import date
 from typing import List, Literal, Optional
+from app.core.constants import ( 
+    PERF_DATE_FIELD, BEGIN_MARKET_VALUE_FIELD, BOD_CASHFLOW_FIELD,
+    EOD_CASHFLOW_FIELD, MGMT_FEES_FIELD, END_MARKET_VALUE_FIELD,
+    METRIC_BASIS_NET, METRIC_BASIS_GROSS,
+    PERIOD_TYPE_MTD, PERIOD_TYPE_QTD, PERIOD_TYPE_YTD, PERIOD_TYPE_EXPLICIT
+)
 
 # Pydantic model for a single daily performance entry in the request (input data structure)
 class DailyInputData(BaseModel):
     Day: int
-    perf_date: date = Field(..., alias="Perf. Date") # Alias for field with dot [cite: 2, 3]
-    begin_market_value: float = Field(..., alias="Begin Market Value") # [cite: 3]
-    bod_cashflow: float = Field(..., alias="BOD Cashflow") # [cite: 3]
-    eod_cashflow: float = Field(..., alias="Eod Cashflow") # [cite: 3]
-    mgmt_fees: float = Field(..., alias="Mgmt fees") # [cite: 3]
-    end_market_value: float = Field(..., alias="End Market Value") # [cite: 3]
+    perf_date: date = Field(..., alias=PERF_DATE_FIELD)
+    begin_market_value: float = Field(..., alias=BEGIN_MARKET_VALUE_FIELD)
+    bod_cashflow: float = Field(..., alias=BOD_CASHFLOW_FIELD)
+    eod_cashflow: float = Field(..., alias=EOD_CASHFLOW_FIELD)
+    mgmt_fees: float = Field(..., alias=MGMT_FEES_FIELD)
+    end_market_value: float = Field(..., alias=END_MARKET_VALUE_FIELD)
 
 # Pydantic model for the API request body
 class PerformanceRequest(BaseModel):
     portfolio_number: str
     performance_start_date: date
-    metric_basis: Literal["NET", "GROSS"]
+    metric_basis: Literal[METRIC_BASIS_NET, METRIC_BASIS_GROSS]
     report_start_date: Optional[date] = None
-    report_end_date: date # Made mandatory [cite: 2]
-    period_type: Literal["MTD", "QTD", "YTD", "Explicit"] = Field(..., alias="period_type") # Use alias for field name [cite: 2]
-    daily_data: List[DailyInputData] # Added daily_data to the request payload
+    report_end_date: date 
+    period_type: Literal[PERIOD_TYPE_MTD, PERIOD_TYPE_QTD, PERIOD_TYPE_YTD, PERIOD_TYPE_EXPLICIT] = Field(..., alias="period_type") # Use alias for field name
+    daily_data: List[DailyInputData] 
