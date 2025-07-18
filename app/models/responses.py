@@ -1,16 +1,30 @@
-
-from pydantic import BaseModel, Field
 from datetime import date
 from typing import List, Optional
-from app.core.constants import ( #
-    PERF_DATE_FIELD, BEGIN_MARKET_VALUE_FIELD, BOD_CASHFLOW_FIELD,
-    EOD_CASHFLOW_FIELD, MGMT_FEES_FIELD, END_MARKET_VALUE_FIELD,
-    DAILY_ROR_PERCENT_FIELD, TEMP_LONG_CUM_ROR_PERCENT_FIELD,
-    TEMP_SHORT_CUM_ROR_PERCENT_FIELD, NCTRL_1_FIELD, NCTRL_2_FIELD,
-    NCTRL_3_FIELD, NCTRL_4_FIELD, PERF_RESET_FIELD, NIP_FIELD,
-    LONG_CUM_ROR_PERCENT_FIELD, SHORT_CUM_ROR_PERCENT_FIELD,
-    LONG_SHORT_FIELD, FINAL_CUMULATIVE_ROR_PERCENT_FIELD
+
+from pydantic import BaseModel, Field
+
+from app.core.constants import (
+    BEGIN_MARKET_VALUE_FIELD,
+    BOD_CASHFLOW_FIELD,
+    DAILY_ROR_PERCENT_FIELD,
+    END_MARKET_VALUE_FIELD,
+    EOD_CASHFLOW_FIELD,
+    FINAL_CUMULATIVE_ROR_PERCENT_FIELD,
+    LONG_CUM_ROR_PERCENT_FIELD,
+    LONG_SHORT_FIELD,
+    MGMT_FEES_FIELD,
+    NCTRL_1_FIELD,
+    NCTRL_2_FIELD,
+    NCTRL_3_FIELD,
+    NCTRL_4_FIELD,
+    NIP_FIELD,
+    PERF_DATE_FIELD,
+    PERF_RESET_FIELD,
+    SHORT_CUM_ROR_PERCENT_FIELD,
+    TEMP_LONG_CUM_ROR_PERCENT_FIELD,
+    TEMP_SHORT_CUM_ROR_PERCENT_FIELD,
 )
+
 
 # Pydantic model for a single daily performance entry in the response
 class DailyPerformance(BaseModel):
@@ -39,8 +53,8 @@ class DailyPerformance(BaseModel):
 
 # Pydantic model for the summary performance object
 class SummaryPerformance(BaseModel):
-    report_start_date: Optional[date] = None #
-    report_end_date: date # Made mandatory
+    report_start_date: Optional[date] = None  #
+    report_end_date: date  # Made mandatory
     begin_market_value: float = Field(..., alias=BEGIN_MARKET_VALUE_FIELD)
     bod_cashflow: float = Field(..., alias=BOD_CASHFLOW_FIELD)
     eod_cashflow: float = Field(..., alias=EOD_CASHFLOW_FIELD)
@@ -53,6 +67,7 @@ class SummaryPerformance(BaseModel):
     nctrl_4: int = Field(..., alias=NCTRL_4_FIELD)
     perf_reset: int = Field(..., alias=PERF_RESET_FIELD)
     nip: int = Field(..., alias=NIP_FIELD)
+
 
 # Pydantic model for the full API response
 class PerformanceResponse(BaseModel):

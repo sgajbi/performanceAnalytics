@@ -17,11 +17,11 @@ NIP_FIELD = "NIP"
 LONG_CUM_ROR_PERCENT_FIELD = "Long Cum Ror %"
 SHORT_CUM_ROR_PERCENT_FIELD = "Short Cum RoR %"
 LONG_SHORT_FIELD = "Long /Short"
-FINAL_CUMULATIVE_ROR_PERCENT_FIELD = "Final Cumulative ROR %" 
+FINAL_CUMULATIVE_ROR_PERCENT_FIELD = "Final Cumulative ROR %"
 
 # Metric Basis
 METRIC_BASIS_NET = "NET"
-METRIC_BASIS_GROSS = "GROSS" # Added for completeness as it's used in calculator
+METRIC_BASIS_GROSS = "GROSS"  # Added for completeness as it's used in calculator
 
 # Period Types
 PERIOD_TYPE_MTD = "MTD"

@@ -1,21 +1,23 @@
 # app/core/config.py
 
 import os
-from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from decimal import getcontext
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Portfolio Performance Analytics API" # Corrected to uppercase APP_NAME
-    APP_VERSION: str = "0.1.0" # Corrected to uppercase APP_VERSION
-    APP_DESCRIPTION: str = "API for calculating portfolio performance metrics." # Corrected to uppercase APP_DESCRIPTION
+    APP_NAME: str = "Portfolio Performance Analytics API"  # Corrected to uppercase APP_NAME
+    APP_VERSION: str = "0.1.0"  # Corrected to uppercase APP_VERSION
+    APP_DESCRIPTION: str = (
+        "API for calculating portfolio performance metrics."  # Corrected to uppercase APP_DESCRIPTION
+    )
     LOG_LEVEL: str = "INFO"
     decimal_precision: int = 28
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 @lru_cache()
 def get_settings():
