@@ -2,6 +2,8 @@ import logging
 from fastapi import FastAPI
 from app.api.endpoints import performance
 from app.core.config import get_settings
+from app.core.exceptions import PerformanceCalculatorError # Import the base exception
+from app.core.handlers import performance_calculator_exception_handler # Import the handler
 
 
 settings = get_settings()
@@ -14,6 +16,9 @@ app = FastAPI(
     description=settings.APP_DESCRIPTION,
     version=settings.APP_VERSION,
 )
+
+# Register the custom exception handler
+app.add_exception_handler(PerformanceCalculatorError, performance_calculator_exception_handler)
 
 app.include_router(performance.router)
 

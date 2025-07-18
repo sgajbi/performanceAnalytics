@@ -1,17 +1,20 @@
 # app/api/endpoints/performance.py
 
-from fastapi import APIRouter, HTTPException, status # Import status for better HTTP error codes
+from fastapi import APIRouter, HTTPException, status
 from app.models.requests import PerformanceRequest, DailyInputData
 from app.models.responses import DailyPerformance, SummaryPerformance, PerformanceResponse
 from app.services.calculator import PortfolioPerformanceCalculator
 from datetime import date
 from app.core.constants import (
     PERF_DATE_FIELD, BEGIN_MARKET_VALUE_FIELD, BOD_CASHFLOW_FIELD,
-    EOD_CASHFLOW_FIELD, MGMT_FEES_FIELD, END_MARKET_VALUE_FIELD,
+    EOD_CASHFLOW_FIELD, MGMT_FEES_FIELD, 
+END_MARKET_VALUE_FIELD,
     NCTRL_1_FIELD, NCTRL_2_FIELD, NCTRL_3_FIELD, NCTRL_4_FIELD,
     PERF_RESET_FIELD, NIP_FIELD, FINAL_CUMULATIVE_ROR_PERCENT_FIELD
 )
-from app.core.exceptions import InvalidInputDataError, CalculationLogicError, MissingConfigurationError, PerformanceCalculatorError #
+# Removed explicit imports for InvalidInputDataError, CalculationLogicError, MissingConfigurationError, PerformanceCalculatorError
+# as they will now be handled by the global exception handler
+# from app.core.exceptions import InvalidInputDataError, CalculationLogicError, MissingConfigurationError, PerformanceCalculatorError 
 
 router = APIRouter()
 
@@ -38,7 +41,7 @@ async def calculate_performance_endpoint(request: PerformanceRequest):
         "period_type": request.period_type
     }
 
-    try:
+    try: # Added the try block
         calculator = PortfolioPerformanceCalculator(config)
         calculated_results = calculator.calculate_performance(
             [item.model_dump(by_alias=True, exclude_unset=True) for item in daily_data], config
@@ -46,6 +49,7 @@ async def calculate_performance_endpoint(request: PerformanceRequest):
 
         summary_performance = {}
         if calculated_results and request.report_end_date:
+            # Adjusted date comparison to handle Optional report_start_date
             first_day_in_report = next((day for day in calculated_results if date.fromisoformat(day[PERF_DATE_FIELD]) >= (request.report_start_date if request.report_start_date else date.min)), None)
             last_day_in_report = next((day for day in reversed(calculated_results) if date.fromisoformat(day[PERF_DATE_FIELD]) <= request.report_end_date), None)
 
@@ -132,16 +136,6 @@ async def calculate_performance_endpoint(request: PerformanceRequest):
                     PERF_RESET_FIELD: 0,
                     NIP_FIELD: 0
                 }
-
-
-    except InvalidInputDataError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid Input: {e.message}")
-    except MissingConfigurationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Configuration Error: {e.message}")
-    except CalculationLogicError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Calculation Error: {e.message}")
-    except PerformanceCalculatorError as e: # Catch any other custom calculator errors
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected calculator error occurred: {e.message}")
     except Exception as e: # Generic catch-all for unforeseen errors
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected server error occurred: {str(e)}")
 
