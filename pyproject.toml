@@ -19,7 +19,7 @@ uvicorn = ">=0.20.0"
 pandas = ">=1.0.0"
 pydantic = ">=2.0.0"
 # Add pydantic-settings if you use BaseSettings from it (which we do in app/core/config.py)
-pydantic-settings = "^2.0.0" # Make sure this is added
+pydantic-settings = "^2.10.1" # Make sure this is added
 
 
 [tool.poetry.group.dev.dependencies]
