@@ -124,20 +124,43 @@ class PortfolioPerformanceCalculator:
             return Decimal(0)
 
     # Vectorized NIP calculation
-    def _calculate_nip_vectorized(self, df):
+    def _calculate_nip_vectorized(self, df: pd.DataFrame) -> pd.Series:
+        """
+        Vectorized calculation of the 'No Investment Period' (NIP) flag.
+        A day is marked as NIP (1) if the sum of beginning market value, BOD cash flow,
+        end market value, and EOD cash flow is zero, AND the EOD cash flow has the
+        opposite sign to the BOD cash flow. This condition indicates that there is
+        no money in the portfolio and that same-day deposits and withdrawals
+        effectively cancel each other out, resulting in a non-invested state.
+
+        Args:
+            df (pd.DataFrame): The DataFrame containing daily portfolio data.
+
+        Returns:
+            pd.Series: A Series with 1 for NIP days, 0 otherwise.
+        """
         cond1 = (
             df[BEGIN_MARKET_VALUE_FIELD] + df[BOD_CASHFLOW_FIELD] + df[END_MARKET_VALUE_FIELD] + df[EOD_CASHFLOW_FIELD]
             == 0
-        ) & (df[EOD_CASHFLOW_FIELD] == df[BOD_CASHFLOW_FIELD].apply(self._get_sign))
+        ) & (df[EOD_CASHFLOW_FIELD] == -df[BOD_CASHFLOW_FIELD].apply(self._get_sign))
 
-        cond2 = (df[EOD_CASHFLOW_FIELD] + df[END_MARKET_VALUE_FIELD] == 0) & (df[EOD_CASHFLOW_FIELD] != 0)
-
-        return (cond1 | cond2).astype(int)
+        return cond1.astype(int)
 
     def _calculate_daily_ror_vectorized(self, df, effective_start_date_series):
         """
-        Vectorized calculation of 'daily ror %'.
-        Returns 0 if the current performance date is before the effective start date of the period.
+        Vectorized calculation of 'Daily ROR %' (Rate of Return).
+        The formula is similar to Modified Dietz, accounting for beginning market value,
+        cash flows (BOD and EOD), and management fees (if metric_basis is net).
+        Returns 0 if the current performance date is before the effective start date of the period
+        or if the denominator is zero.
+
+        Args:
+            df (pd.DataFrame): The DataFrame containing daily portfolio data.
+            effective_start_date_series (pd.Series): A Series indicating the effective
+                                                     start date for each row's period type.
+
+        Returns:
+            pd.Series: A Series containing the calculated daily ROR percentages.
         """
         daily_ror = pd.Series([Decimal(0)] * len(df), index=df.index, dtype=object)
 
