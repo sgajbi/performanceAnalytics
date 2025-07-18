@@ -3,15 +3,15 @@ from fastapi import FastAPI
 from app.api.endpoints import performance
 from app.core.config import get_settings
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
 
 settings = get_settings()
 
+logging.basicConfig(level=settings.LOG_LEVEL,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 app = FastAPI(
-    title=settings.APP_NAME,        
-    description=settings.APP_DESCRIPTION, 
+    title=settings.APP_NAME,
+    description=settings.APP_DESCRIPTION,
     version=settings.APP_VERSION,
 )
 
