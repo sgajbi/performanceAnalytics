@@ -34,7 +34,7 @@ class DailyPerformance(BaseModel):
     long_cum_ror_percent: float = Field(..., alias=LONG_CUM_ROR_PERCENT_FIELD)
     short_cum_ror_percent: float = Field(..., alias=SHORT_CUM_ROR_PERCENT_FIELD)
     long_short: str = Field(..., alias=LONG_SHORT_FIELD)
-    final_cummulative_ror_percent: float = Field(..., alias=FINAL_CUMULATIVE_ROR_PERCENT_FIELD)
+    final_cumulative_ror_percent: float = Field(..., alias=FINAL_CUMULATIVE_ROR_PERCENT_FIELD)
 
 
 # Pydantic model for the summary performance object
@@ -46,7 +46,7 @@ class SummaryPerformance(BaseModel):
     eod_cashflow: float = Field(..., alias=EOD_CASHFLOW_FIELD)
     mgmt_fees: float = Field(..., alias=MGMT_FEES_FIELD)
     end_market_value: float = Field(..., alias=END_MARKET_VALUE_FIELD)
-    final_cummulative_ror_percent: float = Field(..., alias=FINAL_CUMULATIVE_ROR_PERCENT_FIELD)
+    final_cumulative_ror_percent: float = Field(..., alias=FINAL_CUMULATIVE_ROR_PERCENT_FIELD)
     nctrl_1: int = Field(..., alias=NCTRL_1_FIELD)
     nctrl_2: int = Field(..., alias=NCTRL_2_FIELD)
     nctrl_3: int = Field(..., alias=NCTRL_3_FIELD)

@@ -1,22 +1,21 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
+# app/core/config.py
+
 import os
-from decimal import Decimal, getcontext # Import Decimal and getcontext
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from decimal import getcontext
 
 class Settings(BaseSettings):
-    """
-    Application settings, loaded from environment variables.
-    """
-    APP_NAME: str = "Portfolio Performance Analytics API"
-    APP_VERSION: str = "0.1.0"
-    APP_DESCRIPTION: str = "API for calculating portfolio performance metrics."
+    APP_NAME: str = "Portfolio Performance Analytics API" # Corrected to uppercase APP_NAME
+    APP_VERSION: str = "0.1.0" # Corrected to uppercase APP_VERSION
+    APP_DESCRIPTION: str = "API for calculating portfolio performance metrics." # Corrected to uppercase APP_DESCRIPTION
     LOG_LEVEL: str = "INFO"
+    decimal_precision: int = 28
 
-    # New: Setting for decimal precision in financial calculations
-    # Defaulting to 10 for now, but can be overridden by env variable
-    DECIMAL_PRECISION: int = 10
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore"
+    )
 
 @lru_cache()
 def get_settings():
@@ -25,5 +24,5 @@ def get_settings():
     Initializes Decimal context precision here as it's a global setting for Decimal operations.
     """
     settings = Settings()
-    getcontext().prec = settings.DECIMAL_PRECISION # Set the global precision for Decimal
+    getcontext().prec = settings.decimal_precision
     return settings

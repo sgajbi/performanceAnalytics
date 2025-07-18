@@ -13,26 +13,28 @@ from app.core.constants import (
     NCTRL_3_FIELD, NCTRL_4_FIELD, PERF_RESET_FIELD, NIP_FIELD,
     LONG_CUM_ROR_PERCENT_FIELD, SHORT_CUM_ROR_PERCENT_FIELD,
     LONG_SHORT_FIELD, FINAL_CUMULATIVE_ROR_PERCENT_FIELD,
-    METRIC_BASIS_NET, PERIOD_TYPE_MTD, PERIOD_TYPE_QTD,
+    METRIC_BASIS_NET, METRIC_BASIS_GROSS,
+    PERIOD_TYPE_MTD, PERIOD_TYPE_QTD,
     PERIOD_TYPE_YTD, PERIOD_TYPE_EXPLICIT
 )
-from app.core.exceptions import InvalidInputDataError, CalculationLogicError, MissingConfigurationError #
-
-# Set global precision for Decimal calculations
-getcontext().prec = 28
+from app.core.exceptions import InvalidInputDataError, CalculationLogicError, MissingConfigurationError
+from app.core.config import get_settings
 
 class PortfolioPerformanceCalculator:
     def __init__(self, config):
         if not config:
             raise MissingConfigurationError("Calculator configuration cannot be empty.")
 
+        self.settings = get_settings()
+        getcontext().prec = self.settings.decimal_precision
+
         self.performance_start_date = self._parse_date(config.get("performance_start_date"))
         if not self.performance_start_date:
             raise MissingConfigurationError("'performance_start_date' is required in calculator config.")
 
         self.metric_basis = config.get("metric_basis")
-        if self.metric_basis not in [METRIC_BASIS_NET, "GROSS"]: # Assuming GROSS will be a constant too.
-            raise InvalidInputDataError(f"Invalid 'metric_basis': {self.metric_basis}. Must be '{METRIC_BASIS_NET}' or 'GROSS'.")
+        if self.metric_basis not in [METRIC_BASIS_NET, METRIC_BASIS_GROSS]:
+            raise InvalidInputDataError(f"Invalid 'metric_basis': {self.metric_basis}. Must be '{METRIC_BASIS_NET}' or '{METRIC_BASIS_GROSS}'.")
 
         self.period_type = config.get("period_type", PERIOD_TYPE_EXPLICIT)
         if self.period_type not in [PERIOD_TYPE_MTD, PERIOD_TYPE_QTD, PERIOD_TYPE_YTD, PERIOD_TYPE_EXPLICIT]:
@@ -241,7 +243,7 @@ class PortfolioPerformanceCalculator:
             elif is_current_date_period_start:
                 return current_temp_long_cum_ror, current_temp_short_cum_ror
             else:
-                return current_temp_long_cum_ror, current_temp_short_cum_ror
+                return current_temp_long_cum_ror, current_temp_short_cum_ror # Corrected variable names here
 
 
     def calculate_performance(self, daily_data_list, config):

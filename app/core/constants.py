@@ -1,6 +1,4 @@
-
-
-# --- API Request/Response Field Names (Pydantic Aliases) ---
+# Field Names
 PERF_DATE_FIELD = "Perf. Date"
 BEGIN_MARKET_VALUE_FIELD = "Begin Market Value"
 BOD_CASHFLOW_FIELD = "BOD Cashflow"
@@ -19,13 +17,13 @@ NIP_FIELD = "NIP"
 LONG_CUM_ROR_PERCENT_FIELD = "Long Cum Ror %"
 SHORT_CUM_ROR_PERCENT_FIELD = "Short Cum RoR %"
 LONG_SHORT_FIELD = "Long /Short"
-FINAL_CUMULATIVE_ROR_PERCENT_FIELD = "Final Cummulative ROR %"
+FINAL_CUMULATIVE_ROR_PERCENT_FIELD = "Final Cumulative ROR %" 
 
-# --- Metric Basis Options ---
+# Metric Basis
 METRIC_BASIS_NET = "NET"
-METRIC_BASIS_GROSS = "GROSS"
+METRIC_BASIS_GROSS = "GROSS" # Added for completeness as it's used in calculator
 
-# --- Period Type Options ---
+# Period Types
 PERIOD_TYPE_MTD = "MTD"
 PERIOD_TYPE_QTD = "QTD"
 PERIOD_TYPE_YTD = "YTD"
