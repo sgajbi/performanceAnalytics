@@ -1,19 +1,3 @@
-# Python
+.venv/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.env
-.DS_Store
-*.ipynb_checkpoints
-*.log
-poetry.lock # Keep this if you want to explicitly manage lock file changes, but generally committed
-/dist/
-/.vscode/
