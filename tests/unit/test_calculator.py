@@ -260,21 +260,23 @@ def test_short_ror_compounds_with_custom_formula(calculator_instance):
     assert temp_short_ror2 == pytest.approx(Decimal("-250"))
 
 
-# ### New Unit Tests for NET vs GROSS Logic ###
+# ### Unit Tests for NET vs GROSS Logic ###
 
 
 def test_daily_ror_net_basis_includes_fees(minimal_config):
     """Tests that daily_ror on a NET basis correctly accounts for fees."""
     minimal_config["metric_basis"] = "NET"
     calculator = PortfolioPerformanceCalculator(config=minimal_config)
-    data = [{
-        PERF_DATE_FIELD: date(2025, 1, 5),
-        BEGIN_MARKET_VALUE_FIELD: Decimal(400),
-        BOD_CASHFLOW_FIELD: Decimal(0),
-        EOD_CASHFLOW_FIELD: Decimal(-20),
-        MGMT_FEES_FIELD: Decimal(-20),
-        END_MARKET_VALUE_FIELD: Decimal(480),
-    }]
+    data = [
+        {
+            PERF_DATE_FIELD: date(2025, 1, 5),
+            BEGIN_MARKET_VALUE_FIELD: Decimal(400),
+            BOD_CASHFLOW_FIELD: Decimal(0),
+            EOD_CASHFLOW_FIELD: Decimal(-20),
+            MGMT_FEES_FIELD: Decimal(-20),
+            END_MARKET_VALUE_FIELD: Decimal(480),
+        }
+    ]
     df = pd.DataFrame(data)
     effective_start_date = pd.Series([date(2025, 1, 1)])
     ror_series = calculator._calculate_daily_ror_vectorized(df, effective_start_date)
@@ -286,16 +288,78 @@ def test_daily_ror_gross_basis_ignores_fees(minimal_config):
     """Tests that daily_ror on a GROSS basis correctly ignores fees."""
     minimal_config["metric_basis"] = "GROSS"
     calculator = PortfolioPerformanceCalculator(config=minimal_config)
-    data = [{
-        PERF_DATE_FIELD: date(2025, 1, 5),
-        BEGIN_MARKET_VALUE_FIELD: Decimal(400),
-        BOD_CASHFLOW_FIELD: Decimal(0),
-        EOD_CASHFLOW_FIELD: Decimal(-20),
-        MGMT_FEES_FIELD: Decimal(-20), # This should be ignored
-        END_MARKET_VALUE_FIELD: Decimal(480),
-    }]
+    data = [
+        {
+            PERF_DATE_FIELD: date(2025, 1, 5),
+            BEGIN_MARKET_VALUE_FIELD: Decimal(400),
+            BOD_CASHFLOW_FIELD: Decimal(0),
+            EOD_CASHFLOW_FIELD: Decimal(-20),
+            MGMT_FEES_FIELD: Decimal(-20),  # This should be ignored
+            END_MARKET_VALUE_FIELD: Decimal(480),
+        }
+    ]
     df = pd.DataFrame(data)
     effective_start_date = pd.Series([date(2025, 1, 1)])
     ror_series = calculator._calculate_daily_ror_vectorized(df, effective_start_date)
     # (480 - 400 - (-20)) / 400 = 100 / 400 = 0.25 -> 25%
     assert ror_series.iloc[0] == pytest.approx(Decimal("25"))
+
+
+# ### New Unit Tests for Period Type Logic ###
+
+
+@pytest.mark.parametrize(
+    "period_type, day1_date, day2_date, report_start_date, expected_ror",
+    [
+        # YTD: Jan 1 -> Jan 2. Should compound.
+        ("YTD", date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 1), Decimal("21")),
+        # MTD: Jan 31 -> Feb 1. Should reset because it's a new month.
+        ("MTD", date(2025, 1, 31), date(2025, 2, 1), date(2025, 1, 31), Decimal("10")),
+        # QTD: Mar 31 -> Apr 1. Should reset because it's a new quarter.
+        ("QTD", date(2025, 3, 31), date(2025, 4, 1), date(2025, 3, 31), Decimal("10")),
+        # Explicit: Report starts on Day 2. Should reset because Day 1 is before the report start.
+        ("Explicit", date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 2), Decimal("10")),
+    ],
+)
+def test_ror_resets_based_on_period_type(
+    minimal_config, period_type, day1_date, day2_date, report_start_date, expected_ror
+):
+    """
+    Tests that compounding correctly resets based on the period_type
+    (YTD, MTD, QTD, Explicit).
+    """
+    # Arrange: Each day has a 10% gain
+    minimal_config["period_type"] = period_type
+    minimal_config["report_start_date"] = report_start_date.strftime("%Y-%m-%d")
+    minimal_config["report_end_date"] = day2_date.strftime("%Y-%m-%d")
+    minimal_config["performance_start_date"] = day1_date.strftime("%Y-%m-%d")
+
+    calculator = PortfolioPerformanceCalculator(config=minimal_config)
+
+    daily_data = [
+        {
+            "Day": 1,
+            PERF_DATE_FIELD: day1_date,
+            BEGIN_MARKET_VALUE_FIELD: 1000,
+            BOD_CASHFLOW_FIELD: 0,
+            EOD_CASHFLOW_FIELD: 0,
+            MGMT_FEES_FIELD: 0,
+            END_MARKET_VALUE_FIELD: 1100,
+        },
+        {
+            "Day": 2,
+            PERF_DATE_FIELD: day2_date,
+            BEGIN_MARKET_VALUE_FIELD: 1100,
+            BOD_CASHFLOW_FIELD: 0,
+            EOD_CASHFLOW_FIELD: 0,
+            MGMT_FEES_FIELD: 0,
+            END_MARKET_VALUE_FIELD: 1210,
+        },
+    ]
+
+    # Act
+    results = calculator.calculate_performance(daily_data, minimal_config)
+
+    # Assert
+    final_day_result = results[-1]
+    assert Decimal(str(final_day_result[LONG_CUM_ROR_PERCENT_FIELD])) == pytest.approx(expected_ror)
