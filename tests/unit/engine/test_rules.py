@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from engine.rules import calculate_nip, calculate_sign
+from engine.rules import calculate_initial_resets, calculate_nip, calculate_nctrl4_reset, calculate_sign
 from engine.schema import PortfolioColumns
 
 
@@ -125,3 +125,67 @@ def test_calculate_nip_not_triggered_for_non_zero_day(nip_test_df):
     """Tests that NIP is not flagged for a normal day with non-zero values."""
     result = calculate_nip(nip_test_df)
     assert result.iloc[2] == 0
+
+
+# --- Tests for Reset Calculation ---
+
+
+@pytest.fixture
+def reset_test_df() -> pd.DataFrame:
+    """Provides a sample DataFrame for testing reset (NCTRL) calculation logic."""
+    data = {
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]),
+        PortfolioColumns.TEMP_LONG_CUM_ROR: [-50, -105, 10, 15],
+        PortfolioColumns.TEMP_SHORT_CUM_ROR: [50, 10, 105, 20],
+        PortfolioColumns.LONG_CUM_ROR: [-50, 0, 10, 15],  # Post-reset (zeroed)
+        PortfolioColumns.SHORT_CUM_ROR: [50, 10, 105, 20],
+        PortfolioColumns.BOD_CF: [0, 0, 1000, 0],
+        PortfolioColumns.EOD_CF: [0, 0, 0, 0],
+    }
+    return pd.DataFrame(data)
+
+
+def test_calculate_initial_resets_nctrl1_triggered(reset_test_df):
+    """Tests that NCTRL1 is triggered when Temp Long RoR breaches -100%."""
+    df = reset_test_df
+    # On day 2 (index 1), TEMP_LONG_CUM_ROR is -105 and there's a next-day BOD cashflow.
+    resets = calculate_initial_resets(df, report_end_date=pd.to_datetime("2025-01-31"))
+    assert df[PortfolioColumns.NCTRL_1].iloc[1] == 1
+    assert resets.iloc[1]
+
+
+def test_calculate_initial_resets_nctrl2_triggered(reset_test_df):
+    """Tests that NCTRL2 is triggered when Temp Short RoR breaches 100%."""
+    df = reset_test_df
+    # On day 3 (index 2), TEMP_SHORT_CUM_ROR is 105 and there is a current BOD cashflow.
+    resets = calculate_initial_resets(df, report_end_date=pd.to_datetime("2025-01-31"))
+    assert df[PortfolioColumns.NCTRL_2].iloc[2] == 1
+    assert resets.iloc[2]
+
+
+def test_calculate_initial_resets_not_triggered_without_common_condition(reset_test_df):
+    """Tests that NCTRL flags are not set if the RoR breach occurs but no common condition is met."""
+    df = reset_test_df.copy()
+    df.at[2, PortfolioColumns.BOD_CF] = 0  # Remove the cashflow on day 3
+    df[PortfolioColumns.PERF_DATE] = pd.to_datetime(
+        ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]
+    )  # Ensure date type
+    resets = calculate_initial_resets(df, report_end_date=pd.to_datetime("2025-02-28"))
+    # NCTRL2 on day 3 (index 2) should not trigger as there is no CF, it's not EOM, etc.
+    assert df[PortfolioColumns.NCTRL_2].iloc[2] == 0
+    assert not resets.iloc[2]
+
+
+def test_calculate_nctrl4_reset_triggered(reset_test_df):
+    """Tests that NCTRL4 is triggered when the previous day had a major loss and there's a new cashflow."""
+    df = reset_test_df
+    # For day 3 (index 2), the previous day's (index 1) final LONG_CUM_ROR is 0,
+    # but the rule looks at LONG_CUM_ROR which is the preliminary value in the old code.
+    # The corrected logic uses the FINAL post-reset RoR.
+    # Let's set up the condition correctly for the test:
+    df.at[1, PortfolioColumns.LONG_CUM_ROR] = -105 # Simulate previous day's final ROR being a loss
+    
+    resets = calculate_nctrl4_reset(df)
+    # On day 3 (index 2), prev_long_ror is -105 and current BOD_CF is 1000. This should trigger NCTRL4.
+    assert resets.iloc[2]
+    assert df[PortfolioColumns.NCTRL_4].iloc[2] == 1
