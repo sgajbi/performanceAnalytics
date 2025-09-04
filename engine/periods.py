@@ -17,7 +17,6 @@ def get_effective_period_start_dates(
     Returns a Series with dtype=datetime64[ns].
     """
     if config.period_type == PERIOD_TYPE_YTD:
-        # FIX: Use 'Y' instead of deprecated 'A' for YearEnd
         effective_starts = perf_dates_dt.dt.to_period("Y").dt.start_time
     elif config.period_type == PERIOD_TYPE_MTD:
         effective_starts = perf_dates_dt.dt.to_period("M").dt.start_time
@@ -28,9 +27,11 @@ def get_effective_period_start_dates(
             config.performance_start_date,
             config.report_start_date or config.performance_start_date,
         )
-        return pd.Series(pd.to_datetime(explicit_start), index=perf_dates_dt.index)
+        # Consistently return a named series
+        return pd.Series(pd.to_datetime(explicit_start), index=perf_dates_dt.index, name=perf_dates_dt.name)
     else:
-        return pd.Series(pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index)
+        # Consistently return a named series
+        return pd.Series(pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index, name=perf_dates_dt.name)
 
     perf_start_dt = pd.to_datetime(config.performance_start_date)
     
