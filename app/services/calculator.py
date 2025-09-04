@@ -262,11 +262,12 @@ class PortfolioPerformanceCalculator:
                 if current_daily_ror == 0:
                     return prev_short_cum_ror_final
                 else:
+                    # Implement the user-provided custom formula
                     calc_val = (
-                        (Decimal(1) + prev_short_cum_ror_final / 100)
-                        * (Decimal(1) + current_daily_ror / 100 * current_bmv_bcf_sign)
+                        (Decimal(1) + (prev_short_cum_ror_final / 100 * Decimal("-1")))
+                        * (Decimal(1) + (current_daily_ror / 100 * current_bmv_bcf_sign))
                         - Decimal(1)
-                    ) * 100
+                    ) * Decimal("-1") * 100
                     return calc_val
         elif prev_day_calculated is not None:
             return self._parse_decimal(prev_day_calculated[SHORT_CUM_ROR_PERCENT_FIELD])
@@ -339,17 +340,17 @@ class PortfolioPerformanceCalculator:
             return Decimal(0), Decimal(0)
 
         prev_long_cum_ror_final = (
-            self._parse_decimal(prev_day_calculated[LONG_CUM_ROR_PERCENT_FIELD])
+            self._parse_decimal(prev_day_calculated.get(LONG_CUM_ROR_PERCENT_FIELD, 0))
             if prev_day_calculated is not None
             else Decimal(0)
         )
         prev_short_cum_ror_final = (
-            self._parse_decimal(prev_day_calculated[SHORT_CUM_ROR_PERCENT_FIELD])
+            self._parse_decimal(prev_day_calculated.get(SHORT_CUM_ROR_PERCENT_FIELD, 0))
             if prev_day_calculated is not None
             else Decimal(0)
         )
         prev_nip = (
-            self._parse_decimal(prev_day_calculated[NIP_FIELD]) if prev_day_calculated is not None else Decimal(0)
+            self._parse_decimal(prev_day_calculated.get(NIP_FIELD, 0)) if prev_day_calculated is not None else Decimal(0)
         )
 
         next_nip_val = self._parse_decimal(next_day_data.get(NIP_FIELD, 0)) if next_day_data is not None else Decimal(0)
@@ -496,7 +497,7 @@ class PortfolioPerformanceCalculator:
                 current_end_mv = current_data[END_MARKET_VALUE_FIELD]
                 current_nip = current_data[NIP_FIELD]
 
-                prev_day_calculated = df.iloc[i - 1] if i > 0 else None
+                prev_day_calculated = df.iloc[i - 1].to_dict() if i > 0 else None
                 next_day_data = df.iloc[i + 1].to_dict() if i + 1 < len(df) else None
 
                 effective_period_start_date = current_data["effective_period_start_date"]
