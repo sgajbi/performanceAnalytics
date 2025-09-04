@@ -1,27 +1,34 @@
-# Portfolio Performance Analytics API
+# Portfolio Performance Analytics API (V2 Engine)
 
-An API for calculating portfolio performance metrics based on daily time-series financial data.
+An API for calculating portfolio performance metrics based on daily time-series financial data, powered by a high-performance, vectorized Python engine.
+
+---
+
+## Key Features
+
+-   **High Performance:** Core calculations are fully vectorized using Pandas and NumPy, delivering a **~49x speedup** over traditional iterative methods on large datasets.
+-   **Decoupled Architecture:** The calculation engine is a standalone library with zero dependencies on the API framework, allowing it to be used in other applications (e.g., batch jobs, research).
+-   **Dual Precision Modes:**
+    -   `FLOAT64` (default): For maximum speed.
+    -   `DECIMAL_STRICT`: For auditable, high-precision calculations.
+-   **Test Driven:** Behavior is locked in by a comprehensive suite of characterization, integration, and unit tests.
+
+---
 
 ## Project Structure
 
-The project follows a modular FastAPI application structure:
-- [cite_start]`main.py`: The main entry point for the FastAPI application. [cite: 5]
-- [cite_start]`app/`: Contains the core application logic. [cite: 6]
-    - [cite_start]`api/endpoints/`: Defines the API routes and their handlers (e.g., `performance.py`). [cite: 6]
-    - [cite_start]`core/`: Houses core configurations and utilities (e.g., `config.py` for settings). [cite: 7]
-    - [cite_start]`models/`: Contains Pydantic models for request and response data validation (e.g., `requests.py`, `responses.py`). [cite: 8]
-    - [cite_start]`services/`: Implements the business logic, such as the `PortfolioPerformanceCalculator` (e.g., `calculator.py`). [cite: 9]
-- `tests/`: Contains unit and integration tests.
-- `requirements.txt`: Manages project dependencies.
-- `sampleInput.json`: An example JSON payload for testing the API.
+The project is separated into three distinct layers:
+
+-   `app/`: The FastAPI application layer. Handles HTTP requests/responses and API-specific models.
+-   `adapters/`: A translation layer that maps data between the API and the engine.
+-   `engine/`: The pure, standalone calculation library. It has no knowledge of the API.
+-   `tests/`: Contains all tests, separated into `integration`, `unit`, and `benchmarks`.
 
 ---
 
 ## Setup and Installation
 
-This project uses a standard Python virtual environment to manage dependencies.
-
-1.  **Clone the repository (if you haven't already):**
+1.  **Clone the repository:**
     ```bash
     git clone [https://github.com/sgajbi/performanceAnalytics](https://github.com/sgajbi/performanceAnalytics)
     cd performanceAnalytics
@@ -29,63 +36,53 @@ This project uses a standard Python virtual environment to manage dependencies.
 
 2.  **Create and activate a virtual environment:**
     ```bash
-    # Create the virtual environment
     python -m venv .venv
-
-    # Activate it (for Git Bash on Windows)
     source .venv/Scripts/activate
     ```
 
-3.  **Install project dependencies:**
-    With the virtual environment active, run:
+3.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
+    pip install -r requirements-dev.txt
     ```
 
 ---
 
 ## Running the Application
 
-Once dependencies are installed and the virtual environment is active:
-
-1.  **Run the FastAPI application with Uvicorn:**
+1.  **Run the FastAPI app with Uvicorn:**
     ```bash
     uvicorn main:app --reload
     ```
-    The `--reload` flag enables auto-reloading upon code changes, which is useful during development.
 
-2.  **Access the API Documentation:**
-    Once the server is running, open your web browser and go to:
+2.  **Access API Documentation:**
     -   **Swagger UI**: `http://127.0.0.1:8000/docs`
     -   **ReDoc**: `http://127.0.0.1:8000/redoc`
 
-    [cite_start]You can test the `/calculate_performance` endpoint directly from the Swagger UI. [cite: 14]
-
 ---
 
-## Testing
+## Testing & Validation
 
-[cite_start]Tests are located in the `tests/` directory and are run using `pytest`. [cite: 15]
+The project has a comprehensive test suite.
 
-1.  **Install development dependencies:**
-    This includes `pytest` and other testing tools. Ensure your virtual environment is active.
+1.  **Run all tests (Unit & Integration):**
     ```bash
-    pip install -r requirements-dev.txt
+    pytest -q
     ```
 
-2.  **Run tests using Pytest:**
-    From the project root directory, run:
+2.  **Run Performance Benchmarks:**
+    This test compares the new vectorized engine against the original iterative engine on a large (~500k row) dataset.
     ```bash
-    pytest
+    pytest --benchmark-only "tests/benchmarks/"
     ```
+    The output will show the mean execution time for `test_vectorized_engine_performance`. A lower time is better.
 
 ---
 
 ## Example API Usage
 
-[cite_start]You can use `sampleInput.json` or `sampleInputShort.json` to test the `/calculate_performance` endpoint. [cite: 16]
+You can use `curl` from Git Bash to test the endpoint. The `sampleInput.json` file provides a standard payload.
 
-[cite_start]Using `curl` from your Git Bash: [cite: 17]
 ```bash
 curl -X POST "[http://127.0.0.1:8000/calculate_performance](http://127.0.0.1:8000/calculate_performance)" \
 -H "Content-Type: application/json" \
