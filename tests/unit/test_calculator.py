@@ -189,7 +189,7 @@ def test_daily_ror_is_zero_for_zero_denominator(calculator_instance):
     ]
     df = pd.DataFrame(data)
     effective_start_date = pd.Series([date(2025, 1, 1)])
-    ror_series = calculator._calculate_daily_ror_vectorized(df, effective_start_date)
+    ror_series = calculator_instance._calculate_daily_ror_vectorized(df, effective_start_date)
     assert ror_series.iloc[0] == Decimal(0)
 
 
