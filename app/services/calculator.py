@@ -331,6 +331,9 @@ class PortfolioPerformanceCalculator:
         current_perf_date,
     ):
         """Calculates 'Long Cum Ror %' and 'Short Cum RoR %' for the current row."""
+        if current_perf_reset == 1:
+            return Decimal(0), Decimal(0)
+
         prev_long_cum_ror_final = (
             self._parse_decimal(prev_day_calculated[LONG_CUM_ROR_PERCENT_FIELD])
             if prev_day_calculated is not None
