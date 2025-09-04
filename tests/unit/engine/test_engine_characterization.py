@@ -7,6 +7,9 @@ from tests.unit.engine.characterization_data import (
     short_flip_scenario,
     zero_value_nip_scenario,
     standard_growth_scenario,
+    short_growth_scenario,
+    eod_flip_net_scenario,
+    eod_flip_gross_scenario,
 )
 
 @pytest.mark.parametrize(
@@ -16,8 +19,19 @@ from tests.unit.engine.characterization_data import (
         (short_flip_scenario, "short_flip"),
         (zero_value_nip_scenario, "zero_value_nip"),
         (standard_growth_scenario, "standard_growth"),
+        (short_growth_scenario, "short_growth"),
+        (eod_flip_net_scenario, "eod_flip_net"),
+        (eod_flip_gross_scenario, "eod_flip_gross"),
     ],
-    ids=["long_flip", "short_flip", "zero_value_nip", "standard_growth"]
+    ids=[
+        "long_flip",
+        "short_flip",
+        "zero_value_nip",
+        "standard_growth",
+        "short_growth",
+        "eod_flip_net",
+        "eod_flip_gross",
+    ]
 )
 def test_engine_characterization_scenarios(scenario_func, scenario_name):
     """
@@ -30,6 +44,7 @@ def test_engine_characterization_scenarios(scenario_func, scenario_name):
     result_df = run_calculations(input_df, engine_config)
 
     # 3. Assert
+    # Select only the columns we want to compare from the result
     output_columns = expected_df.columns
     actual_df = result_df[output_columns].reset_index(drop=True)
 
@@ -37,5 +52,5 @@ def test_engine_characterization_scenarios(scenario_func, scenario_name):
         actual_df,
         expected_df.reset_index(drop=True),
         check_exact=False,
-        atol=1e-6,  # Using a slightly looser tolerance for broader cases
+        atol=1e-6,
     )

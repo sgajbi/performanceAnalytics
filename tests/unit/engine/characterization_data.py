@@ -118,6 +118,7 @@ def standard_growth_scenario():
         period_type=PeriodType.YTD,
     )
     input_df = pd.DataFrame({
+        PortfolioColumns.DAY: [1, 2, 3, 4, 5],
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]),
         PortfolioColumns.BEGIN_MV: [100000.0, 101000.0, 102010.0, 100989.9, 127249.29],
         PortfolioColumns.BOD_CF: [0.0, 0.0, 0.0, 25000.0, 0.0],
@@ -129,5 +130,70 @@ def standard_growth_scenario():
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
         PortfolioColumns.DAILY_ROR: [1.0, 1.0, -1.0, 0.999596, -1.0],
         PortfolioColumns.FINAL_CUM_ROR: [1.0, 2.01, 0.9899, 1.999391, 0.979397],
+    })
+    return engine_config, input_df, expected_df
+
+def short_growth_scenario():
+    """Provides data for a short position with negative growth."""
+    engine_config = EngineConfig(
+        performance_start_date=date(2024, 12, 31),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 4),
+        metric_basis="NET",
+        period_type=PeriodType.YTD,
+    )
+    input_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]),
+        PortfolioColumns.BEGIN_MV: [-1000.0, -1500.0, -3500.0, -1400.0],
+        PortfolioColumns.BOD_CF: [0.0, 0.0, 2000.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0, 0.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0],
+        PortfolioColumns.END_MV: [-1500.0, -3500.0, -1400.0, -1300.0],
+    })
+    expected_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]).date,
+        PortfolioColumns.DAILY_ROR: [-50.0, -133.33333333, 6.66666667, 7.14285714],
+        PortfolioColumns.FINAL_CUM_ROR: [-50.0, -250.0, -226.66666667, -203.33333333],
+    })
+    return engine_config, input_df, expected_df
+
+def eod_flip_net_scenario():
+    """Provides data for a sign flip caused by an EOD cashflow, NET basis."""
+    engine_config = EngineConfig(
+        performance_start_date=date(2024, 12, 31),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 5),
+        metric_basis="NET",
+        period_type=PeriodType.YTD,
+    )
+    input_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]),
+        PortfolioColumns.BEGIN_MV: [1000.0, 1100.0, -200.0, -100.0, 400.0],
+        PortfolioColumns.BOD_CF: [0.0, 0.0, 0.0, 600.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, -1500.0, 0.0, 0.0, -20.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0, -20.0],
+        PortfolioColumns.END_MV: [1100.0, -200.0, -100.0, 400.0, 480.0],
+    })
+    expected_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
+        PortfolioColumns.FINAL_CUM_ROR: [10.0, 30.0, 95.0, 56.0, 87.2],
+    })
+    return engine_config, input_df, expected_df
+
+def eod_flip_gross_scenario():
+    """Provides data for a sign flip caused by an EOD cashflow, GROSS basis."""
+    engine_config = EngineConfig(
+        performance_start_date=date(2024, 12, 31),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 5),
+        metric_basis="GROSS",
+        period_type=PeriodType.YTD,
+    )
+    # Input data is the same as the NET scenario
+    _, input_df, _ = eod_flip_net_scenario()
+
+    expected_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
+        PortfolioColumns.FINAL_CUM_ROR: [10.0, 30.0, 95.0, 56.0, 95.0],
     })
     return engine_config, input_df, expected_df
