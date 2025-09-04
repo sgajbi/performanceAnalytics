@@ -8,12 +8,14 @@ from app.core.constants import (
     BOD_CASHFLOW_FIELD,
     END_MARKET_VALUE_FIELD,
     EOD_CASHFLOW_FIELD,
+    FINAL_CUMULATIVE_ROR_PERCENT_FIELD,
     LONG_CUM_ROR_PERCENT_FIELD,
     MGMT_FEES_FIELD,
     NIP_FIELD,
     PERF_DATE_FIELD,
     SHORT_CUM_ROR_PERCENT_FIELD,
 )
+from app.core.exceptions import InvalidInputDataError, MissingConfigurationError
 from app.services.calculator import PortfolioPerformanceCalculator
 
 
@@ -24,6 +26,7 @@ def minimal_config():
         "performance_start_date": "2023-01-01",
         "report_end_date": "2023-01-31",
         "metric_basis": "NET",
+        "period_type": "YTD",
     }
 
 
@@ -186,7 +189,7 @@ def test_daily_ror_is_zero_for_zero_denominator(calculator_instance):
     ]
     df = pd.DataFrame(data)
     effective_start_date = pd.Series([date(2025, 1, 1)])
-    ror_series = calculator_instance._calculate_daily_ror_vectorized(df, effective_start_date)
+    ror_series = calculator._calculate_daily_ror_vectorized(df, effective_start_date)
     assert ror_series.iloc[0] == Decimal(0)
 
 
@@ -305,7 +308,7 @@ def test_daily_ror_gross_basis_ignores_fees(minimal_config):
     assert ror_series.iloc[0] == pytest.approx(Decimal("25"))
 
 
-# ### New Unit Tests for Period Type Logic ###
+# ### Unit Tests for Period Type Logic ###
 
 
 @pytest.mark.parametrize(
@@ -363,3 +366,88 @@ def test_ror_resets_based_on_period_type(
     # Assert
     final_day_result = results[-1]
     assert Decimal(str(final_day_result[LONG_CUM_ROR_PERCENT_FIELD])) == pytest.approx(expected_ror)
+
+
+# ### New Tests for 100% Coverage ###
+
+
+def test_init_raises_error_on_empty_config():
+    """Tests that the calculator raises an error if the config is None."""
+    with pytest.raises(MissingConfigurationError, match="Calculator configuration cannot be empty"):
+        PortfolioPerformanceCalculator(config=None)
+
+
+@pytest.mark.parametrize(
+    "missing_key", ["performance_start_date", "report_end_date"]
+)
+def test_init_raises_error_on_missing_required_keys(minimal_config, missing_key):
+    """Tests that the calculator raises an error if required config keys are missing."""
+    del minimal_config[missing_key]
+    with pytest.raises(MissingConfigurationError):
+        PortfolioPerformanceCalculator(config=minimal_config)
+
+
+@pytest.mark.parametrize("invalid_value", ["NETS", "GROSSES", ""])
+def test_init_raises_error_on_invalid_metric_basis(minimal_config, invalid_value):
+    """Tests that the calculator raises an error for an invalid metric_basis."""
+    minimal_config["metric_basis"] = invalid_value
+    with pytest.raises(InvalidInputDataError):
+        PortfolioPerformanceCalculator(config=minimal_config)
+
+
+def test_init_raises_error_on_invalid_date_logic(minimal_config):
+    """Tests that the calculator raises an error if perf start is after report end."""
+    minimal_config["performance_start_date"] = "2024-01-02"
+    minimal_config["report_end_date"] = "2024-01-01"
+    with pytest.raises(InvalidInputDataError, match="'performance_start_date' must not be after 'report_end_date'"):
+        PortfolioPerformanceCalculator(config=minimal_config)
+
+
+def test_parse_date_handles_date_object(calculator_instance):
+    """Tests that _parse_date correctly handles a date object input."""
+    date_obj = date(2024, 5, 5)
+    assert calculator_instance._parse_date(date_obj) == date_obj
+
+
+def test_parse_decimal_handles_invalid_type(calculator_instance):
+    """Tests that _parse_decimal returns 0 for unparseable types like None."""
+    assert calculator_instance._parse_decimal(None) == Decimal(0)
+
+
+def test_calculate_performance_raises_on_empty_daily_data(calculator_instance, minimal_config):
+    """Tests that the main method raises an error if the daily_data list is empty."""
+    with pytest.raises(InvalidInputDataError, match="Daily data list cannot be empty"):
+        calculator_instance.calculate_performance([], minimal_config)
+
+
+def test_calculate_performance_returns_empty_on_no_data_in_range(calculator_instance, minimal_config):
+    """Tests that an empty list is returned if all data is outside the report_end_date."""
+    minimal_config["report_end_date"] = "2024-12-31"  # Date before any data
+    calculator = PortfolioPerformanceCalculator(config=minimal_config)
+    daily_data = [
+        {"Day": 1, PERF_DATE_FIELD: "2025-01-01", BEGIN_MARKET_VALUE_FIELD: 1000, END_MARKET_VALUE_FIELD: 1100}
+    ]
+    assert calculator.calculate_performance(daily_data, minimal_config) == []
+
+
+def test_calculate_performance_raises_on_invalid_perf_date_in_data(calculator_instance, minimal_config):
+    """Tests that an error is raised if a Perf. Date is malformed."""
+    daily_data = [{"Day": 1, PERF_DATE_FIELD: "invalid-date"}]
+    with pytest.raises(InvalidInputDataError, match="One or more 'Perf. Date' values are invalid or missing"):
+        calculator_instance.calculate_performance(daily_data, minimal_config)
+
+
+def test_get_summary_performance_handles_empty_results(calculator_instance):
+    """Tests that the summary method returns a zeroed-out object for empty results."""
+    summary = calculator_instance.get_summary_performance([])
+    assert summary[BEGIN_MARKET_VALUE_FIELD] == 0.0
+    assert summary[FINAL_CUMULATIVE_ROR_PERCENT_FIELD] == 0.0
+
+
+def test_get_summary_performance_handles_no_data_in_report_range(minimal_config):
+    """Tests that a zeroed-out summary is returned if the date range is empty."""
+    minimal_config["report_start_date"] = "2025-01-05"  # After all data
+    calculator = PortfolioPerformanceCalculator(config=minimal_config)
+    results = [{PERF_DATE_FIELD: "2025-01-01", BEGIN_MARKET_VALUE_FIELD: 100.0}]
+    summary = calculator.get_summary_performance(results)
+    assert summary[BEGIN_MARKET_VALUE_FIELD] == 0.0  # Should be default
