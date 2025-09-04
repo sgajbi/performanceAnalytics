@@ -106,7 +106,7 @@ def test_sign_flips_with_cashflow(calculator_instance):
     assert new_sign == 1
 
 
-# ### New Unit Tests for NIP and Zero-Value Logic ###
+# ### Unit Tests for NIP and Zero-Value Logic ###
 
 
 def test_nip_triggered_for_all_zero_day(calculator_instance):
@@ -188,3 +188,38 @@ def test_daily_ror_is_zero_for_zero_denominator(calculator_instance):
     effective_start_date = pd.Series([date(2025, 1, 1)])
     ror_series = calculator_instance._calculate_daily_ror_vectorized(df, effective_start_date)
     assert ror_series.iloc[0] == Decimal(0)
+
+
+# ### New Unit Test for Compounding Logic ###
+
+
+def test_long_ror_compounds_correctly(calculator_instance):
+    """
+    Tests that the geometric linking (compounding) of daily returns for
+    long positions is calculated correctly over multiple days.
+    """
+    # Day 1: 10% gain
+    day1_ror = Decimal("10")
+    temp_long_ror1 = calculator_instance._calculate_temp_long_cum_ror(
+        current_sign=Decimal(1),
+        current_daily_ror=day1_ror,
+        current_perf_date=date(2025, 1, 1),
+        prev_day_calculated=None,
+        current_bmv_bcf_sign=Decimal(1),
+        effective_period_start_date=date(2025, 1, 1),
+    )
+    assert temp_long_ror1 == pytest.approx(Decimal("10"))
+
+    # Day 2: Another 10% gain, should compound to 21%
+    day2_ror = Decimal("10")
+    prev_day2 = {LONG_CUM_ROR_PERCENT_FIELD: temp_long_ror1}  # Previous day's final RoR
+    temp_long_ror2 = calculator_instance._calculate_temp_long_cum_ror(
+        current_sign=Decimal(1),
+        current_daily_ror=day2_ror,
+        current_perf_date=date(2025, 1, 2),
+        prev_day_calculated=prev_day2,
+        current_bmv_bcf_sign=Decimal(1),
+        effective_period_start_date=date(2025, 1, 1),
+    )
+    # (1 + 0.10) * (1 + 0.10) - 1 = 1.21 - 1 = 0.21 -> 21%
+    assert temp_long_ror2 == pytest.approx(Decimal("21"))
