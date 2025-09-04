@@ -1,5 +1,7 @@
+# app/models/requests.py
 from datetime import date
 from typing import List, Literal, Optional
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
@@ -8,18 +10,12 @@ from app.core.constants import (
     BOD_CASHFLOW_FIELD,
     END_MARKET_VALUE_FIELD,
     EOD_CASHFLOW_FIELD,
-    METRIC_BASIS_GROSS,
-    METRIC_BASIS_NET,
     MGMT_FEES_FIELD,
     PERF_DATE_FIELD,
-    PERIOD_TYPE_EXPLICIT,
-    PERIOD_TYPE_MTD,
-    PERIOD_TYPE_QTD,
-    PERIOD_TYPE_YTD,
 )
+from common.enums import Frequency, PeriodType
 
 
-# Pydantic model for a single daily performance entry in the request (input data structure)
 class DailyInputData(BaseModel):
     Day: int
     perf_date: date = Field(..., alias=PERF_DATE_FIELD)
@@ -30,14 +26,14 @@ class DailyInputData(BaseModel):
     end_market_value: float = Field(..., alias=END_MARKET_VALUE_FIELD)
 
 
-# Pydantic model for the API request body
 class PerformanceRequest(BaseModel):
+    calculation_id: UUID = Field(default_factory=uuid4)
     portfolio_number: str
     performance_start_date: date
-    metric_basis: Literal[METRIC_BASIS_NET, METRIC_BASIS_GROSS]
+    metric_basis: Literal["NET", "GROSS"]
     report_start_date: Optional[date] = None
     report_end_date: date
-    period_type: Literal[PERIOD_TYPE_MTD, PERIOD_TYPE_QTD, PERIOD_TYPE_YTD, PERIOD_TYPE_EXPLICIT] = Field(
-        ..., alias="period_type"
-    )  # Use alias for field name
+    period_type: PeriodType
+    frequencies: List[Frequency] = [Frequency.DAILY]
+    rounding_precision: int = 4
     daily_data: List[DailyInputData]

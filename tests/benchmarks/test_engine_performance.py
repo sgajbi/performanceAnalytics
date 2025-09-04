@@ -22,20 +22,22 @@ def large_input_data():
     input_data = load_json_from_file(base_path / "sampleInputlong.json")
     original_daily_data = input_data["daily_data"]
     extended_daily_data = []
-    # Increase replications to generate ~500k rows to match RFC spec
     num_replications = 3300
     for i in range(num_replications):
         for idx, entry in enumerate(original_daily_data):
             new_entry = entry.copy()
-            # Ensure Day is unique, but reuse the original date to avoid overflow
             day_offset = (i * len(original_daily_data)) + idx + 1
             new_entry["Day"] = day_offset
             extended_daily_data.append(new_entry)
 
     input_data["daily_data"] = extended_daily_data
-    # Set the report dates to the original dates from the sample file
     input_data["report_start_date"] = original_daily_data[0]["Perf. Date"]
     input_data["report_end_date"] = original_daily_data[-1]["Perf. Date"]
+    
+    input_data["rounding_precision"] = 4
+    # Add new required field to the benchmark data
+    input_data["frequencies"] = ["daily", "monthly", "yearly"]
+
     return input_data
 
 
