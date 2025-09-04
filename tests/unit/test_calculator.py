@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -46,3 +47,49 @@ def test_parse_date_empty_string_returns_none(calculator_instance):
     """Test that _parse_date handles an empty string."""
     parsed_date = calculator_instance._parse_date("")
     assert parsed_date is None
+
+
+# ### New Granular Unit Tests ###
+
+
+def test_get_sign(calculator_instance):
+    """Tests the _get_sign helper function."""
+    assert calculator_instance._get_sign(100) == 1
+    assert calculator_instance._get_sign(-50) == -1
+    assert calculator_instance._get_sign(0) == 0
+
+
+def test_calculate_perf_reset(calculator_instance):
+    """Tests the _calculate_perf_reset helper function."""
+    assert calculator_instance._calculate_perf_reset(0, 0, 0, 0) == 0
+    assert calculator_instance._calculate_perf_reset(1, 0, 0, 0) == 1
+    assert calculator_instance._calculate_perf_reset(0, 1, 0, 0) == 1
+    assert calculator_instance._calculate_perf_reset(0, 0, 1, 0) == 1
+    assert calculator_instance._calculate_perf_reset(0, 0, 0, 1) == 1
+    assert calculator_instance._calculate_perf_reset(1, 1, 0, 0) == 1
+
+
+def test_sign_persists_without_cashflow(calculator_instance):
+    """
+    Tests that the sign from the previous day is carried forward if the sign
+    flips but there are no cashflows to justify it.
+    """
+    prev_day = {"sign": -1, "Eod Cashflow": 0, "Perf Reset": 0}
+    # val_for_sign is positive, but prev_sign was negative with no current cashflow
+    new_sign = calculator_instance._calculate_sign(
+        current_day=2, val_for_sign=100, prev_day_calculated=prev_day, current_bod_cf=Decimal(0)
+    )
+    assert new_sign == -1
+
+
+def test_sign_flips_with_cashflow(calculator_instance):
+    """
+    Tests that the sign flips if the value changes and there is a current
+    day cashflow.
+    """
+    prev_day = {"sign": -1, "Eod Cashflow": 0, "Perf Reset": 0}
+    # val_for_sign is positive, and there is a BOD cashflow to justify the change
+    new_sign = calculator_instance._calculate_sign(
+        current_day=2, val_for_sign=100, prev_day_calculated=prev_day, current_bod_cf=Decimal(1100)
+    )
+    assert new_sign == 1
