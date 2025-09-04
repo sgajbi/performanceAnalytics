@@ -18,24 +18,25 @@ def load_json_from_file(file_path: Path):
 
 @pytest.fixture(scope="module")
 def large_input_data():
-    """Creates a large, realistic dataset for benchmarking."""
+    """Creates a large, realistic dataset for benchmarking per the RFC."""
     base_path = Path(__file__).parent.parent.parent
     input_data = load_json_from_file(base_path / "sampleInputlong.json")
     original_daily_data = input_data["daily_data"]
     extended_daily_data = []
-    num_replications = 70
+    # Increase replications to generate ~500k rows to match RFC spec
+    num_replications = 3300
     for i in range(num_replications):
-        for entry in original_daily_data:
+        for idx, entry in enumerate(original_daily_data):
             new_entry = entry.copy()
-            day_offset = i * len(original_daily_data)
-            date_offset = pd.to_timedelta(day_offset, unit="d")
-            new_date = pd.to_datetime(entry["Perf. Date"]) + date_offset
-            new_entry["Day"] = entry["Day"] + day_offset
-            new_entry["Perf. Date"] = new_date.strftime("%Y-%m-%d")
+            # Ensure Day is unique, but reuse the original date to avoid overflow
+            day_offset = (i * len(original_daily_data)) + idx + 1
+            new_entry["Day"] = day_offset
             extended_daily_data.append(new_entry)
+
     input_data["daily_data"] = extended_daily_data
-    input_data["report_start_date"] = extended_daily_data[0]["Perf. Date"]
-    input_data["report_end_date"] = extended_daily_data[-1]["Perf. Date"]
+    # Set the report dates to the original dates from the sample file
+    input_data["report_start_date"] = original_daily_data[0]["Perf. Date"]
+    input_data["report_end_date"] = original_daily_data[-1]["Perf. Date"]
     return input_data
 
 
@@ -49,7 +50,7 @@ def test_vectorized_engine_performance(benchmark, large_input_data):
     def run():
         run_calculations(engine_df.copy(), engine_config)
 
-    benchmark.group = "Engine Performance Comparison"
+    benchmark.group = "Engine Performance Comparison (500k rows)"
     benchmark(run)
 
 
@@ -69,5 +70,5 @@ def test_legacy_engine_performance(benchmark, large_input_data):
     def run():
         calculator.calculate_performance(daily_data_list, config)
 
-    benchmark.group = "Engine Performance Comparison"
+    benchmark.group = "Engine Performance Comparison (500k rows)"
     benchmark(run)

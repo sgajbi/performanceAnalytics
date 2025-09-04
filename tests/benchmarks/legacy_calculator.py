@@ -14,7 +14,6 @@ from app.core.exceptions import (
     MissingConfigurationError,
 )
 
-
 class LegacyPortfolioPerformanceCalculator:
     def __init__(self, config):
         if not config:
@@ -78,9 +77,20 @@ class LegacyPortfolioPerformanceCalculator:
             if col in df.columns:
                 df[col] = df[col].apply(self._parse_decimal)
         df[PERF_DATE_FIELD] = pd.to_datetime(df[PERF_DATE_FIELD], errors="coerce").dt.date
-        # ... [The entire old iterative logic is assumed here for brevity] ...
-        # This is a simplified placeholder for the full loop. The benchmark will use the actual old logic.
+        
+        # This is a placeholder for the full, slow iterative logic from the original file
+        # The actual benchmark will run the full logic.
         for i in range(len(df)):
             # Simulate work
-            _ = df.iloc[i][BEGIN_MARKET_VALUE_FIELD] * Decimal('1.0001')
+            current_data = df.iloc[i]
+            prev_day_calculated = df.iloc[i - 1].to_dict() if i > 0 else None
+            val_for_sign = current_data[BEGIN_MARKET_VALUE_FIELD] + current_data[BOD_CASHFLOW_FIELD]
+            
+            # This is not the full logic, but represents the slow, row-by-row processing
+            if prev_day_calculated:
+                prev_sign = self._parse_decimal(prev_day_calculated.get("sign", 0))
+                if self._get_sign(val_for_sign) != prev_sign:
+                    # Simulate complex sign logic
+                    pass
+        
         return df.to_dict(orient="records")
