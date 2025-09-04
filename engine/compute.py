@@ -1,9 +1,10 @@
 # engine/compute.py
 import logging
+from decimal import Decimal
 
 import numpy as np
 import pandas as pd
-from engine.config import EngineConfig
+from engine.config import EngineConfig, PrecisionMode
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 from engine.periods import get_effective_period_start_dates
 from engine.ror import calculate_cumulative_ror, calculate_daily_ror
@@ -22,8 +23,8 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
         return pd.DataFrame()
 
     try:
-        # Step 1: Preparation & Initialization
-        _prepare_dataframe(df)
+        # Step 1: Preparation & Initialization (now precision-aware)
+        _prepare_dataframe(df, config)
 
         # Step 2: Foundational Vectorized Calculations
         df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE] = get_effective_period_start_dates(
@@ -39,13 +40,13 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
         calculate_cumulative_ror(df, config)
 
         # Step 4: Final Formatting & Precision Handling
-        # PERF: Replace slow .apply with vectorized np.where
         df[PortfolioColumns.LONG_SHORT] = np.where(df[PortfolioColumns.SIGN] == -1, "S", "L")
 
         final_df = _filter_results_to_reporting_period(df, config)
 
-        # FIX: Round float columns to handle precision differences between float64 and legacy Decimal
-        _round_float_columns(final_df)
+        # Round float columns only if not in strict decimal mode
+        if config.precision_mode != PrecisionMode.DECIMAL_STRICT:
+            _round_float_columns(final_df)
 
     except Exception as e:
         logger.exception("An unexpected error occurred during engine calculations.")
@@ -56,8 +57,8 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
     return final_df
 
 
-def _prepare_dataframe(df: pd.DataFrame):
-    """Initializes and prepares the DataFrame for vectorized calculation."""
+def _prepare_dataframe(df: pd.DataFrame, config: EngineConfig):
+    """Initializes and prepares the DataFrame for calculation, handling precision mode."""
     numeric_cols = [
         PortfolioColumns.DAY,
         PortfolioColumns.BEGIN_MV,
@@ -66,9 +67,16 @@ def _prepare_dataframe(df: pd.DataFrame):
         PortfolioColumns.MGMT_FEES,
         PortfolioColumns.END_MV,
     ]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+
+    # Convert numeric columns based on the selected precision mode
+    if config.precision_mode == PrecisionMode.DECIMAL_STRICT:
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: Decimal(str(x)) if pd.notna(x) else Decimal(0))
+    else:  # Default to float64
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
 
     df[PortfolioColumns.PERF_DATE] = pd.to_datetime(df[PortfolioColumns.PERF_DATE], errors="coerce")
     if df[PortfolioColumns.PERF_DATE].isnull().any():
@@ -76,7 +84,8 @@ def _prepare_dataframe(df: pd.DataFrame):
 
     for col in PortfolioColumns:
         if col not in df.columns and col not in [PortfolioColumns.LONG_SHORT, PortfolioColumns.EFFECTIVE_PERIOD_START_DATE]:
-            df[col] = 0.0
+            # Initialize with the correct type based on precision mode
+            df[col] = Decimal(0) if config.precision_mode == PrecisionMode.DECIMAL_STRICT else 0.0
     df[PortfolioColumns.LONG_SHORT] = ""
 
 
