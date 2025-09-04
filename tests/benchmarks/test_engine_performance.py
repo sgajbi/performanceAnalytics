@@ -7,7 +7,6 @@ import pytest
 from adapters.api_adapter import create_engine_config, create_engine_dataframe
 from app.models.requests import PerformanceRequest
 from engine.compute import run_calculations
-from tests.benchmarks.legacy_calculator import LegacyPortfolioPerformanceCalculator
 
 
 def load_json_from_file(file_path: Path):
@@ -50,25 +49,5 @@ def test_vectorized_engine_performance(benchmark, large_input_data):
     def run():
         run_calculations(engine_df.copy(), engine_config)
 
-    benchmark.group = "Engine Performance Comparison (500k rows)"
-    benchmark(run)
-
-
-def test_legacy_engine_performance(benchmark, large_input_data):
-    """Benchmarks the old, slow, iterative engine (V1)."""
-    config = {
-        "portfolio_number": large_input_data["portfolio_number"],
-        "performance_start_date": large_input_data["performance_start_date"],
-        "metric_basis": large_input_data["metric_basis"],
-        "report_start_date": large_input_data["report_start_date"],
-        "report_end_date": large_input_data["report_end_date"],
-        "period_type": large_input_data["period_type"],
-    }
-    daily_data_list = large_input_data["daily_data"]
-    calculator = LegacyPortfolioPerformanceCalculator(config=config)
-
-    def run():
-        calculator.calculate_performance(daily_data_list, config)
-
-    benchmark.group = "Engine Performance Comparison (500k rows)"
+    benchmark.group = "Engine Performance (500k rows)"
     benchmark(run)
