@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 from engine.schema import PortfolioColumns
-from engine.rules import calculate_resets
+from engine.rules import calculate_initial_resets, calculate_nctrl4_reset
 
 
 def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
@@ -30,31 +30,44 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
 
 
 def calculate_cumulative_ror(df: pd.DataFrame, config):
-    """Vectorized calculation of all cumulative return series."""
-    # Step 1 & 2: Preliminary Compounding and Intermediate RORs
+    """Vectorized calculation of all cumulative return series in the correct dependency order."""
+    # Step 1: Preliminary compounding to get values for NCTRL 1,2,3 detection.
     df[PortfolioColumns.TEMP_LONG_CUM_ROR] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], 'long', use_resets=False)
     df[PortfolioColumns.TEMP_SHORT_CUM_ROR] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], 'short', use_resets=False)
-    df[PortfolioColumns.LONG_CUM_ROR] = df[PortfolioColumns.TEMP_LONG_CUM_ROR]
-    df[PortfolioColumns.SHORT_CUM_ROR] = df[PortfolioColumns.TEMP_SHORT_CUM_ROR]
-    
-    # Step 3: Calculate Resets
+     
+    # Step 2: Calculate initial resets from NCTRL 1, 2, and 3.
     report_end_ts = pd.to_datetime(config.report_end_date)
-    df[PortfolioColumns.PERF_RESET] = calculate_resets(df, report_end_ts)
+    initial_resets = calculate_initial_resets(df, report_end_ts)
+    df[PortfolioColumns.PERF_RESET] = initial_resets.astype(int)
     
-    # Step 4: Final Compounding with Resets
-    df[PortfolioColumns.LONG_CUM_ROR] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], 'long', use_resets=True)
-    df[PortfolioColumns.SHORT_CUM_ROR] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], 'short', use_resets=True)
-    
-    # FIX: Apply the reset to zero on the *same day* the reset occurs.
-    is_reset_day = df[PortfolioColumns.PERF_RESET] == 1
-    df.loc[is_reset_day, [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = 0.0
+    # Step 3: Calculate the final, reset-aware cumulative series (but don't zero them yet).
+    final_long_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], 'long', use_resets=True)
+    final_short_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], 'short', use_resets=True)
 
-    # Step 5: Final carry-forward logic for NIP days
+    # Step 4: Create the final, zeroed RoR series needed for the NCTRL 4 calculation.
+    df[PortfolioColumns.LONG_CUM_ROR] = final_long_ror
+    df[PortfolioColumns.SHORT_CUM_ROR] = final_short_ror
+    is_initial_reset_day = df[PortfolioColumns.PERF_RESET] == 1
+    df.loc[is_initial_reset_day, [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = 0.0
+
+    # Step 5: Now, calculate NCTRL 4 using the corrected, final, zeroed RoR from the previous day.
+    nctrl4_resets = calculate_nctrl4_reset(df)
+    
+    # Step 6: Combine all resets and finalize the LONG/SHORT RoR columns.
+    df[PortfolioColumns.PERF_RESET] |= nctrl4_resets
+    is_final_reset_day = df[PortfolioColumns.PERF_RESET] == 1
+    df.loc[is_final_reset_day, [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = 0.0
+
+    # Step 7: The "Temp" RoR for the output is the final RoR *before* the zeroing logic is applied.
+    df[PortfolioColumns.TEMP_LONG_CUM_ROR] = final_long_ror
+    df[PortfolioColumns.TEMP_SHORT_CUM_ROR] = final_short_ror
+
+    # Step 8: Final carry-forward logic for NIP days
     is_nip = df[PortfolioColumns.NIP] == 1
     df.loc[is_nip, [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = np.nan
     df[[PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = df[[PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]].ffill().fillna(0)
 
-    # Step 6: Final Linked Return
+    # Step 9: Final Linked Return
     df[PortfolioColumns.FINAL_CUM_ROR] = ((1 + df[PortfolioColumns.LONG_CUM_ROR] / 100) * (1 + df[PortfolioColumns.SHORT_CUM_ROR] / 100) - 1) * 100
 
 
@@ -74,8 +87,9 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
     is_period_start = df[PortfolioColumns.PERF_DATE] == df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE]
     block_starts = is_period_start
     if use_resets:
-        # FIX: A reset on day T starts a new block on that same day, so no shift is needed.
-        block_starts |= (df[PortfolioColumns.PERF_RESET] == 1)
+        # A reset on day T starts a new compounding block on day T+1.
+        prev_day_was_reset = (df[PortfolioColumns.PERF_RESET].shift(1).fillna(0) == 1)
+        block_starts |= prev_day_was_reset
 
     block_ids = block_starts.cumsum()
     cumulative_growth = growth_factor.groupby(block_ids).cumprod()

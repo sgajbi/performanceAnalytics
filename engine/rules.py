@@ -9,8 +9,8 @@ def calculate_sign(df: pd.DataFrame) -> pd.Series:
     Vectorized calculation of the 'sign' column.
     """
     initial_sign = np.sign(df[PortfolioColumns.BEGIN_MV] + df[PortfolioColumns.BOD_CF])
-    prev_eod_cf = df[PortfolioColumns.EOD_CF].shift(1).fillna(0)
-    prev_perf_reset = df[PortfolioColumns.PERF_RESET].shift(1).fillna(0)
+    prev_eod_cf = df[PortfolioColumns.EOD_CF].shift(1, fill_value=0)
+    prev_perf_reset = df[PortfolioColumns.PERF_RESET].shift(1, fill_value=0)
     is_flip_event = ((df[PortfolioColumns.BOD_CF] != 0) | (prev_eod_cf != 0) | (prev_perf_reset == 1))
     is_flip_event.iloc[0] = True
     flip_group = is_flip_event.cumsum()
@@ -25,8 +25,6 @@ def calculate_nip(df: pd.DataFrame) -> pd.Series:
     """
     is_zero_value = (df[PortfolioColumns.BEGIN_MV] + df[PortfolioColumns.BOD_CF] + df[PortfolioColumns.END_MV] + df[PortfolioColumns.EOD_CF]) == 0
     
-    # This complex condition from the original is slow with .apply, but we must preserve it for now.
-    # We use temporary Series to make it clearer.
     bod_cf_series = pd.to_numeric(df[PortfolioColumns.BOD_CF], errors='coerce').fillna(0)
     eod_cf_series = pd.to_numeric(df[PortfolioColumns.EOD_CF], errors='coerce').fillna(0)
     
@@ -35,12 +33,11 @@ def calculate_nip(df: pd.DataFrame) -> pd.Series:
 
     return (is_zero_value & is_offsetting_cf).astype(int)
 
-def calculate_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) -> pd.Series:
-    """
-    Vectorized calculation of NCTRL flags and the final Perf Reset flag.
-    """
-    # NCTRL 1, 2, 3 Condition
+
+def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) -> pd.Series:
+    """Calculates resets based on NCTRL 1, 2, and 3, which use preliminary RoR."""
     eom_mask = df[PortfolioColumns.PERF_DATE].dt.is_month_end
+    # CORRECTED: This must be shift(-1) to look at the *next* day's cashflow.
     next_day_bod_cf = df[PortfolioColumns.BOD_CF].shift(-1).fillna(0)
     next_date_beyond_period = df[PortfolioColumns.PERF_DATE].shift(-1) > report_end_date
 
@@ -52,23 +49,34 @@ def calculate_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) -> pd.Seri
         next_date_beyond_period
     )
 
-    nctrl1 = (df[PortfolioColumns.TEMP_LONG_CUM_ROR] < -100) & cond_common
-    nctrl2 = (df[PortfolioColumns.TEMP_SHORT_CUM_ROR] > 100) & cond_common
-    nctrl3 = ((df[PortfolioColumns.TEMP_SHORT_CUM_ROR] < -100) & (df[PortfolioColumns.TEMP_LONG_CUM_ROR] != 0)) & cond_common
+    cond_nctrl1 = df[PortfolioColumns.TEMP_LONG_CUM_ROR] < -100
+    cond_nctrl2 = df[PortfolioColumns.TEMP_SHORT_CUM_ROR] > 100
+    cond_nctrl3 = ((df[PortfolioColumns.TEMP_SHORT_CUM_ROR] < -100) & (df[PortfolioColumns.TEMP_LONG_CUM_ROR] != 0))
 
-    # NCTRL 4 Condition
-    prev_long_ror = df[PortfolioColumns.LONG_CUM_ROR].shift(1).fillna(0)
-    prev_short_ror = df[PortfolioColumns.SHORT_CUM_ROR].shift(1).fillna(0)
-    prev_eod_cf = df[PortfolioColumns.EOD_CF].shift(1).fillna(0)
+    # Edge-triggered events using modern fill_value to avoid warnings
+    nctrl1 = (cond_nctrl1 & ~cond_nctrl1.shift(1, fill_value=False)) & cond_common
+    nctrl2 = (cond_nctrl2 & ~cond_nctrl2.shift(1, fill_value=False)) & cond_common
+    nctrl3 = (cond_nctrl3 & ~cond_nctrl3.shift(1, fill_value=False)) & cond_common
+
+    df[PortfolioColumns.NCTRL_1] = nctrl1.astype(int)
+    df[PortfolioColumns.NCTRL_2] = nctrl2.astype(int)
+    df[PortfolioColumns.NCTRL_3] = nctrl3.astype(int)
+    df[PortfolioColumns.NCTRL_4] = 0  # Initialize NCTRL 4
+
+    return (nctrl1 | nctrl2 | nctrl3)
+
+
+def calculate_nctrl4_reset(df: pd.DataFrame) -> pd.Series:
+    """Calculates resets based on NCTRL 4, which uses final, zeroed RoR."""
+    # NCTRL 4 uses the final, post-reset cumulative RoR from the previous day.
+    prev_long_ror = df[PortfolioColumns.LONG_CUM_ROR].shift(1, fill_value=0)
+    prev_short_ror = df[PortfolioColumns.SHORT_CUM_ROR].shift(1, fill_value=0)
+    prev_eod_cf = df[PortfolioColumns.EOD_CF].shift(1, fill_value=0)
     
     nctrl4 = (
         ((prev_long_ror <= -100) | (prev_short_ror >= 100)) &
         ((df[PortfolioColumns.BOD_CF] != 0) | (prev_eod_cf != 0))
     )
-
-    df[PortfolioColumns.NCTRL_1] = nctrl1.astype(int)
-    df[PortfolioColumns.NCTRL_2] = nctrl2.astype(int)
-    df[PortfolioColumns.NCTRL_3] = nctrl3.astype(int)
-    df[PortfolioColumns.NCTRL_4] = nctrl4.astype(int)
     
-    return (nctrl1 | nctrl2 | nctrl3 | nctrl4).astype(int)
+    df[PortfolioColumns.NCTRL_4] = nctrl4.astype(int)
+    return nctrl4
