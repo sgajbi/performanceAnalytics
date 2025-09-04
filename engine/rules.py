@@ -97,7 +97,7 @@ def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) ->
     df[PortfolioColumns.NCTRL_3] = nctrl3.astype(int)
     df[PortfolioColumns.NCTRL_4] = 0
 
-    return nctrl1 | nctrl2 | nctrl3
+    return (nctrl1 | nctrl2 | nctrl3).astype(int)
 
 
 def calculate_nctrl4_reset(df: pd.DataFrame) -> pd.Series:
@@ -115,4 +115,4 @@ def calculate_nctrl4_reset(df: pd.DataFrame) -> pd.Series:
     )
 
     df[PortfolioColumns.NCTRL_4] = nctrl4.astype(int)
-    return nctrl4
+    return nctrl4.astype(int)
