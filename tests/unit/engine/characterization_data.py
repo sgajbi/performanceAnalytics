@@ -14,7 +14,6 @@ def long_flip_scenario():
         metric_basis="NET",
         period_type=PeriodType.YTD,
     )
-
     input_df = pd.DataFrame({
         PortfolioColumns.DAY: [1, 2, 3, 4],
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]),
@@ -24,9 +23,7 @@ def long_flip_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [500.0, -50.0, 1050.0, 1155.0],
     })
-
     expected_df = pd.DataFrame({
-        PortfolioColumns.DAY: [1, 2, 3, 4],
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3), date(2025, 1, 4)],
         PortfolioColumns.SIGN: [1, 1, 1, 1],
         PortfolioColumns.DAILY_ROR: [-50.0, -110.0, 10.52631579, 10.0],
@@ -43,7 +40,6 @@ def long_flip_scenario():
         PortfolioColumns.SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.FINAL_CUM_ROR: [-50.0, 0.0, 10.52631579, 21.57894737],
     })
-
     return engine_config, input_df, expected_df
 
 def short_flip_scenario():
@@ -55,7 +51,6 @@ def short_flip_scenario():
         metric_basis="NET",
         period_type=PeriodType.YTD,
     )
-
     input_df = pd.DataFrame({
         PortfolioColumns.DAY: [1, 2, 3],
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
@@ -65,9 +60,7 @@ def short_flip_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [-900.0, 500.0, 550.0],
     })
-
     expected_df = pd.DataFrame({
-        PortfolioColumns.DAY: [1, 2, 3],
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3)],
         PortfolioColumns.SIGN: [-1, 1, 1],
         PortfolioColumns.DAILY_ROR: [10.0, -16.66666667, 10.0],
@@ -84,5 +77,57 @@ def short_flip_scenario():
         PortfolioColumns.SHORT_CUM_ROR: [10.0, 10.0, 10.0],
         PortfolioColumns.FINAL_CUM_ROR: [10.0, -8.33333333, 0.83333333],
     })
+    return engine_config, input_df, expected_df
 
+def zero_value_nip_scenario():
+    """Provides data for a scenario involving zero-value days and NIP."""
+    engine_config = EngineConfig(
+        performance_start_date=date(2024, 12, 31),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 5),
+        metric_basis="NET",
+        period_type=PeriodType.YTD,
+    )
+    input_df = pd.DataFrame({
+        PortfolioColumns.DAY: [1, 2, 3, 4, 5],
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]),
+        PortfolioColumns.BEGIN_MV: [1000.0, 1050.0, 0.0, 0.0, 0.0],
+        PortfolioColumns.BOD_CF: [0.0, 0.0, 20.0, 0.0, 100.0],
+        PortfolioColumns.EOD_CF: [0.0, -1050.0, -20.0, 0.0, 0.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0, 0.0],
+        PortfolioColumns.END_MV: [1050.0, 0.0, 0.0, 0.0, 110.0],
+    })
+    expected_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
+        PortfolioColumns.SIGN: [1, 1, 1, 0, 1],
+        PortfolioColumns.DAILY_ROR: [5.0, 0.0, 0.0, 0.0, 10.0],
+        PortfolioColumns.NIP: [0, 0, 0, 1, 0],
+        PortfolioColumns.PERF_RESET: [0, 0, 0, 0, 0],
+        PortfolioColumns.LONG_CUM_ROR: [5.0, 5.0, 5.0, 5.0, 15.5],
+        PortfolioColumns.FINAL_CUM_ROR: [5.0, 5.0, 5.0, 5.0, 15.5],
+    })
+    return engine_config, input_df, expected_df
+
+def standard_growth_scenario():
+    """Provides data for a standard growth scenario with cashflows."""
+    engine_config = EngineConfig(
+        performance_start_date=date(2024, 12, 31),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 5),
+        metric_basis="NET",
+        period_type=PeriodType.YTD,
+    )
+    input_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]),
+        PortfolioColumns.BEGIN_MV: [100000.0, 101000.0, 102010.0, 100989.9, 127249.29],
+        PortfolioColumns.BOD_CF: [0.0, 0.0, 0.0, 25000.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0, 0.0, 0.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0, 0.0],
+        PortfolioColumns.END_MV: [101000.0, 102010.0, 100989.9, 127249.29, 125976.7971],
+    })
+    expected_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
+        PortfolioColumns.DAILY_ROR: [1.0, 1.0, -1.0, 0.999596, -1.0],
+        PortfolioColumns.FINAL_CUM_ROR: [1.0, 2.01, 0.9899, 1.999391, 0.979397],
+    })
     return engine_config, input_df, expected_df
