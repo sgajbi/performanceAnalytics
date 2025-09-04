@@ -4,13 +4,7 @@ from datetime import date
 from enum import Enum
 from typing import Literal, Optional
 
-
-class PeriodType(str, Enum):
-    """Defines the supported period types for performance calculation."""
-    MTD = "MTD"
-    QTD = "QTD"
-    YTD = "YTD"
-    EXPLICIT = "Explicit"
+from common.enums import PeriodType
 
 
 class PrecisionMode(str, Enum):
@@ -40,7 +34,8 @@ class EngineConfig:
     performance_start_date: date
     report_end_date: date
     metric_basis: Literal["NET", "GROSS"]
-    period_type: PeriodType  # Use the new Enum for strong typing
+    period_type: PeriodType
+    rounding_precision: int = 4
     report_start_date: Optional[date] = None
     precision_mode: PrecisionMode = PrecisionMode.FLOAT64
     feature_flags: FeatureFlags = field(default_factory=FeatureFlags)
