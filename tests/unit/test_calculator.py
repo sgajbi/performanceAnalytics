@@ -190,7 +190,7 @@ def test_daily_ror_is_zero_for_zero_denominator(calculator_instance):
     assert ror_series.iloc[0] == Decimal(0)
 
 
-# ### New Unit Test for Compounding Logic ###
+# ### Unit Test for Standard Compounding ###
 
 
 def test_long_ror_compounds_correctly(calculator_instance):
@@ -223,3 +223,39 @@ def test_long_ror_compounds_correctly(calculator_instance):
     )
     # (1 + 0.10) * (1 + 0.10) - 1 = 1.21 - 1 = 0.21 -> 21%
     assert temp_long_ror2 == pytest.approx(Decimal("21"))
+
+
+# ### New Unit Test for Custom Compounding Logic ###
+
+
+def test_short_ror_compounds_with_custom_formula(calculator_instance):
+    """
+    Tests that the custom compounding of daily returns for short positions
+    is calculated correctly, matching the specific business formula.
+    """
+    # Day 1: -50% return
+    day1_ror = Decimal("-50")
+    temp_short_ror1 = calculator_instance._calculate_temp_short_cum_ror(
+        current_sign=Decimal(-1),
+        current_daily_ror=day1_ror,
+        current_perf_date=date(2025, 1, 1),
+        prev_day_calculated=None,
+        current_bmv_bcf_sign=Decimal(-1),
+        effective_period_start_date=date(2025, 1, 1),
+    )
+    assert temp_short_ror1 == pytest.approx(Decimal("-50"))
+
+    # Day 2: -133.3333...% daily return
+    day2_ror = Decimal("-133.33333333333334")
+    prev_day2 = {SHORT_CUM_ROR_PERCENT_FIELD: temp_short_ror1}  # Previous day's final RoR
+    temp_short_ror2 = calculator_instance._calculate_temp_short_cum_ror(
+        current_sign=Decimal(-1),
+        current_daily_ror=day2_ror,
+        current_perf_date=date(2025, 1, 2),
+        prev_day_calculated=prev_day2,
+        current_bmv_bcf_sign=Decimal(-1),
+        effective_period_start_date=date(2025, 1, 1),
+    )
+    # Asserts the result of the custom formula:
+    # ((1 + (-50/-100 * -1)) * (1 + (-133.33/-100 * -1)) - 1) * -1 * 100
+    assert temp_short_ror2 == pytest.approx(Decimal("-250"))
