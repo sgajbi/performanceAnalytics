@@ -25,9 +25,10 @@ def test_calculate_performance_happy_path(client):
     Tests the /calculate_performance endpoint with a valid request (happy path).
     """
     # 1. Arrange
-    # Load a known-good input file
-    base_path = Path(__file__).parent.parent
-    input_data = load_json_from_file(base_path / "sampleInputStandardGrowth.json")
+    # Load a known-good input file. The test file is in tests/integration/,
+    # so ../../ navigates up to the project root.
+    base_path = Path(__file__).parent
+    input_data = load_json_from_file(base_path / "../../sampleInputStandardGrowth.json")
 
     # 2. Act
     # Make a POST request to the endpoint
