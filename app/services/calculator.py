@@ -1,4 +1,5 @@
 import calendar
+import decimal
 import logging
 from datetime import date, datetime
 from decimal import Decimal, getcontext
@@ -117,9 +118,11 @@ class PortfolioPerformanceCalculator:
         return date(date_obj.year, quarter_month, 1)
 
     def _parse_decimal(self, value):
+        if value is None:
+            return Decimal(0)
         try:
             return Decimal(str(value))
-        except (ValueError, TypeError, SystemError):
+        except (ValueError, TypeError, SystemError, decimal.InvalidOperation):
             logger.warning("Could not parse value to Decimal: %s", value)
             return Decimal(0)
 
