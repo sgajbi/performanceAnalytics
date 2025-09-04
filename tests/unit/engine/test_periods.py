@@ -3,7 +3,7 @@ from datetime import date
 
 import pandas as pd
 import pytest
-from engine.config import EngineConfig
+from engine.config import EngineConfig, PeriodType
 from engine.periods import get_effective_period_start_dates
 from engine.schema import PortfolioColumns
 
@@ -28,7 +28,7 @@ def sample_dates() -> pd.Series:
     "period_type, performance_start_date, expected_dates",
     [
         (
-            "YTD",
+            PeriodType.YTD,
             date(2025, 1, 1),
             [
                 "2025-01-01",
@@ -38,7 +38,7 @@ def sample_dates() -> pd.Series:
             ],
         ),
         (
-            "MTD",
+            PeriodType.MTD,
             date(2025, 1, 1),
             [
                 "2025-01-01",
@@ -48,7 +48,7 @@ def sample_dates() -> pd.Series:
             ],
         ),
         (
-            "QTD",
+            PeriodType.QTD,
             date(2025, 1, 1),
             [
                 "2025-01-01",
@@ -58,7 +58,7 @@ def sample_dates() -> pd.Series:
             ],
         ),
         (
-            "Explicit",
+            PeriodType.EXPLICIT,
             date(2025, 2, 1),
             [
                 "2025-02-01",
