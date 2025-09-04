@@ -160,9 +160,8 @@ class PortfolioPerformanceCalculator:
         """
         daily_ror = pd.Series([Decimal(0)] * len(df), index=df.index, dtype=object)
 
-        condition = (df[PERF_DATE_FIELD] >= effective_start_date_series) & (
-            df[BEGIN_MARKET_VALUE_FIELD] + df[BOD_CASHFLOW_FIELD] != 0
-        )
+        # Condition for when a calculation should even be attempted
+        is_after_start = df[PERF_DATE_FIELD] >= effective_start_date_series
 
         numerator = (
             df[END_MARKET_VALUE_FIELD] - df[BOD_CASHFLOW_FIELD] - df[BEGIN_MARKET_VALUE_FIELD] - df[EOD_CASHFLOW_FIELD]
@@ -172,9 +171,14 @@ class PortfolioPerformanceCalculator:
 
         denominator = abs(df[BEGIN_MARKET_VALUE_FIELD] + df[BOD_CASHFLOW_FIELD])
 
-        ror_calc = (numerator / denominator * 100).where(denominator != 0, Decimal(0))
+        # Create a mask for rows where division is safe
+        safe_division_mask = (denominator != 0) & is_after_start
 
-        daily_ror = daily_ror.mask(condition, ror_calc)
+        # Calculate RoR only for the safe rows and update the daily_ror series
+        if safe_division_mask.any():
+            daily_ror.loc[safe_division_mask] = (
+                numerator.loc[safe_division_mask] / denominator.loc[safe_division_mask]
+            ) * 100
 
         return daily_ror
 
@@ -402,94 +406,85 @@ class PortfolioPerformanceCalculator:
         except Exception as e:
             raise InvalidInputDataError(f"Failed to create DataFrame from daily data: {e}")
 
-        numeric_cols_to_parse = [
-            "Day",
-            BEGIN_MARKET_VALUE_FIELD,
-            BOD_CASHFLOW_FIELD,
-            EOD_CASHFLOW_FIELD,
-            MGMT_FEES_FIELD,
-            END_MARKET_VALUE_FIELD,
-        ]
-        for col in numeric_cols_to_parse:
-            if col in df.columns:
-                df[col] = df[col].apply(self._parse_decimal)
-
-        df[PERF_DATE_FIELD] = pd.to_datetime(df[PERF_DATE_FIELD], errors="coerce").dt.date
-        if df[PERF_DATE_FIELD].isnull().any():
-            raise InvalidInputDataError("One or more 'Perf. Date' values are invalid or missing.")
-
-        overall_effective_report_start_date = self.performance_start_date
-        if self.report_start_date:
-            overall_effective_report_start_date = max(self.performance_start_date, self.report_start_date)
-
-        if self.report_end_date:
-            temp_report_end_date = self.report_end_date
-            df = df[df[PERF_DATE_FIELD] <= temp_report_end_date].copy()
-
-        # Handle case where filtering by report_end_date results in an empty DataFrame
-        if df.empty:
-            return []
-
-        cols_to_init = [
-            "sign",
-            DAILY_ROR_PERCENT_FIELD,
-            TEMP_LONG_CUM_ROR_PERCENT_FIELD,
-            TEMP_SHORT_CUM_ROR_PERCENT_FIELD,
-            LONG_CUM_ROR_PERCENT_FIELD,
-            SHORT_CUM_ROR_PERCENT_FIELD,
-            FINAL_CUMULATIVE_ROR_PERCENT_FIELD,
-        ]
-        for col in cols_to_init:
-            df[col] = Decimal(0)
-
-        df[NCTRL_1_FIELD] = 0
-        df[NCTRL_2_FIELD] = 0
-        df[NCTRL_3_FIELD] = 0
-        df[NCTRL_4_FIELD] = 0
-        df[PERF_RESET_FIELD] = 0
-        df[NIP_FIELD] = 0
-        df[LONG_SHORT_FIELD] = ""
-
-        # Vectorized NIP calculation
-        df[NIP_FIELD] = self._calculate_nip_vectorized(df)
-
-        # --- Vectorized Daily ROR Calculation --- #
-        def get_effective_period_start_date_for_row(row_date, period_type, performance_start_date, report_start_date):
-            if pd.isna(row_date):
-                return pd.NaT
-
-            effective_date = performance_start_date
-            if period_type == PERIOD_TYPE_MTD:
-                effective_date = date(row_date.year, row_date.month, 1)
-            elif period_type == PERIOD_TYPE_QTD:
-                quarter_month = (row_date.month - 1) // 3 * 3 + 1
-                effective_date = date(row_date.year, quarter_month, 1)
-            elif period_type == PERIOD_TYPE_YTD:
-                effective_date = date(row_date.year, 1, 1)
-            elif period_type == PERIOD_TYPE_EXPLICIT:
-                effective_date = max(
-                    performance_start_date, report_start_date if report_start_date else performance_start_date
-                )
-            else:
-                effective_date = performance_start_date
-
-            return max(effective_date, performance_start_date)
-
-        df["effective_period_start_date"] = df[PERF_DATE_FIELD].apply(
-            lambda x: get_effective_period_start_date_for_row(
-                x, self.period_type, self.performance_start_date, self.report_start_date
-            )
-        )
-
-        df[DAILY_ROR_PERCENT_FIELD] = self._calculate_daily_ror_vectorized(df, df["effective_period_start_date"])
-
-        # --- Iterative Calculations (if strict row-by-row dependency remains) ---
-        # The following calculations remain in a loop due to their complex dependencies on
-        # previously calculated rows' *final* values, or lookahead conditions that are
-        # challenging to vectorize directly without altering the Excel logic's behavior.
-        # This approach provides significant performance gains where possible while
-        # maintaining correctness for complex iterative logic.
         try:
+            numeric_cols_to_parse = [
+                "Day",
+                BEGIN_MARKET_VALUE_FIELD,
+                BOD_CASHFLOW_FIELD,
+                EOD_CASHFLOW_FIELD,
+                MGMT_FEES_FIELD,
+                END_MARKET_VALUE_FIELD,
+            ]
+            for col in numeric_cols_to_parse:
+                if col in df.columns:
+                    df[col] = df[col].apply(self._parse_decimal)
+
+            df[PERF_DATE_FIELD] = pd.to_datetime(df[PERF_DATE_FIELD], errors="coerce").dt.date
+            if df[PERF_DATE_FIELD].isnull().any():
+                raise InvalidInputDataError("One or more 'Perf. Date' values are invalid or missing.")
+
+            overall_effective_report_start_date = self.performance_start_date
+            if self.report_start_date:
+                overall_effective_report_start_date = max(self.performance_start_date, self.report_start_date)
+
+            if self.report_end_date:
+                temp_report_end_date = self.report_end_date
+                df = df[df[PERF_DATE_FIELD] <= temp_report_end_date].copy()
+
+            if df.empty:
+                return []
+
+            cols_to_init = [
+                "sign",
+                DAILY_ROR_PERCENT_FIELD,
+                TEMP_LONG_CUM_ROR_PERCENT_FIELD,
+                TEMP_SHORT_CUM_ROR_PERCENT_FIELD,
+                LONG_CUM_ROR_PERCENT_FIELD,
+                SHORT_CUM_ROR_PERCENT_FIELD,
+                FINAL_CUMULATIVE_ROR_PERCENT_FIELD,
+            ]
+            for col in cols_to_init:
+                df[col] = Decimal(0)
+
+            df[NCTRL_1_FIELD] = 0
+            df[NCTRL_2_FIELD] = 0
+            df[NCTRL_3_FIELD] = 0
+            df[NCTRL_4_FIELD] = 0
+            df[PERF_RESET_FIELD] = 0
+            df[NIP_FIELD] = 0
+            df[LONG_SHORT_FIELD] = ""
+
+            df[NIP_FIELD] = self._calculate_nip_vectorized(df)
+
+            def get_effective_period_start_date_for_row(
+                row_date, period_type, performance_start_date, report_start_date
+            ):
+                if pd.isna(row_date):
+                    return pd.NaT
+                effective_date = performance_start_date
+                if period_type == PERIOD_TYPE_MTD:
+                    effective_date = date(row_date.year, row_date.month, 1)
+                elif period_type == PERIOD_TYPE_QTD:
+                    quarter_month = (row_date.month - 1) // 3 * 3 + 1
+                    effective_date = date(row_date.year, quarter_month, 1)
+                elif period_type == PERIOD_TYPE_YTD:
+                    effective_date = date(row_date.year, 1, 1)
+                elif period_type == PERIOD_TYPE_EXPLICIT:
+                    effective_date = max(
+                        performance_start_date, report_start_date if report_start_date else performance_start_date
+                    )
+                else:
+                    effective_date = performance_start_date
+                return max(effective_date, performance_start_date)
+
+            df["effective_period_start_date"] = df[PERF_DATE_FIELD].apply(
+                lambda x: get_effective_period_start_date_for_row(
+                    x, self.period_type, self.performance_start_date, self.report_start_date
+                )
+            )
+
+            df[DAILY_ROR_PERCENT_FIELD] = self._calculate_daily_ror_vectorized(df, df["effective_period_start_date"])
+
             for i in range(len(df)):
                 current_data = df.iloc[i]
                 current_day = current_data["Day"]
@@ -610,9 +605,11 @@ class PortfolioPerformanceCalculator:
                 logger.debug(
                     "Row %d: Final Cumulative ROR: %s", i, df.at[df.index[i], FINAL_CUMULATIVE_ROR_PERCENT_FIELD]
                 )
+        except (CalculationLogicError, InvalidInputDataError, MissingConfigurationError):
+            raise  # Re-raise our custom exceptions
         except Exception as e:
-            logger.exception("Error during iterative calculation loop.")
-            raise CalculationLogicError(f"Error during iterative calculation loop: {e}")
+            logger.exception("Error during calculation loop.")
+            raise CalculationLogicError(f"An unexpected error occurred during calculations: {e}")
 
         # Remove the temporary column used for vectorized period start dates
         df.drop(columns=["effective_period_start_date"], inplace=True)
