@@ -9,7 +9,9 @@ readme = "README.md"
 # CORRECTED: This tells Poetry to treat the 'app' directory as a package.
 # It's an array of package definitions within the [tool.poetry] section.
 packages = [
-    { include = "app" }
+    { include = "app" },
+    { include = "engine" },
+    { include = "adapters" },
 ]
 
 [tool.poetry.dependencies]
@@ -30,6 +32,7 @@ pytest = "^8.4.1"
 python-dotenv = "^1.1.1"
 pre-commit = "^4.2.0"
 pytest-cov = "^6.2.1"
+pytest-benchmark = "^4.0.0"
 
 
 [build-system]
