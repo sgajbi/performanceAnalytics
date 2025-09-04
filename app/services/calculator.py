@@ -565,16 +565,16 @@ class PortfolioPerformanceCalculator:
 
                 cond_n4 = False
                 if prev_day_calculated is not None:
-                    prev_temp_long_cum_ror_temp = self._parse_decimal(
-                        prev_day_calculated[TEMP_LONG_CUM_ROR_PERCENT_FIELD]
+                    prev_final_long_cum_ror = self._parse_decimal(
+                        prev_day_calculated[LONG_CUM_ROR_PERCENT_FIELD]
                     )
-                    prev_temp_short_cum_ror_temp = self._parse_decimal(
-                        prev_day_calculated[TEMP_SHORT_CUM_ROR_PERCENT_FIELD]
+                    prev_final_short_cum_ror = self._parse_decimal(
+                        prev_day_calculated[SHORT_CUM_ROR_PERCENT_FIELD]
                     )
                     prev_eod_cf_val = self._parse_decimal(prev_day_calculated[EOD_CASHFLOW_FIELD])
 
                     if (
-                        prev_temp_long_cum_ror_temp <= Decimal(-100) or prev_temp_short_cum_ror_temp >= Decimal(100)
+                        prev_final_long_cum_ror <= Decimal(-100) or prev_final_short_cum_ror >= Decimal(100)
                     ) and (current_bod_cf != 0 or prev_eod_cf_val != 0):
                         cond_n4 = True
                 df.at[df.index[i], NCTRL_4_FIELD] = 1 if cond_n4 else 0
