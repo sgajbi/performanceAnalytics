@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from engine.rules import calculate_sign
+from engine.rules import calculate_nip, calculate_sign
 from engine.schema import PortfolioColumns
 
 
@@ -83,3 +83,45 @@ def test_calculate_sign_flips_after_perf_reset(sign_test_df):
 
     result = calculate_sign(df)
     assert result.iloc[4] == -1
+
+
+# --- Tests for NIP Calculation ---
+
+
+@pytest.fixture
+def nip_test_df() -> pd.DataFrame:
+    """Provides a sample DataFrame for testing NIP calculation logic."""
+    data = {
+        # A day that should trigger NIP
+        PortfolioColumns.BEGIN_MV: [0, 0, 1000],
+        PortfolioColumns.BOD_CF: [0, 20, 0],
+        PortfolioColumns.EOD_CF: [0, -20, 0],
+        PortfolioColumns.END_MV: [0, 0, 1000],
+    }
+    return pd.DataFrame(data)
+
+
+def test_calculate_nip_triggered_for_zero_value_day(nip_test_df):
+    """Tests that NIP is flagged for a day where all values are zero."""
+    result = calculate_nip(nip_test_df)
+    # For day 0, BMV+BOD+EMV+EOD is 0. BOD_CF is 0, so sign is 0. EOD_CF is 0. 0 == -0.
+    # This should be a NIP day according to the logic.
+    assert result.iloc[0] == 1
+
+
+def test_calculate_nip_not_triggered_for_offsetting_cashflow(nip_test_df):
+    """
+    Tests NIP is NOT flagged for a zero-net-change day with offsetting flows.
+    The specific NIP rule is (total_value==0) AND (eod_cf == -sign(bod_cf)),
+    which is not met here.
+    """
+    result = calculate_nip(nip_test_df)
+    # For day 1, total value is 0. BOD_CF is 20 (sign=1). EOD_CF is -20.
+    # The check is `eod_cf == -sign(bod_cf)`, which is `-20 == -1`, which is False.
+    assert result.iloc[1] == 0
+
+
+def test_calculate_nip_not_triggered_for_non_zero_day(nip_test_df):
+    """Tests that NIP is not flagged for a normal day with non-zero values."""
+    result = calculate_nip(nip_test_df)
+    assert result.iloc[2] == 0
