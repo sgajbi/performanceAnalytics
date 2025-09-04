@@ -132,10 +132,8 @@ class PortfolioPerformanceCalculator:
         opposite sign to the BOD cash flow. This condition indicates that there is
         no money in the portfolio and that same-day deposits and withdrawals
         effectively cancel each other out, resulting in a non-invested state.
-
         Args:
             df (pd.DataFrame): The DataFrame containing daily portfolio data.
-
         Returns:
             pd.Series: A Series with 1 for NIP days, 0 otherwise.
         """
@@ -153,12 +151,10 @@ class PortfolioPerformanceCalculator:
         cash flows (BOD and EOD), and management fees (if metric_basis is net).
         Returns 0 if the current performance date is before the effective start date of the period
         or if the denominator is zero.
-
         Args:
             df (pd.DataFrame): The DataFrame containing daily portfolio data.
             effective_start_date_series (pd.Series): A Series indicating the effective
                                                      start date for each row's period type.
-
         Returns:
             pd.Series: A Series containing the calculated daily ROR percentages.
         """
@@ -182,9 +178,10 @@ class PortfolioPerformanceCalculator:
 
         return daily_ror
 
-    def _calculate_sign(self, current_day, val_for_sign, prev_day_calculated):
+    def _calculate_sign(self, current_day, val_for_sign, prev_day_calculated, current_bod_cf):
         """
-        Calculates 'sign' for the current row. This function determines the initial sign and updates it based on certain conditions
+        Calculates 'sign' for the current row.
+        This function determines the initial sign and updates it based on certain conditions
         from the previous day, mimicking Excel's behavior.
         """
         if current_day == 1:
@@ -193,11 +190,10 @@ class PortfolioPerformanceCalculator:
             prev_sign = self._parse_decimal(prev_day_calculated["sign"])
             prev_eod_cf = self._parse_decimal(prev_day_calculated[EOD_CASHFLOW_FIELD])
             prev_perf_reset = self._parse_decimal(prev_day_calculated[PERF_RESET_FIELD])
-            current_bod_cf_for_sign_check = self._parse_decimal(prev_day_calculated[BOD_CASHFLOW_FIELD])
 
             current_sign_val = self._get_sign(val_for_sign)
             if current_sign_val != prev_sign:
-                if current_bod_cf_for_sign_check != 0 or prev_eod_cf != 0 or prev_sign == 0 or prev_perf_reset == 1:
+                if current_bod_cf != 0 or prev_eod_cf != 0 or prev_sign == 0 or prev_perf_reset == 1:
                     return current_sign_val
                 else:
                     return prev_sign
@@ -217,7 +213,10 @@ class PortfolioPerformanceCalculator:
         """Calculates 'Temp Long Cum Ror %' for the current row, resetting at effective_period_start_date."""
 
         if current_perf_date == effective_period_start_date:
-            return current_daily_ror
+            if current_sign == 1:
+                return current_daily_ror
+            else:
+                return Decimal(0)
         elif current_sign == 1:
             if prev_day_calculated is not None:
                 prev_long_cum_ror_final = self._parse_decimal(prev_day_calculated[LONG_CUM_ROR_PERCENT_FIELD])
@@ -231,6 +230,9 @@ class PortfolioPerformanceCalculator:
                         - Decimal(1)
                     ) * 100
                     return calc_val
+        elif prev_day_calculated is not None:
+            return self._parse_decimal(prev_day_calculated[LONG_CUM_ROR_PERCENT_FIELD])
+
         return Decimal(0)
 
     def _calculate_temp_short_cum_ror(
@@ -245,7 +247,10 @@ class PortfolioPerformanceCalculator:
         """Calculates 'Temp short Cum RoR %' for the current row, resetting at effective_period_start_date."""
 
         if current_perf_date == effective_period_start_date:
-            return current_daily_ror
+            if current_sign != 1:  # Short positions logic
+                return current_daily_ror
+            else:
+                return Decimal(0)
         elif current_sign != 1:  # Short positions logic
             if prev_day_calculated is not None:
                 prev_short_cum_ror_final = self._parse_decimal(prev_day_calculated[SHORT_CUM_ROR_PERCENT_FIELD])
@@ -259,6 +264,9 @@ class PortfolioPerformanceCalculator:
                         - Decimal(1)
                     ) * 100
                     return calc_val
+        elif prev_day_calculated is not None:
+            return self._parse_decimal(prev_day_calculated[SHORT_CUM_ROR_PERCENT_FIELD])
+
         return Decimal(0)
 
     def _calculate_nctrls(
@@ -374,7 +382,7 @@ class PortfolioPerformanceCalculator:
             elif is_current_date_period_start:
                 return current_temp_long_cum_ror, current_temp_short_cum_ror
             else:
-                return current_temp_long_cum_ror, current_temp_short_cum_ror  # Corrected variable names here
+                return current_temp_long_cum_ror, current_temp_short_cum_ror
 
     def calculate_performance(self, daily_data_list, config):
         """
@@ -499,7 +507,9 @@ class PortfolioPerformanceCalculator:
                     continue
 
                 val_for_sign = current_begin_mv + current_bod_cf
-                df.at[df.index[i], "sign"] = self._calculate_sign(current_day, val_for_sign, prev_day_calculated)
+                df.at[df.index[i], "sign"] = self._calculate_sign(
+                    current_day, val_for_sign, prev_day_calculated, current_bod_cf
+                )
                 current_sign = df.at[df.index[i], "sign"]
 
                 current_daily_ror = df.at[df.index[i], DAILY_ROR_PERCENT_FIELD]
