@@ -150,13 +150,13 @@ def test_ror_carries_forward_on_nip_day(calculator_instance):
     prev_day = {
         LONG_CUM_ROR_PERCENT_FIELD: Decimal("5.0"),
         SHORT_CUM_ROR_PERCENT_FIELD: Decimal("0"),
-        NIP_FIELD: 0,  # Add the missing key
+        NIP_FIELD: 0,
     }
     # For a NIP day, the function should return the previous day's final values.
     long_ror, short_ror = calculator_instance._calculate_long_short_cum_ror_final(
         current_nip=1,
         current_perf_reset=0,
-        current_temp_long_cum_ror=Decimal(0),  # Temp values are irrelevant on a NIP day
+        current_temp_long_cum_ror=Decimal(0),
         current_temp_short_cum_ror=Decimal(0),
         current_bod_cf=Decimal(0),
         prev_day_calculated=prev_day,
@@ -212,7 +212,7 @@ def test_long_ror_compounds_correctly(calculator_instance):
 
     # Day 2: Another 10% gain, should compound to 21%
     day2_ror = Decimal("10")
-    prev_day2 = {LONG_CUM_ROR_PERCENT_FIELD: temp_long_ror1}  # Previous day's final RoR
+    prev_day2 = {LONG_CUM_ROR_PERCENT_FIELD: temp_long_ror1}
     temp_long_ror2 = calculator_instance._calculate_temp_long_cum_ror(
         current_sign=Decimal(1),
         current_daily_ror=day2_ror,
@@ -225,7 +225,7 @@ def test_long_ror_compounds_correctly(calculator_instance):
     assert temp_long_ror2 == pytest.approx(Decimal("21"))
 
 
-# ### New Unit Test for Custom Compounding Logic ###
+# ### Unit Test for Custom Compounding Logic ###
 
 
 def test_short_ror_compounds_with_custom_formula(calculator_instance):
@@ -247,7 +247,7 @@ def test_short_ror_compounds_with_custom_formula(calculator_instance):
 
     # Day 2: -133.3333...% daily return
     day2_ror = Decimal("-133.33333333333334")
-    prev_day2 = {SHORT_CUM_ROR_PERCENT_FIELD: temp_short_ror1}  # Previous day's final RoR
+    prev_day2 = {SHORT_CUM_ROR_PERCENT_FIELD: temp_short_ror1}
     temp_short_ror2 = calculator_instance._calculate_temp_short_cum_ror(
         current_sign=Decimal(-1),
         current_daily_ror=day2_ror,
@@ -256,6 +256,46 @@ def test_short_ror_compounds_with_custom_formula(calculator_instance):
         current_bmv_bcf_sign=Decimal(-1),
         effective_period_start_date=date(2025, 1, 1),
     )
-    # Asserts the result of the custom formula:
-    # ((1 + (-50/-100 * -1)) * (1 + (-133.33/-100 * -1)) - 1) * -1 * 100
+    # Asserts the result of the custom formula
     assert temp_short_ror2 == pytest.approx(Decimal("-250"))
+
+
+# ### New Unit Tests for NET vs GROSS Logic ###
+
+
+def test_daily_ror_net_basis_includes_fees(minimal_config):
+    """Tests that daily_ror on a NET basis correctly accounts for fees."""
+    minimal_config["metric_basis"] = "NET"
+    calculator = PortfolioPerformanceCalculator(config=minimal_config)
+    data = [{
+        PERF_DATE_FIELD: date(2025, 1, 5),
+        BEGIN_MARKET_VALUE_FIELD: Decimal(400),
+        BOD_CASHFLOW_FIELD: Decimal(0),
+        EOD_CASHFLOW_FIELD: Decimal(-20),
+        MGMT_FEES_FIELD: Decimal(-20),
+        END_MARKET_VALUE_FIELD: Decimal(480),
+    }]
+    df = pd.DataFrame(data)
+    effective_start_date = pd.Series([date(2025, 1, 1)])
+    ror_series = calculator._calculate_daily_ror_vectorized(df, effective_start_date)
+    # (480 - 400 - (-20) + (-20)) / 400 = 80 / 400 = 0.20 -> 20%
+    assert ror_series.iloc[0] == pytest.approx(Decimal("20"))
+
+
+def test_daily_ror_gross_basis_ignores_fees(minimal_config):
+    """Tests that daily_ror on a GROSS basis correctly ignores fees."""
+    minimal_config["metric_basis"] = "GROSS"
+    calculator = PortfolioPerformanceCalculator(config=minimal_config)
+    data = [{
+        PERF_DATE_FIELD: date(2025, 1, 5),
+        BEGIN_MARKET_VALUE_FIELD: Decimal(400),
+        BOD_CASHFLOW_FIELD: Decimal(0),
+        EOD_CASHFLOW_FIELD: Decimal(-20),
+        MGMT_FEES_FIELD: Decimal(-20), # This should be ignored
+        END_MARKET_VALUE_FIELD: Decimal(480),
+    }]
+    df = pd.DataFrame(data)
+    effective_start_date = pd.Series([date(2025, 1, 1)])
+    ror_series = calculator._calculate_daily_ror_vectorized(df, effective_start_date)
+    # (480 - 400 - (-20)) / 400 = 100 / 400 = 0.25 -> 25%
+    assert ror_series.iloc[0] == pytest.approx(Decimal("25"))
