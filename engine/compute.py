@@ -1,6 +1,7 @@
 # engine/compute.py
 import logging
 
+import numpy as np
 import pandas as pd
 from engine.config import EngineConfig
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
@@ -38,7 +39,8 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
         calculate_cumulative_ror(df, config)
 
         # Step 4: Final Formatting & Precision Handling
-        df[PortfolioColumns.LONG_SHORT] = df[PortfolioColumns.SIGN].apply(lambda x: "S" if x == -1 else "L")
+        # PERF: Replace slow .apply with vectorized np.where
+        df[PortfolioColumns.LONG_SHORT] = np.where(df[PortfolioColumns.SIGN] == -1, "S", "L")
 
         final_df = _filter_results_to_reporting_period(df, config)
 

@@ -1,6 +1,7 @@
 # engine/rules.py
 import numpy as np
 import pandas as pd
+from engine.config import PeriodType
 from engine.schema import PortfolioColumns
 
 
@@ -23,12 +24,18 @@ def calculate_nip(df: pd.DataFrame) -> pd.Series:
     """
     Vectorized calculation of the 'No Investment Period' (NIP) flag.
     """
-    is_zero_value = (df[PortfolioColumns.BEGIN_MV] + df[PortfolioColumns.BOD_CF] + df[PortfolioColumns.END_MV] + df[PortfolioColumns.EOD_CF]) == 0
-    
-    bod_cf_series = pd.to_numeric(df[PortfolioColumns.BOD_CF], errors='coerce').fillna(0)
-    eod_cf_series = pd.to_numeric(df[PortfolioColumns.EOD_CF], errors='coerce').fillna(0)
-    
-    sign_of_bod_cf = bod_cf_series.apply(np.sign)
+    is_zero_value = (
+        df[PortfolioColumns.BEGIN_MV]
+        + df[PortfolioColumns.BOD_CF]
+        + df[PortfolioColumns.END_MV]
+        + df[PortfolioColumns.EOD_CF]
+    ) == 0
+
+    bod_cf_series = pd.to_numeric(df[PortfolioColumns.BOD_CF], errors="coerce").fillna(0)
+    eod_cf_series = pd.to_numeric(df[PortfolioColumns.EOD_CF], errors="coerce").fillna(0)
+
+    # PERF: Replace slow .apply with vectorized np.sign
+    sign_of_bod_cf = np.sign(bod_cf_series)
     is_offsetting_cf = eod_cf_series == -sign_of_bod_cf
 
     return (is_zero_value & is_offsetting_cf).astype(int)
@@ -37,21 +44,22 @@ def calculate_nip(df: pd.DataFrame) -> pd.Series:
 def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) -> pd.Series:
     """Calculates resets based on NCTRL 1, 2, and 3, which use preliminary RoR."""
     eom_mask = df[PortfolioColumns.PERF_DATE].dt.is_month_end
-    # CORRECTED: This must be shift(-1) to look at the *next* day's cashflow.
     next_day_bod_cf = df[PortfolioColumns.BOD_CF].shift(-1).fillna(0)
     next_date_beyond_period = df[PortfolioColumns.PERF_DATE].shift(-1) > report_end_date
 
     cond_common = (
-        (df[PortfolioColumns.BOD_CF] != 0) |
-        (next_day_bod_cf != 0) |
-        (df[PortfolioColumns.EOD_CF] != 0) |
-        eom_mask |
-        next_date_beyond_period
+        (df[PortfolioColumns.BOD_CF] != 0)
+        | (next_day_bod_cf != 0)
+        | (df[PortfolioColumns.EOD_CF] != 0)
+        | eom_mask
+        | next_date_beyond_period
     )
 
     cond_nctrl1 = df[PortfolioColumns.TEMP_LONG_CUM_ROR] < -100
     cond_nctrl2 = df[PortfolioColumns.TEMP_SHORT_CUM_ROR] > 100
-    cond_nctrl3 = ((df[PortfolioColumns.TEMP_SHORT_CUM_ROR] < -100) & (df[PortfolioColumns.TEMP_LONG_CUM_ROR] != 0))
+    cond_nctrl3 = (df[PortfolioColumns.TEMP_SHORT_CUM_ROR] < -100) & (
+        df[PortfolioColumns.TEMP_LONG_CUM_ROR] != 0
+    )
 
     # Edge-triggered events using modern fill_value to avoid warnings
     nctrl1 = (cond_nctrl1 & ~cond_nctrl1.shift(1, fill_value=False)) & cond_common
@@ -63,20 +71,18 @@ def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) ->
     df[PortfolioColumns.NCTRL_3] = nctrl3.astype(int)
     df[PortfolioColumns.NCTRL_4] = 0  # Initialize NCTRL 4
 
-    return (nctrl1 | nctrl2 | nctrl3)
+    return nctrl1 | nctrl2 | nctrl3
 
 
 def calculate_nctrl4_reset(df: pd.DataFrame) -> pd.Series:
     """Calculates resets based on NCTRL 4, which uses final, zeroed RoR."""
-    # NCTRL 4 uses the final, post-reset cumulative RoR from the previous day.
     prev_long_ror = df[PortfolioColumns.LONG_CUM_ROR].shift(1, fill_value=0)
     prev_short_ror = df[PortfolioColumns.SHORT_CUM_ROR].shift(1, fill_value=0)
     prev_eod_cf = df[PortfolioColumns.EOD_CF].shift(1, fill_value=0)
-    
-    nctrl4 = (
-        ((prev_long_ror <= -100) | (prev_short_ror >= 100)) &
-        ((df[PortfolioColumns.BOD_CF] != 0) | (prev_eod_cf != 0))
+
+    nctrl4 = ((prev_long_ror <= -100) | (prev_short_ror >= 100)) & (
+        (df[PortfolioColumns.BOD_CF] != 0) | (prev_eod_cf != 0)
     )
-    
+
     df[PortfolioColumns.NCTRL_4] = nctrl4.astype(int)
     return nctrl4
