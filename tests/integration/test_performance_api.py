@@ -1,3 +1,4 @@
+# tests/integration/test_performance_api.py
 import json
 from pathlib import Path
 
@@ -20,25 +21,20 @@ def load_json_from_file(file_path: Path):
         return json.load(f)
 
 
-def test_calculate_performance_happy_path(client):
+def test_calculate_twr_endpoint_happy_path(client):
     """
-    Tests the /calculate_performance endpoint with a valid request (happy path).
+    Tests the /performance/twr endpoint with a valid request (happy path).
     """
     # 1. Arrange
-    # Load a known-good input file. The test file is in tests/integration/,
-    # so ../../ navigates up to the project root.
     base_path = Path(__file__).parent
     input_data = load_json_from_file(base_path / "../../sampleInputStandardGrowth.json")
 
     # 2. Act
-    # Make a POST request to the endpoint
-    response = client.post("/calculate_performance", json=input_data)
+    # Make a POST request to the new endpoint path
+    response = client.post("/performance/twr", json=input_data)
 
     # 3. Assert
-    # Check for a successful HTTP status code
     assert response.status_code == 200
-
-    # Check that the response body is valid JSON and contains expected keys
     response_data = response.json()
     assert isinstance(response_data, dict)
     assert "portfolio_number" in response_data

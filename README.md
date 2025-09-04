@@ -81,9 +81,9 @@ The project has a comprehensive test suite.
 
 ## Example API Usage
 
-You can use `curl` from Git Bash to test the endpoint. The `sampleInput.json` file provides a standard payload.
+You can use `curl` from Git Bash to test the TWR endpoint. The `sampleInput.json` file provides a standard payload.
 
 ```bash
-curl -X POST "[http://127.0.0.1:8000/calculate_performance](http://127.0.0.1:8000/calculate_performance)" \
+curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
 -H "Content-Type: application/json" \
 -d @sampleInput.json

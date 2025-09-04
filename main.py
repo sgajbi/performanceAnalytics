@@ -1,11 +1,12 @@
+# main.py
 import logging
 
 from fastapi import FastAPI
 
 from app.api.endpoints import performance
 from app.core.config import get_settings
-from app.core.exceptions import PerformanceCalculatorError  # Import the base exception
-from app.core.handlers import performance_calculator_exception_handler  # Import the handler
+from app.core.exceptions import PerformanceCalculatorError
+from app.core.handlers import performance_calculator_exception_handler
 
 settings = get_settings()
 
@@ -17,12 +18,13 @@ app = FastAPI(
     version=settings.APP_VERSION,
 )
 
-# Register the custom exception handler
 app.add_exception_handler(PerformanceCalculatorError, performance_calculator_exception_handler)
 
-app.include_router(performance.router)
+# Add a prefix to group performance-related endpoints
+app.include_router(performance.router, prefix="/performance")
 
 
 @app.get("/")
 async def root():
+    """Provides a welcome message and a link to the API documentation."""
     return {"message": "Welcome to the Portfolio Performance Analytics API. Access /docs for API documentation."}
