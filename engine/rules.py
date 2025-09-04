@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import numpy as np
 import pandas as pd
-from engine.config import PeriodType
+from engine.config import EngineConfig
 from engine.schema import PortfolioColumns
 
 
@@ -36,11 +36,18 @@ def calculate_sign(df: pd.DataFrame) -> pd.Series:
     return final_sign.astype(int)
 
 
-def calculate_nip(df: pd.DataFrame) -> pd.Series:
+def calculate_nip(df: pd.DataFrame, config: EngineConfig) -> pd.Series:
     """Vectorized calculation of the 'No Investment Period' (NIP) flag."""
     is_decimal_mode = df[PortfolioColumns.BEGIN_MV].dtype == "object"
-    zero = Decimal(0) if is_decimal_mode else 0
+    zero = Decimal(0) if is_decimal_mode else 0.0
 
+    if config.feature_flags.use_nip_v2_rule:
+        # Simplified V2 Rule from RFC
+        cond = (df[PortfolioColumns.BEGIN_MV] + df[PortfolioColumns.BOD_CF] == zero) & \
+               (df[PortfolioColumns.END_MV] + df[PortfolioColumns.EOD_CF] == zero)
+        return cond.astype(int)
+
+    # Legacy V1 Rule
     is_zero_value = (
         df[PortfolioColumns.BEGIN_MV]
         + df[PortfolioColumns.BOD_CF]
@@ -97,12 +104,13 @@ def calculate_nctrl4_reset(df: pd.DataFrame) -> pd.Series:
     """Calculates resets based on NCTRL 4, which uses final, zeroed RoR."""
     is_decimal_mode = df[PortfolioColumns.BOD_CF].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
+    hundred = Decimal(-100) if is_decimal_mode else -100.0
 
     prev_long_ror = df[PortfolioColumns.LONG_CUM_ROR].shift(1, fill_value=zero)
     prev_short_ror = df[PortfolioColumns.SHORT_CUM_ROR].shift(1, fill_value=zero)
     prev_eod_cf = df[PortfolioColumns.EOD_CF].shift(1, fill_value=zero)
 
-    nctrl4 = ((prev_long_ror <= -100) | (prev_short_ror >= 100)) & (
+    nctrl4 = ((prev_long_ror <= hundred) | (prev_short_ror >= -hundred)) & (
         (df[PortfolioColumns.BOD_CF] != zero) | (prev_eod_cf != zero)
     )
 

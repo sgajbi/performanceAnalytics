@@ -34,7 +34,7 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
 
         df[PortfolioColumns.PERF_RESET] = 0  # Must be initialized before sign calculation
         df[PortfolioColumns.SIGN] = calculate_sign(df)
-        df[PortfolioColumns.NIP] = calculate_nip(df)
+        df[PortfolioColumns.NIP] = calculate_nip(df, config) # Pass config for feature flag access
 
         # Step 3: Complex Cumulative & Rule-Based Calculations
         calculate_cumulative_ror(df, config)
