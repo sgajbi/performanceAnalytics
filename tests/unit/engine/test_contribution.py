@@ -124,6 +124,15 @@ def test_calculate_single_period_weights(sample_contribution_inputs):
     assert weights["Stock_B"] == pytest.approx(0.4)
 
 
+def test_single_period_weights_sum_to_one(sample_contribution_inputs):
+    """Tests that the sum of all position weights for a period equals 1."""
+    portfolio_df, positions_df_map = sample_contribution_inputs
+    weights = _calculate_single_period_weights(
+        portfolio_df.iloc[0], positions_df_map, day_index=0
+    )
+    assert sum(weights.values()) == pytest.approx(1.0)
+
+
 def test_calculate_carino_factors():
     """Tests the Carino smoothing factor calculation."""
     k_daily = _calculate_carino_factors(pd.Series([0.10]))
@@ -138,7 +147,6 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
     port_total_return = (1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
     total_contribution_sum = sum(data["total_contribution"] for data in result.values())
     assert total_contribution_sum == pytest.approx(port_total_return)
-    # FIX: Update expected value to match output of correct avg_weight logic
     assert result["Stock_A"]["total_contribution"] == pytest.approx(0.0195905395)
     assert result["Stock_B"]["total_contribution"] == pytest.approx(0.0099421707)
 
