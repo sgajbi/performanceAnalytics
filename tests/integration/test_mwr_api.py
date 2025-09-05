@@ -11,7 +11,7 @@ def client():
         yield c
 
 def test_calculate_mwr_endpoint_happy_path(client):
-    """Tests the /performance/mwr placeholder endpoint."""
+    """Tests the /performance/mwr endpoint with a valid payload."""
     payload = {
         "calculation_id": str(uuid4()),
         "portfolio_number": "MWR_TEST_01",
@@ -28,4 +28,7 @@ def test_calculate_mwr_endpoint_happy_path(client):
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["portfolio_number"] == "MWR_TEST_01"
-    assert "money_weighted_return" in response_data
+    
+    # (115000 - 100000 - 5000) / (100000 + 5000) = 10000 / 105000 = ~0.095238
+    expected_mwr = 0.09523809
+    assert response_data["money_weighted_return"] == pytest.approx(expected_mwr)

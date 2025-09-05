@@ -8,6 +8,7 @@ from app.models.responses import PerformanceResponse
 from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
+from engine.mwr import calculate_money_weighted_return
 
 router = APIRouter()
 
@@ -45,11 +46,23 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
 @router.post("/mwr", response_model=MoneyWeightedReturnResponse, summary="Calculate Money-Weighted Return")
 async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
     """
-    (Placeholder) Calculates the money-weighted return (MWR) for a portfolio over a given period.
+    Calculates the money-weighted return (MWR) for a portfolio over a given period.
     """
-    # Placeholder implementation
+    try:
+        cash_flows_dict = [cf.model_dump() for cf in request.cash_flows]
+        mwr = calculate_money_weighted_return(
+            beginning_mv=request.beginning_mv,
+            ending_mv=request.ending_mv,
+            cash_flows=cash_flows_dict
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred during MWR calculation: {str(e)}",
+        )
+
     return MoneyWeightedReturnResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
-        money_weighted_return=0.0  # Dummy value
+        money_weighted_return=mwr,
     )
