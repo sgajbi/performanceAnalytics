@@ -59,14 +59,15 @@ def calculate_position_contribution(
     port_total_ror = (1 + port_daily_ror).prod() - 1
 
     k_daily = _calculate_carino_factors(port_daily_ror)
-    # FIX: Calculate K_total directly to avoid the TypeError
     K_total = np.log(1 + port_total_ror) / port_total_ror if port_total_ror != 0 else 1.0
 
     daily_contributions = []
+    daily_weights_list = []
     position_ids = list(position_results_map.keys())
 
     for i, port_row in portfolio_results.iterrows():
         daily_weights = _calculate_single_period_weights(port_row, position_results_map, i)
+        daily_weights_list.append(daily_weights)
         
         row_contribs = {"date": port_row[PortfolioColumns.PERF_DATE]}
         for pos_id in position_ids:
@@ -78,7 +79,7 @@ def calculate_position_contribution(
             ror_port_t = port_daily_ror.iloc[i]
             k_t = k_daily.iloc[i]
             
-            adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1))
+            adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
             smoothed_c = c_p_t + adjustment
             
             if port_row[PortfolioColumns.NIP] == 1 or port_row[PortfolioColumns.PERF_RESET] == 1:
@@ -88,17 +89,32 @@ def calculate_position_contribution(
         daily_contributions.append(row_contribs)
 
     contrib_df = pd.DataFrame(daily_contributions)
-    
+    daily_weights_df = pd.DataFrame(daily_weights_list)
     total_smoothed_contributions = contrib_df[position_ids].sum()
+
+    # --- FIX: Implement RFC-004 Adjusted Average Weight Calculation ---
+    is_reset = portfolio_results[PortfolioColumns.PERF_RESET] == 1
+    last_reset_idx = -1
+    if is_reset.any():
+        last_reset_idx = portfolio_results.index[is_reset].max()
+
+    valid_days_mask = (portfolio_results[PortfolioColumns.NIP] != 1) & (portfolio_results.index > last_reset_idx)
+    adjusted_day_count = valid_days_mask.sum()
+
+    if adjusted_day_count > 0:
+        total_valid_weights = daily_weights_df[valid_days_mask].sum()
+        average_weights = total_valid_weights / adjusted_day_count
+    else:
+        average_weights = pd.Series(0.0, index=position_ids)
+    # --- End FIX ---
 
     final_results = {}
     for pos_id in position_ids:
         pos_total_return = (1 + (position_results_map[pos_id][PortfolioColumns.DAILY_ROR] / 100)).prod() - 1
-        avg_weight = (position_results_map[pos_id][PortfolioColumns.BEGIN_MV].mean() / portfolio_results[PortfolioColumns.BEGIN_MV].mean()) if portfolio_results[PortfolioColumns.BEGIN_MV].mean() != 0 else 0.0
-
+        
         final_results[pos_id] = {
             "total_contribution": total_smoothed_contributions[pos_id],
-            "average_weight": avg_weight,
+            "average_weight": average_weights.get(pos_id, 0.0),
             "total_return": pos_total_return
         }
 
