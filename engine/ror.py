@@ -131,4 +131,10 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
     if leg == "short":
         cumulative_ror *= -one
     leg_ror = cumulative_ror.where(is_leg_day)
-    return leg_ror.ffill().fillna(zero)
+
+    # FIX: Explicitly set the dtype to 'object' for Decimal calculations
+    # after filling missing values to resolve the FutureWarning.
+    filled_ror = leg_ror.ffill().fillna(zero)
+    if is_decimal_mode:
+        return filled_ror.astype('object')
+    return filled_ror
