@@ -80,31 +80,34 @@ def position_results_map_fixture() -> dict:
     }
 
 @pytest.fixture
-def nip_day_scenario():
-    """Provides portfolio and position data for a scenario with a NIP day."""
+def robust_nip_day_scenario():
+    """
+    A robust scenario with a NIP day where the buggy and correct logic
+    for average weight produce different results.
+    """
     config = EngineConfig(
         performance_start_date="2025-01-01",
         report_start_date="2025-01-01",
         report_end_date="2025-01-03",
         metric_basis="NET",
         period_type=PeriodType.ITD,
-        feature_flags=FeatureFlags(use_nip_v2_rule=True)
+        feature_flags=FeatureFlags(use_nip_v2_rule=True) # Ensures day 3 is NIP
     )
     portfolio_data = pd.DataFrame({
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
-        PortfolioColumns.BEGIN_MV: [1000.0, 1010.0, 0.0],
-        PortfolioColumns.BOD_CF: [0.0, 0.0, 0.0],
+        PortfolioColumns.BEGIN_MV: [1000.0, 1000.0, 0.0],
+        PortfolioColumns.BOD_CF: [0.0, 1000.0, 0.0],
         PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0],
-        PortfolioColumns.END_MV: [1010.0, 0.0, 0.0],
+        PortfolioColumns.END_MV: [1000.0, 2000.0, 0.0],
     })
     pos_a_data = pd.DataFrame({
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
-        PortfolioColumns.BEGIN_MV: [600.0, 606.0, 0.0],
-        PortfolioColumns.BOD_CF: [0.0, 0.0, 0.0],
+        PortfolioColumns.BEGIN_MV: [500.0, 500.0, 0.0],
+        PortfolioColumns.BOD_CF: [0.0, 750.0, 0.0],
         PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0],
-        PortfolioColumns.END_MV: [606.0, 0.0, 0.0],
+        PortfolioColumns.END_MV: [500.0, 1250.0, 0.0],
     })
 
     portfolio_results = run_calculations(portfolio_data, config)
@@ -150,21 +153,21 @@ def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs
     assert weights["Stock_B"] == 0.0
 
 
-def test_contribution_adjusts_average_weight_for_nip_day(nip_day_scenario):
+def test_contribution_adjusts_average_weight_for_nip_day(robust_nip_day_scenario):
     """
     Tests that average weight is correctly adjusted for NIP days per RFC-004.
     The average should be the sum of daily weights divided by non-NIP days.
     """
-    portfolio_results, position_results_map = nip_day_scenario
+    portfolio_results, position_results_map = robust_nip_day_scenario
 
     # Act
     result = calculate_position_contribution(portfolio_results, position_results_map)
 
     # Assert
-    # Day 1 Weight: 600 / 1000 = 0.6
-    # Day 2 Weight: 606 / 1010 = 0.6
+    # Day 1 Weight: (500+0)/(1000+0) = 0.5
+    # Day 2 Weight: (500+750)/(1000+1000) = 0.625
     # Day 3 is a NIP day (weight is 0)
-    # Sum of weights = 0.6 + 0.6 = 1.2
+    # Sum of weights = 0.5 + 0.625 = 1.125
     # Adjusted Day Count = 3 total days - 1 NIP day = 2
-    # Expected Average Weight = 1.2 / 2 = 0.6
-    assert result["Stock_A"]["average_weight"] == pytest.approx(0.6)
+    # Expected Average Weight = 1.125 / 2 = 0.5625
+    assert result["Stock_A"]["average_weight"] == pytest.approx(0.5625)
