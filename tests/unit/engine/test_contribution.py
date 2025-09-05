@@ -8,7 +8,7 @@ from engine.contribution import (
 )
 from engine.schema import PortfolioColumns
 from engine.compute import run_calculations
-from engine.config import EngineConfig
+from engine.config import EngineConfig, FeatureFlags
 from common.enums import PeriodType
 
 
@@ -79,6 +79,42 @@ def position_results_map_fixture() -> dict:
         for pos_id, df in position_data_map.items()
     }
 
+@pytest.fixture
+def robust_nip_day_scenario():
+    """
+    A robust scenario with a NIP day where the buggy and correct logic
+    for average weight produce different results.
+    """
+    config = EngineConfig(
+        performance_start_date="2025-01-01",
+        report_start_date="2025-01-01",
+        report_end_date="2025-01-03",
+        metric_basis="NET",
+        period_type=PeriodType.ITD,
+        feature_flags=FeatureFlags(use_nip_v2_rule=True) # Ensures day 3 is NIP
+    )
+    portfolio_data = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
+        PortfolioColumns.BEGIN_MV: [1000.0, 1000.0, 0.0],
+        PortfolioColumns.BOD_CF: [0.0, 1000.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0],
+        PortfolioColumns.END_MV: [1000.0, 2000.0, 0.0],
+    })
+    pos_a_data = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
+        PortfolioColumns.BEGIN_MV: [500.0, 500.0, 0.0],
+        PortfolioColumns.BOD_CF: [0.0, 750.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0],
+        PortfolioColumns.END_MV: [500.0, 1250.0, 0.0],
+    })
+
+    portfolio_results = run_calculations(portfolio_data, config)
+    position_results_map = {"Stock_A": run_calculations(pos_a_data, config)}
+
+    return portfolio_results, position_results_map
+
 
 def test_calculate_single_period_weights(sample_contribution_inputs):
     """Tests the calculation of position weights for a single period."""
@@ -86,6 +122,15 @@ def test_calculate_single_period_weights(sample_contribution_inputs):
     weights = _calculate_single_period_weights(portfolio_df.iloc[0], positions_df_map, day_index=0)
     assert weights["Stock_A"] == pytest.approx(0.6)
     assert weights["Stock_B"] == pytest.approx(0.4)
+
+
+def test_single_period_weights_sum_to_one(sample_contribution_inputs):
+    """Tests that the sum of all position weights for a period equals 1."""
+    portfolio_df, positions_df_map = sample_contribution_inputs
+    weights = _calculate_single_period_weights(
+        portfolio_df.iloc[0], positions_df_map, day_index=0
+    )
+    assert sum(weights.values()) == pytest.approx(1.0)
 
 
 def test_calculate_carino_factors():
@@ -100,10 +145,18 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
     """Characterization test for the main contribution orchestrator."""
     result = calculate_position_contribution(portfolio_results_fixture, position_results_map_fixture)
     port_total_return = (1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
+
+    # Verify that the sum of contributions equals the total portfolio return
     total_contribution_sum = sum(data["total_contribution"] for data in result.values())
     assert total_contribution_sum == pytest.approx(port_total_return)
-    assert result["Stock_A"]["total_contribution"] == pytest.approx(0.019587058)
-    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.009945652)
+
+    # Verify that the sum of the final average weights equals 100%
+    total_average_weight = sum(data["average_weight"] for data in result.values())
+    assert total_average_weight == pytest.approx(1.0)
+
+    # Verify the specific contribution values (characterization)
+    assert result["Stock_A"]["total_contribution"] == pytest.approx(0.0195905395)
+    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.0099421707)
 
 
 def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs):
@@ -115,3 +168,23 @@ def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs
     weights = _calculate_single_period_weights(portfolio_df_copy.iloc[0], positions_df_map, day_index=0)
     assert weights["Stock_A"] == 0.0
     assert weights["Stock_B"] == 0.0
+
+
+def test_contribution_adjusts_average_weight_for_nip_day(robust_nip_day_scenario):
+    """
+    Tests that average weight is correctly adjusted for NIP days per RFC-004.
+    The average should be the sum of daily weights divided by non-NIP days.
+    """
+    portfolio_results, position_results_map = robust_nip_day_scenario
+
+    # Act
+    result = calculate_position_contribution(portfolio_results, position_results_map)
+
+    # Assert
+    # Day 1 Weight: (500+0)/(1000+0) = 0.5
+    # Day 2 Weight: (500+750)/(1000+1000) = 0.625
+    # Day 3 is a NIP day (weight is 0)
+    # Sum of weights = 0.5 + 0.625 = 1.125
+    # Adjusted Day Count = 3 total days - 1 NIP day = 2
+    # Expected Average Weight = 1.125 / 2 = 0.5625
+    assert result["Stock_A"]["average_weight"] == pytest.approx(0.5625)
