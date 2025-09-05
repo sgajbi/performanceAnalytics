@@ -175,3 +175,18 @@ def test_format_breakdowns_for_response_monthly(sample_engine_outputs):
 
     # For non-daily breakdowns, the nested daily_data should be None
     assert result_item.daily_data is None
+
+
+def test_format_breakdowns_for_response_empty_input():
+    """
+    Tests that the formatter handles empty engine output gracefully.
+    """
+    # Arrange
+    empty_breakdowns = {}
+    empty_df = pd.DataFrame()
+
+    # Act
+    formatted_response = format_breakdowns_for_response(empty_breakdowns, empty_df)
+
+    # Assert
+    assert formatted_response == {}
