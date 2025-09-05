@@ -5,12 +5,52 @@ from typing import Any, Dict, List
 import pandas as pd
 import pytest
 
-from adapters.api_adapter import create_engine_config, create_engine_dataframe
-from app.core.constants import PERF_DATE_FIELD, BEGIN_MARKET_VALUE_FIELD
+from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
+from app.core.constants import BEGIN_MARKET_VALUE_FIELD, END_MARKET_VALUE_FIELD, PERF_DATE_FIELD
 from app.models.requests import PerformanceRequest
+from app.models.responses import PerformanceResultItem, PerformanceSummary
 from common.enums import Frequency, PeriodType
 from engine.config import EngineConfig
 from engine.schema import PortfolioColumns
+
+
+@pytest.fixture
+def sample_engine_outputs():
+    """Provides sample, raw engine outputs for testing the response formatter."""
+    breakdowns_data = {
+        Frequency.DAILY: [
+            {
+                "period": "2025-01-01",
+                "summary": {
+                    PortfolioColumns.BEGIN_MV: 1000.0,
+                    PortfolioColumns.END_MV: 1010.0,
+                    "net_cash_flow": 0.0,
+                    PortfolioColumns.FINAL_CUM_ROR: 1.0,
+                },
+            }
+        ],
+        Frequency.MONTHLY: [
+            {
+                "period": "2025-01",
+                "summary": {
+                    PortfolioColumns.BEGIN_MV: 1000.0,
+                    PortfolioColumns.END_MV: 1010.0,
+                    "net_cash_flow": 0.0,
+                    PortfolioColumns.FINAL_CUM_ROR: 1.0,
+                },
+            }
+        ],
+    }
+    daily_results_df = pd.DataFrame(
+        [
+            {
+                PortfolioColumns.PERF_DATE: date(2025, 1, 1),
+                PortfolioColumns.BEGIN_MV: 1000.0,
+                PortfolioColumns.END_MV: 1010.0,
+            }
+        ]
+    )
+    return breakdowns_data, daily_results_df
 
 
 def test_create_engine_config():
@@ -26,7 +66,7 @@ def test_create_engine_config():
         "metric_basis": "NET",
         "period_type": "YTD",
         "frequencies": ["daily"],
-        "daily_data": []
+        "daily_data": [],
     }
     pydantic_request = PerformanceRequest.model_validate(request_data)
 
@@ -79,3 +119,35 @@ def test_create_engine_dataframe_empty_input():
     # Assert
     assert isinstance(engine_df, pd.DataFrame)
     assert engine_df.empty
+
+
+def test_format_breakdowns_for_response_daily(sample_engine_outputs):
+    """
+    Tests that the daily breakdown is formatted correctly, including
+    the nested daily_data field with API-aliased keys.
+    """
+    # Arrange
+    breakdowns_data, daily_results_df = sample_engine_outputs
+
+    # Act
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+
+    # Assert
+    assert Frequency.DAILY in formatted_response
+    daily_breakdown = formatted_response[Frequency.DAILY]
+    assert isinstance(daily_breakdown, list)
+    assert len(daily_breakdown) == 1
+
+    result_item = daily_breakdown[0]
+    assert isinstance(result_item, PerformanceResultItem)
+    assert isinstance(result_item.summary, PerformanceSummary)
+    assert result_item.summary.begin_market_value == 1000.0
+
+    # For daily breakdowns, the nested daily_data should be present
+    assert result_item.daily_data is not None
+    assert isinstance(result_item.daily_data, list)
+    nested_daily = result_item.daily_data[0]
+    # Check that keys are the API aliases, not the internal engine names
+    assert BEGIN_MARKET_VALUE_FIELD in nested_daily
+    assert END_MARKET_VALUE_FIELD in nested_daily
+    assert PortfolioColumns.BEGIN_MV.value not in nested_daily
