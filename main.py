@@ -3,7 +3,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api.endpoints import performance
+from app.api.endpoints import contribution, performance
 from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
 from app.core.handlers import performance_calculator_exception_handler
@@ -22,6 +22,7 @@ app.add_exception_handler(PerformanceCalculatorError, performance_calculator_exc
 
 # Add a prefix to group performance-related endpoints
 app.include_router(performance.router, prefix="/performance")
+app.include_router(contribution.router, prefix="/performance")
 
 
 @app.get("/")
