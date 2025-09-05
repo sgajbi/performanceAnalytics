@@ -2,6 +2,8 @@
 from fastapi import APIRouter, HTTPException, status
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.models.requests import PerformanceRequest
+from app.models.mwr_requests import MoneyWeightedReturnRequest
+from app.models.mwr_responses import MoneyWeightedReturnResponse
 from app.models.responses import PerformanceResponse
 from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
@@ -21,12 +23,9 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
         engine_df = create_engine_dataframe(
             [item.model_dump(by_alias=True) for item in request.daily_data]
         )
-
         daily_results_df = run_calculations(engine_df, engine_config)
         breakdowns_data = generate_performance_breakdowns(daily_results_df, request.frequencies)
-        
         formatted_breakdowns = format_breakdowns_for_response(breakdowns_data, daily_results_df)
-
     except InvalidEngineInputError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid Input: {e.message}")
     except EngineCalculationError as e:
@@ -36,7 +35,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected server error occurred: {str(e)}",
         )
-
     return PerformanceResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
@@ -44,9 +42,14 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
     )
 
 
-@router.post("/mwr", summary="Calculate Money-Weighted Return (Placeholder)")
-async def calculate_mwr_endpoint():
+@router.post("/mwr", response_model=MoneyWeightedReturnResponse, summary="Calculate Money-Weighted Return")
+async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
     """
     (Placeholder) Calculates the money-weighted return (MWR) for a portfolio over a given period.
     """
-    return {"message": "MWR endpoint is not yet implemented."}
+    # Placeholder implementation
+    return MoneyWeightedReturnResponse(
+        calculation_id=request.calculation_id,
+        portfolio_number=request.portfolio_number,
+        money_weighted_return=0.0  # Dummy value
+    )
