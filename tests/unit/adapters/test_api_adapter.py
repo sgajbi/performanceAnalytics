@@ -151,3 +151,27 @@ def test_format_breakdowns_for_response_daily(sample_engine_outputs):
     assert BEGIN_MARKET_VALUE_FIELD in nested_daily
     assert END_MARKET_VALUE_FIELD in nested_daily
     assert PortfolioColumns.BEGIN_MV.value not in nested_daily
+
+
+def test_format_breakdowns_for_response_monthly(sample_engine_outputs):
+    """
+    Tests that aggregated breakdowns (e.g., monthly) are formatted
+    correctly, with the daily_data field being None.
+    """
+    # Arrange
+    breakdowns_data, daily_results_df = sample_engine_outputs
+
+    # Act
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+
+    # Assert
+    assert Frequency.MONTHLY in formatted_response
+    monthly_breakdown = formatted_response[Frequency.MONTHLY]
+    assert isinstance(monthly_breakdown, list)
+
+    result_item = monthly_breakdown[0]
+    assert isinstance(result_item, PerformanceResultItem)
+    assert result_item.period == "2025-01"
+
+    # For non-daily breakdowns, the nested daily_data should be None
+    assert result_item.daily_data is None
