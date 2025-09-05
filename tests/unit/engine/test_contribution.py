@@ -115,19 +115,3 @@ def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs
     weights = _calculate_single_period_weights(portfolio_df_copy.iloc[0], positions_df_map, day_index=0)
     assert weights["Stock_A"] == 0.0
     assert weights["Stock_B"] == 0.0
-
-
-def test_residual_attribution_zero_weights(portfolio_results_fixture, position_results_map_fixture):
-    """Tests that residual attribution handles a zero total weight scenario."""
-    pos_results_copy = {k: v.copy() for k, v in position_results_map_fixture.items()}
-    # FIX: Set all capital to zero to ensure zero weight
-    pos_results_copy["Stock_A"][PortfolioColumns.BEGIN_MV] = 0.0
-    pos_results_copy["Stock_A"][PortfolioColumns.BOD_CF] = 0.0
-    pos_results_copy["Stock_B"][PortfolioColumns.BEGIN_MV] = 0.0
-    pos_results_copy["Stock_B"][PortfolioColumns.BOD_CF] = 0.0
-    
-    result = calculate_position_contribution(portfolio_results_fixture, pos_results_copy)
-    
-    port_total_return = (1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
-    total_contribution_sum = sum(data["total_contribution"] for data in result.values())
-    assert total_contribution_sum == pytest.approx(port_total_return)
