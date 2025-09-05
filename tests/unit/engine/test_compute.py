@@ -37,7 +37,9 @@ def test_run_calculations_decimal_strict_mode():
     result_df = run_calculations(df.copy(), config)
 
     assert isinstance(result_df[PortfolioColumns.DAILY_ROR].iloc[0], Decimal)
-    expected_ror = Decimal("75.4")
+    # FIX: Correct the expected RoR from 75.4 to 0.754.
+    # The gain is 7.54 on a base of 1000, which is 0.754%.
+    expected_ror = Decimal("0.754")
     assert result_df[PortfolioColumns.DAILY_ROR].iloc[0] == expected_ror
 
 
