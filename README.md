@@ -1,28 +1,29 @@
-# Portfolio Performance Analytics API (V2 Engine)
 
-An API for calculating portfolio performance metrics based on daily time-series financial data, powered by a high-performance, vectorized Python engine.
+# Portfolio Performance Analytics API (V3 Engine)
+
+An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`.
+
+It provides two primary endpoints for calculating **Time-Weighted Return (TWR)** with frequency-based breakdowns and **Money-Weighted Return (MWR)**.
 
 ---
 
 ## Key Features
 
--   **High Performance:** Core calculations are fully vectorized using Pandas and NumPy, delivering a **~49x speedup** over traditional iterative methods on large datasets.
--   **Decoupled Architecture:** The calculation engine is a standalone library with zero dependencies on the API framework, allowing it to be used in other applications (e.g., batch jobs, research).
--   **Dual Precision Modes:**
-    -   `FLOAT64` (default): For maximum speed.
-    -   `DECIMAL_STRICT`: For auditable, high-precision calculations.
--   **Test Driven:** Behavior is locked in by a comprehensive suite of characterization, integration, and unit tests.
+-   **High-Performance TWR Engine:** Core daily calculations are vectorized using Pandas and NumPy for maximum speed.
+-   **Flexible TWR Breakdowns:** Aggregate daily performance into monthly, quarterly, or yearly summaries.
+-   **MWR Endpoint:** Calculate a period's money-weighted return, ideal for analyzing investor performance.
+-   **Decoupled Architecture:** The calculation engine is a standalone library that can be used independently of the API.
+-   **Dual Precision Modes:** Supports fast `float64` (default) or auditable `Decimal` calculations.
 
 ---
 
 ## Project Structure
 
-The project is separated into three distinct layers:
-
--   `app/`: The FastAPI application layer. Handles HTTP requests/responses and API-specific models.
+-   `app/`: The FastAPI application layer.
+-   `common/`: Shared enumerations (`Frequency`, `PeriodType`) used across the project.
 -   `adapters/`: A translation layer that maps data between the API and the engine.
--   `engine/`: The pure, standalone calculation library. It has no knowledge of the API.
--   `tests/`: Contains all tests, separated into `integration`, `unit`, and `benchmarks`.
+-   `engine/`: The pure, standalone calculation library.
+-   `tests/`: The complete test suite.
 
 ---
 
@@ -57,13 +58,10 @@ The project is separated into three distinct layers:
 
 2.  **Access API Documentation:**
     -   **Swagger UI**: `http://127.0.0.1:8000/docs`
-    -   **ReDoc**: `http://127.0.0.1:8000/redoc`
 
 ---
 
 ## Testing & Validation
-
-The project has a comprehensive test suite.
 
 1.  **Run all tests (Unit & Integration):**
     ```bash
@@ -71,19 +69,47 @@ The project has a comprehensive test suite.
     ```
 
 2.  **Run Performance Benchmarks:**
-    This test compares the new vectorized engine against the original iterative engine on a large (~500k row) dataset.
     ```bash
     pytest --benchmark-only "tests/benchmarks/"
     ```
-    The output will show the mean execution time for `test_vectorized_engine_performance`. A lower time is better.
 
 ---
 
-## Example API Usage
+## API Usage Examples
 
-You can use `curl` from Git Bash to test the TWR endpoint. The `sampleInput.json` file provides a standard payload.
+### 1. Time-Weighted Return (TWR)
 
+This endpoint calculates daily performance and aggregates the results into the requested frequencies.
+
+-   **Endpoint:** `POST /performance/twr`
+-   **Payload:** Use `sampleInput.json` as a template. You can specify which breakdowns you want in the `frequencies` array (`"daily"`, `"monthly"`, `"quarterly"`, `"yearly"`).
+
+**Example `curl` command:**
 ```bash
 curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
 -H "Content-Type: application/json" \
 -d @sampleInput.json
+````
+
+### 2\. Money-Weighted Return (MWR)
+
+This endpoint calculates a single return figure for the entire period based on market values and cash flows.
+
+  - **Endpoint:** `POST /performance/mwr`
+  - **Payload:** Requires `beginning_mv`, `ending_mv`, and a list of `cash_flows`.
+
+**Example `curl` command:**
+
+```bash
+curl -X POST "[http://127.0.0.1:8000/performance/mwr](http://127.0.0.1:8000/performance/mwr)" \
+-H "Content-Type: application/json" \
+-d '{
+  "portfolio_number": "MWR_TEST_01",
+  "beginning_mv": 100000.0,
+  "ending_mv": 115000.0,
+  "cash_flows": [
+    {"amount": 10000.0, "date": "2025-03-15"},
+    {"amount": -5000.0, "date": "2025-09-20"}
+  ]
+}'
+```
