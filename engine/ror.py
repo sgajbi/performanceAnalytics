@@ -1,4 +1,5 @@
 # engine/ror.py
+import warnings
 from decimal import Decimal
 
 import numpy as np
@@ -131,4 +132,11 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
     if leg == "short":
         cumulative_ror *= -one
     leg_ror = cumulative_ror.where(is_leg_day)
-    return leg_ror.ffill().fillna(zero)
+
+    # FIX: Suppress known FutureWarning from pandas on object-dtype Series.
+    # This warning is not an issue for our Decimal implementation.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        filled_ror = leg_ror.ffill().fillna(zero)
+
+    return filled_ror

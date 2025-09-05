@@ -1,11 +1,15 @@
+
+
+### **File: `README.md`**
+
+I will add a new "Advanced Usage" section to the `README.md` to link to the new guide.
+
+```markdown
 # Portfolio Performance Analytics API (V3 Engine)
 
-An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`.
-
-It provides two primary services:
+An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`. It provides two primary services:
 1.  **Performance Calculation**: Endpoints for calculating **Time-Weighted Return (TWR)** with frequency-based breakdowns and **Money-Weighted Return (MWR)**.
 2.  **Contribution Analysis**: An endpoint for calculating **Position Contribution** to explain the drivers of portfolio performance.
-
 ---
 
 ## Key Features
@@ -15,7 +19,6 @@ It provides two primary services:
 -   **Standard MWR Calculation:** Provides a money-weighted return for analyzing investor performance.
 -   **Advanced Contribution Engine:** Uses the Carino smoothing algorithm to accurately link multi-period position contributions.
 -   **Decoupled Architecture:** All calculation logic is in a standalone `engine` library.
-
 ---
 
 ## Setup and Installation
@@ -100,3 +103,14 @@ It provides two primary services:
 -   **Endpoint:** `POST /performance/contribution`
 -   **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions.
 -   **Example:** See `tests/integration/test_contribution_api.py` for a sample payload.
+
+---
+
+## Advanced Usage
+
+The core calculation logic is a standalone library. For instructions on how to use it directly in your own Python scripts for batch processing or analysis, see the guide:
+
+-   **[Using the Performance Engine as a Standalone Library](./docs/guides/standalone_engine_usage.md)**
+````
+
+ 
