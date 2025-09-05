@@ -20,7 +20,11 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
     a fully vectorized approach.
     """
     try:
-        if not isinstance(df, pd.DataFrame) or df.empty:
+        # FIX: Raise a specific error for invalid input types instead of silently returning.
+        if not isinstance(df, pd.DataFrame):
+            raise InvalidEngineInputError("Input must be a pandas DataFrame.")
+
+        if df.empty:
             return pd.DataFrame()
 
         # Step 1: Preparation & Initialization (now precision-aware)
@@ -48,6 +52,8 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
         if config.precision_mode != PrecisionMode.DECIMAL_STRICT:
             _round_float_columns(final_df)
 
+    except InvalidEngineInputError:
+        raise  # Re-raise known, specific engine errors
     except Exception as e:
         logger.exception("An unexpected error occurred during engine calculations.")
         # Wrap unexpected errors in our engine-specific exception
