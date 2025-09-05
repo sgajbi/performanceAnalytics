@@ -71,7 +71,6 @@ It provides two primary services:
 ### 1. Time-Weighted Return (TWR)
 
 -   **Endpoint:** `POST /performance/twr`
--   **Description:** Calculates daily performance and aggregates the results into requested frequencies.
 -   **Example `curl` command:**
     ```bash
     curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
@@ -82,7 +81,6 @@ It provides two primary services:
 ### 2. Money-Weighted Return (MWR)
 
 -   **Endpoint:** `POST /performance/mwr`
--   **Description:** Calculates a single return figure for the entire period based on market values and cash flows.
 -   **Example `curl` command:**
     ```bash
     curl -X POST "[http://127.0.0.1:8000/performance/mwr](http://127.0.0.1:8000/performance/mwr)" \
@@ -101,8 +99,4 @@ It provides two primary services:
 
 -   **Endpoint:** `POST /performance/contribution`
 -   **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions.
--   **Example `curl` command:**
-    ```bash
-    # (Requires a more detailed JSON payload with both portfolio and position data)
-    echo "See tests/integration/test_contribution_api.py for a sample payload."
-    ```
+-   **Example:** See `tests/integration/test_contribution_api.py` for a sample payload.
