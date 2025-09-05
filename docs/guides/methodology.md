@@ -12,9 +12,7 @@ The TWR calculation is a two-step process: calculating a return for each discret
 
 ### Daily Return Calculation
 
-We calculate the return for each day using a formula similar to the **Modified Dietz method**. This formula accounts for the market value and any cash flows that occurred.
-
-The formula for the daily rate of return ($R_{day}$) is:
+We calculate the return for each day using a formula similar to the **Modified Dietz method**.
 
 $$ R_{day} = \frac{EMV - BMV - CF_{net}}{BMV + CF_{bod}} $$
 
@@ -28,19 +26,29 @@ The `metric_basis` ("NET" or "GROSS") determines if management fees are included
 
 $$ R_{day} (NET) = \frac{EMV - BMV - CF_{net} + Fees}{BMV + CF_{bod}} $$
 
-### Geometric Linking (Compounding)
+### Long & Short Sleeve Calculation
 
-Daily returns are chained together to produce a running cumulative return for a given period.
+To correctly handle portfolios that can flip between long and short positions, the engine maintains two independent performance streams, or "sleeves":
 
-$$ R_{cumulative} = (1 + R_1) \times (1 + R_2) \times \dots \times (1 + R_n) - 1 $$
+* **Long Sleeve ($R_{long}$):** This sleeve only accrues performance on days when the portfolio is **long** (sign = 1).
+* **Short Sleeve ($R_{short}$):** This sleeve only accrues performance on days when the portfolio is **short** (sign = -1).
 
-### Special Logic
+On days not assigned to a sleeve (e.g., a long day for the short sleeve), the previous day's cumulative return for that sleeve is carried forward.
 
--   **Long vs. Short Positions:** The engine determines if a position is long (`sign = 1`) or short (`sign = -1`). For short positions, where a decrease in market value represents a gain, the growth factor is calculated as `(1 - R_{day})` instead of `(1 + R_{day})`.
+The compounding formula is adapted for each sleeve:
 
--   **Performance Resets:** To handle cases where compounding becomes mathematically unsound (e.g., after a total loss of -100%), the cumulative return is "reset" to zero. This occurs when a cumulative return breaches a threshold (e.g., -100%) and a significant portfolio event (like a cash flow or month-end) occurs.
+-   **Long Sleeve Growth Factor**: $GF_{long} = (1 + R_{day})$
+-   **Short Sleeve Growth Factor**: $GF_{short} = (1 - R_{day})$
 
--   **Breakdowns:** This daily TWR stream is the foundation for the aggregated **monthly, quarterly, and yearly** breakdowns. The return for an aggregated period is calculated by geometrically linking all the daily returns within that period.
+The cumulative return for each sleeve is calculated by geometrically linking the growth factors for their respective active days. The short sleeve result is multiplied by -1 to maintain the convention that a gain is a positive number.
+
+### Merging Sleeves for Final Cumulative Return
+
+The independent long and short sleeves are combined at the end of each day to produce the final, total cumulative TWR for the portfolio.
+
+The linking formula is:
+
+$$ R_{final} = (1 + R_{long\_cumulative}) \times (1 + R_{short\_cumulative}) - 1 $$
 
 ---
 
@@ -52,8 +60,6 @@ The engine calculates MWR using a simplified version of the Modified Dietz metho
 
 ### MWR Formula
 
-The formula for the Money-Weighted Return ($R_{mwr}$) over the whole period is:
-
 $$ R_{mwr} = \frac{EMV - BMV - CF_{net}}{BMV + CF_{net}} $$
 
 Where:
@@ -61,4 +67,26 @@ Where:
 -   **BMV**: Beginning Market Value for the entire period.
 -   **$CF_{net}$**: The sum of all cash flows that occurred during the period.
 
-This implementation, mirroring the `portfolio-analytics-system`, uses a direct sum for cash flows. A more complex implementation would time-weight each cash flow based on when it occurred during the period.
+---
+
+## 3. Advanced Rules & Edge Cases
+
+These rules handle specific scenarios to ensure calculations remain robust and meaningful.
+
+### No Investment Period (NIP)
+
+The **purpose** of the NIP flag is to identify days where no capital was invested, making performance calculation irrelevant. On NIP days, the previous day's cumulative return is carried forward. The engine supports two logical definitions for a NIP day:
+
+* **V1 Rule (Legacy):** A day is flagged as NIP only if the total portfolio value for the day is zero AND the end-of-day cash flow equals the negative *sign* of the beginning-of-day cash flow. This handles a very specific legacy data condition.
+* **V2 Rule (Simplified):** Available via a feature flag, this rule marks a day as NIP if the portfolio both starts and ends the day with a zero balance (`BMV + BOD_CF = 0` and `EMV + EOD_CF = 0`).
+
+### Performance Resets (NCTRL Flags)
+
+The **purpose** of a performance reset is to set the cumulative TWR back to zero. This is done when compounding becomes mathematically unsound, such as after a portfolio loses more than 100% of its value. A reset is only triggered on a **"significant day"** (a day with a cash flow, a month-end, etc.).
+
+There are four conditions (`NCTRL` flags) that trigger a reset:
+
+* **`NCTRL 1` (Long Position Wipeout):** Triggered on the day a **long position's** cumulative TWR first crosses below **-100%**.
+* **`NCTRL 2` (Short Position Inversion):** Triggered on the day a **short position's** cumulative TWR first crosses above **+100%**. This signifies the short position's market value has become positive.
+* **`NCTRL 3` (Complex Short Reset):** An edge case for short positions, triggering if the short TWR crosses below -100% while there's an active long TWR.
+* **`NCTRL 4` (Post-Wipeout Cash Flow):** A look-back rule that triggers on the current day if the portfolio was already in a reset state on the **previous day** AND there is a cash flow event on the **current day**.
