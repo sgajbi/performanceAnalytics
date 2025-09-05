@@ -145,8 +145,16 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
     """Characterization test for the main contribution orchestrator."""
     result = calculate_position_contribution(portfolio_results_fixture, position_results_map_fixture)
     port_total_return = (1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
+
+    # Verify that the sum of contributions equals the total portfolio return
     total_contribution_sum = sum(data["total_contribution"] for data in result.values())
     assert total_contribution_sum == pytest.approx(port_total_return)
+
+    # Verify that the sum of the final average weights equals 100%
+    total_average_weight = sum(data["average_weight"] for data in result.values())
+    assert total_average_weight == pytest.approx(1.0)
+
+    # Verify the specific contribution values (characterization)
     assert result["Stock_A"]["total_contribution"] == pytest.approx(0.0195905395)
     assert result["Stock_B"]["total_contribution"] == pytest.approx(0.0099421707)
 
