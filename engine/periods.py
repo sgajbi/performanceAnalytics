@@ -1,7 +1,8 @@
 # engine/periods.py
 import pandas as pd
 
-from engine.config import EngineConfig, PeriodType
+from common.enums import PeriodType
+from engine.config import EngineConfig
 
 
 def get_effective_period_start_dates(
@@ -22,8 +23,13 @@ def get_effective_period_start_dates(
             config.performance_start_date,
             config.report_start_date or config.performance_start_date,
         )
-        # Consistently return a named series
         return pd.Series(pd.to_datetime(explicit_start), index=perf_dates_dt.index, name=perf_dates_dt.name)
+    elif config.period_type in [PeriodType.Y1, PeriodType.Y3, PeriodType.Y5]:
+        years = int(config.period_type.value[1:])
+        start_date = pd.to_datetime(config.report_end_date) - pd.DateOffset(years=years) + pd.Timedelta(days=1)
+        return pd.Series(start_date, index=perf_dates_dt.index, name=perf_dates_dt.name)
+    elif config.period_type == PeriodType.ITD:
+        return pd.Series(pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index, name=perf_dates_dt.name)
     else:
         # Fallback case, though validation should prevent this.
         return pd.Series(pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index, name=perf_dates_dt.name)
