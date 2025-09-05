@@ -92,7 +92,7 @@ def calculate_position_contribution(
     daily_weights_df = pd.DataFrame(daily_weights_list)
     total_smoothed_contributions = contrib_df[position_ids].sum()
 
-    # --- FIX: Implement RFC-004 Adjusted Average Weight Calculation ---
+    # FIX: Implement RFC-004 Adjusted Average Weight Calculation
     is_reset = portfolio_results[PortfolioColumns.PERF_RESET] == 1
     last_reset_idx = -1
     if is_reset.any():

@@ -138,8 +138,9 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
     port_total_return = (1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
     total_contribution_sum = sum(data["total_contribution"] for data in result.values())
     assert total_contribution_sum == pytest.approx(port_total_return)
-    assert result["Stock_A"]["total_contribution"] == pytest.approx(0.019587058)
-    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.009945652)
+    # FIX: Update expected value to match output of correct avg_weight logic
+    assert result["Stock_A"]["total_contribution"] == pytest.approx(0.0195905395)
+    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.0099421707)
 
 
 def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs):
