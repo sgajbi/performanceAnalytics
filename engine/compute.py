@@ -19,10 +19,10 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
     Orchestrates the full portfolio performance calculation pipeline using
     a fully vectorized approach.
     """
-    if df.empty:
-        return pd.DataFrame()
-
     try:
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            return pd.DataFrame()
+
         # Step 1: Preparation & Initialization (now precision-aware)
         _prepare_dataframe(df, config)
 

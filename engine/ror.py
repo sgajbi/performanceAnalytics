@@ -34,6 +34,7 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
             ) * Decimal(100)
         return daily_ror
     else:
+        
         begin_mv = df[PortfolioColumns.BEGIN_MV].to_numpy()
         bod_cf = df[PortfolioColumns.BOD_CF].to_numpy()
         eod_cf = df[PortfolioColumns.EOD_CF].to_numpy()
