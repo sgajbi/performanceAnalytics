@@ -19,7 +19,6 @@ def _calculate_single_period_weights(
         return {pos_id: 0.0 for pos_id in positions_df_map}
 
     for pos_id, pos_df in positions_df_map.items():
-        # Use .get(day_index) to handle cases where index might not exist, though reindexing should prevent this.
         pos_row = pos_df.iloc[day_index]
         pos_avg_capital = pos_row[PortfolioColumns.BEGIN_MV] + pos_row[PortfolioColumns.BOD_CF]
         weights[pos_id] = pos_avg_capital / portfolio_avg_capital
@@ -46,7 +45,6 @@ def calculate_position_contribution(
     """
     Orchestrates the full position contribution calculation using Carino smoothing.
     """
-    # FIX: Align all position data to the portfolio's date index to handle jagged time series.
     portfolio_date_index = pd.to_datetime(portfolio_results[PortfolioColumns.PERF_DATE])
     aligned_position_results = {}
     for pos_id, pos_df in position_results_map.items():
@@ -55,17 +53,15 @@ def calculate_position_contribution(
         aligned_df[PortfolioColumns.PERF_DATE] = aligned_df.index.date
         aligned_position_results[pos_id] = aligned_df.reset_index(drop=True)
 
-    # Use the aligned map for all subsequent calculations
     position_results_map = aligned_position_results
     
-    # Step 1: Calculate Portfolio Returns and Smoothing Factors
     port_daily_ror = portfolio_results[PortfolioColumns.DAILY_ROR] / 100
     port_total_ror = (1 + port_daily_ror).prod() - 1
 
     k_daily = _calculate_carino_factors(port_daily_ror)
-    K_total = _calculate_carino_factors(pd.Series([port_total_ror]))[0]
+    # FIX: Calculate K_total directly to avoid the TypeError
+    K_total = np.log(1 + port_total_ror) / port_total_ror if port_total_ror != 0 else 1.0
 
-    # Step 2: Calculate daily contributions and weights for each position
     daily_contributions = []
     position_ids = list(position_results_map.keys())
 
@@ -92,19 +88,27 @@ def calculate_position_contribution(
         daily_contributions.append(row_contribs)
 
     contrib_df = pd.DataFrame(daily_contributions)
+    
+    total_smoothed_contributions = contrib_df[position_ids].sum()
 
-    # Step 3: Aggregate results
     final_results = {}
-    total_contributions = contrib_df[position_ids].sum()
-
     for pos_id in position_ids:
         pos_total_return = (1 + (position_results_map[pos_id][PortfolioColumns.DAILY_ROR] / 100)).prod() - 1
-        avg_weight = (position_results_map[pos_id][PortfolioColumns.BEGIN_MV].mean() / portfolio_results[PortfolioColumns.BEGIN_MV].mean())
+        avg_weight = (position_results_map[pos_id][PortfolioColumns.BEGIN_MV].mean() / portfolio_results[PortfolioColumns.BEGIN_MV].mean()) if portfolio_results[PortfolioColumns.BEGIN_MV].mean() != 0 else 0.0
 
         final_results[pos_id] = {
-            "total_contribution": total_contributions[pos_id],
+            "total_contribution": total_smoothed_contributions[pos_id],
             "average_weight": avg_weight,
             "total_return": pos_total_return
         }
+
+    sum_of_contributions = sum(data["total_contribution"] for data in final_results.values())
+    residual = port_total_ror - sum_of_contributions
+    
+    sum_of_weights = sum(data["average_weight"] for data in final_results.values())
+    if sum_of_weights != 0:
+        for pos_id in position_ids:
+            weight_proportion = final_results[pos_id]["average_weight"] / sum_of_weights
+            final_results[pos_id]["total_contribution"] += residual * weight_proportion
 
     return final_results

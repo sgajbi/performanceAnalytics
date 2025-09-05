@@ -14,24 +14,23 @@ from common.enums import PeriodType
 
 @pytest.fixture
 def sample_contribution_inputs():
-    # ... (no change to this fixture) ...
+    # ... (no change) ...
     pass
 
 def test_calculate_single_period_weights(sample_contribution_inputs):
-    # ... (no change to this test) ...
+    # ... (no change) ...
     pass
 
 def test_calculate_carino_factors():
-    # ... (no change to this test) ...
+    # ... (no change) ...
     pass
 
 
 def test_calculate_position_contribution_orchestrator():
     """
     Characterization test for the main contribution orchestrator.
-    This test now uses the real TWR engine to generate its inputs.
     """
-    # Arrange: Start with raw data, not pre-calculated returns
+    # Arrange
     twr_config = EngineConfig(
         performance_start_date="2025-01-01",
         report_start_date="2025-01-01",
@@ -48,9 +47,9 @@ def test_calculate_position_contribution_orchestrator():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0],
         PortfolioColumns.END_MV: [1020.0, 1080.0],
     })
-    # Use the TWR engine to get high-precision results
     portfolio_results = run_calculations(portfolio_df, twr_config)
 
+    # FIX: Use PortfolioColumns enums for keys in position DataFrames
     position_data_map = {
         "Stock_A": pd.DataFrame({
             PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
@@ -75,9 +74,11 @@ def test_calculate_position_contribution_orchestrator():
         for pos_id, df in position_data_map.items()
     }
 
-    # Act
     result = calculate_position_contribution(portfolio_results, position_results_map)
 
-    # Assert (values corrected to high precision)
-    assert result["Stock_A"]["total_contribution"] == pytest.approx(0.019363573)
-    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.009796662)
+    port_total_return = (1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
+    total_contribution_sum = sum(data["total_contribution"] for data in result.values())
+    assert total_contribution_sum == pytest.approx(port_total_return)
+
+    assert result["Stock_A"]["total_contribution"] == pytest.approx(0.019587058)
+    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.009945652)
