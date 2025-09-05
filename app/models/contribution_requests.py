@@ -1,6 +1,6 @@
 # app/models/contribution_requests.py
 from datetime import date
-from typing import List
+from typing import List, Literal
 
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
@@ -13,6 +13,7 @@ from app.core.constants import (
     MGMT_FEES_FIELD,
     PERF_DATE_FIELD,
 )
+from common.enums import PeriodType
 
 
 class PositionDailyData(BaseModel):
@@ -32,9 +33,11 @@ class PositionData(BaseModel):
 
 
 class PortfolioData(BaseModel):
-    """Contains the full time series for the total portfolio."""
+    """Contains the full time series and config for the total portfolio."""
     report_start_date: date
     report_end_date: date
+    metric_basis: Literal["NET", "GROSS"]
+    period_type: PeriodType
     daily_data: List[PositionDailyData]
 
 

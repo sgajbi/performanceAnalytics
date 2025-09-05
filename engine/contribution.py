@@ -19,6 +19,7 @@ def _calculate_single_period_weights(
         return {pos_id: 0.0 for pos_id in positions_df_map}
 
     for pos_id, pos_df in positions_df_map.items():
+        # Use .get(day_index) to handle cases where index might not exist, though reindexing should prevent this.
         pos_row = pos_df.iloc[day_index]
         pos_avg_capital = pos_row[PortfolioColumns.BEGIN_MV] + pos_row[PortfolioColumns.BOD_CF]
         weights[pos_id] = pos_avg_capital / portfolio_avg_capital
@@ -28,8 +29,6 @@ def _calculate_single_period_weights(
 
 def _calculate_carino_factors(ror_series: pd.Series) -> pd.Series:
     """Calculates the Carino smoothing factor k for a series of returns."""
-    # Formula: k = ln(1 + R) / R
-    # Exception: k = 1 when R = 0
     return pd.Series(
         np.where(
             ror_series == 0,
@@ -47,6 +46,18 @@ def calculate_position_contribution(
     """
     Orchestrates the full position contribution calculation using Carino smoothing.
     """
+    # FIX: Align all position data to the portfolio's date index to handle jagged time series.
+    portfolio_date_index = pd.to_datetime(portfolio_results[PortfolioColumns.PERF_DATE])
+    aligned_position_results = {}
+    for pos_id, pos_df in position_results_map.items():
+        pos_df_indexed = pos_df.set_index(pd.to_datetime(pos_df[PortfolioColumns.PERF_DATE]))
+        aligned_df = pos_df_indexed.reindex(portfolio_date_index, fill_value=0.0)
+        aligned_df[PortfolioColumns.PERF_DATE] = aligned_df.index.date
+        aligned_position_results[pos_id] = aligned_df.reset_index(drop=True)
+
+    # Use the aligned map for all subsequent calculations
+    position_results_map = aligned_position_results
+    
     # Step 1: Calculate Portfolio Returns and Smoothing Factors
     port_daily_ror = portfolio_results[PortfolioColumns.DAILY_ROR] / 100
     port_total_ror = (1 + port_daily_ror).prod() - 1
@@ -66,17 +77,14 @@ def calculate_position_contribution(
             pos_ror_t = position_results_map[pos_id].iloc[i][PortfolioColumns.DAILY_ROR] / 100
             weight_t = daily_weights.get(pos_id, 0.0)
             
-            # Original, unsmoothed contribution C_p,t
             c_p_t = weight_t * pos_ror_t
             
-            # Carino smoothing formula: C' = C + W * (R_port * (K/k - 1))
             ror_port_t = port_daily_ror.iloc[i]
             k_t = k_daily.iloc[i]
             
             adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1))
             smoothed_c = c_p_t + adjustment
             
-            # Handle NIP and Reset days from portfolio
             if port_row[PortfolioColumns.NIP] == 1 or port_row[PortfolioColumns.PERF_RESET] == 1:
                 smoothed_c = 0.0
             
@@ -91,7 +99,6 @@ def calculate_position_contribution(
 
     for pos_id in position_ids:
         pos_total_return = (1 + (position_results_map[pos_id][PortfolioColumns.DAILY_ROR] / 100)).prod() - 1
-        # Simplified average weight for the period
         avg_weight = (position_results_map[pos_id][PortfolioColumns.BEGIN_MV].mean() / portfolio_results[PortfolioColumns.BEGIN_MV].mean())
 
         final_results[pos_id] = {
