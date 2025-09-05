@@ -37,7 +37,7 @@ def test_run_calculations_decimal_strict_mode():
     result_df = run_calculations(df.copy(), config)
 
     assert isinstance(result_df[PortfolioColumns.DAILY_ROR].iloc[0], Decimal)
-    expected_ror = Decimal("0.754") * Decimal(100) # RoR is stored as %, not decimal
+    expected_ror = Decimal("75.4")
     assert result_df[PortfolioColumns.DAILY_ROR].iloc[0] == expected_ror
 
 

@@ -3,7 +3,6 @@ from decimal import Decimal
 
 import numpy as np
 import pandas as pd
-from engine.config import PeriodType
 from engine.rules import calculate_initial_resets, calculate_nctrl4_reset
 from engine.schema import PortfolioColumns
 
@@ -14,10 +13,8 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
 
     if is_decimal_mode:
         numerator = (
-            df[PortfolioColumns.END_MV]
-            - df[PortfolioColumns.BOD_CF]
-            - df[PortfolioColumns.BEGIN_MV]
-            - df[PortfolioColumns.EOD_CF]
+            df[PortfolioColumns.END_MV] - df[PortfolioColumns.BOD_CF] -
+            df[PortfolioColumns.BEGIN_MV] - df[PortfolioColumns.EOD_CF]
         )
         if metric_basis == "NET":
             numerator += df[PortfolioColumns.MGMT_FEES]

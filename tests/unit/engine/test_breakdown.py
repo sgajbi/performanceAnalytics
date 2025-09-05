@@ -92,13 +92,10 @@ def test_generate_breakdowns_empty_input():
 
 def test_generate_breakdowns_quarterly(sample_daily_results):
     """Tests that quarterly aggregation is calculated correctly."""
-    # Act
     breakdowns = generate_performance_breakdowns(
         sample_daily_results, frequencies=[Frequency.QUARTERLY]
     )
-
-    # Assert
     assert Frequency.QUARTERLY in breakdowns
-    assert len(breakdowns[Frequency.QUARTERLY]) == 1 # Jan and Feb are in Q1
+    assert len(breakdowns[Frequency.QUARTERLY]) == 1
     q1_results = breakdowns[Frequency.QUARTERLY][0]
     assert q1_results["period"] == "2025-Q1"
