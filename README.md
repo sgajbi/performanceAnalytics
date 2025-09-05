@@ -1,29 +1,20 @@
-
 # Portfolio Performance Analytics API (V3 Engine)
 
 An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`.
 
-It provides two primary endpoints for calculating **Time-Weighted Return (TWR)** with frequency-based breakdowns and **Money-Weighted Return (MWR)**.
+It provides two primary services:
+1.  **Performance Calculation**: Endpoints for calculating **Time-Weighted Return (TWR)** with frequency-based breakdowns and **Money-Weighted Return (MWR)**.
+2.  **Contribution Analysis**: An endpoint for calculating **Position Contribution** to explain the drivers of portfolio performance.
 
 ---
 
 ## Key Features
 
--   **High-Performance TWR Engine:** Core daily calculations are vectorized using Pandas and NumPy for maximum speed.
+-   **High-Performance TWR Engine:** Core daily calculations are vectorized using Pandas and NumPy.
 -   **Flexible TWR Breakdowns:** Aggregate daily performance into monthly, quarterly, or yearly summaries.
--   **MWR Endpoint:** Calculate a period's money-weighted return, ideal for analyzing investor performance.
--   **Decoupled Architecture:** The calculation engine is a standalone library that can be used independently of the API.
--   **Dual Precision Modes:** Supports fast `float64` (default) or auditable `Decimal` calculations.
-
----
-
-## Project Structure
-
--   `app/`: The FastAPI application layer.
--   `common/`: Shared enumerations (`Frequency`, `PeriodType`) used across the project.
--   `adapters/`: A translation layer that maps data between the API and the engine.
--   `engine/`: The pure, standalone calculation library.
--   `tests/`: The complete test suite.
+-   **Standard MWR Calculation:** Provides a money-weighted return for analyzing investor performance.
+-   **Advanced Contribution Engine:** Uses the Carino smoothing algorithm to accurately link multi-period position contributions.
+-   **Decoupled Architecture:** All calculation logic is in a standalone `engine` library.
 
 ---
 
@@ -79,37 +70,39 @@ It provides two primary endpoints for calculating **Time-Weighted Return (TWR)**
 
 ### 1. Time-Weighted Return (TWR)
 
-This endpoint calculates daily performance and aggregates the results into the requested frequencies.
-
 -   **Endpoint:** `POST /performance/twr`
--   **Payload:** Use `sampleInput.json` as a template. You can specify which breakdowns you want in the `frequencies` array (`"daily"`, `"monthly"`, `"quarterly"`, `"yearly"`).
+-   **Description:** Calculates daily performance and aggregates the results into requested frequencies.
+-   **Example `curl` command:**
+    ```bash
+    curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
+    -H "Content-Type: application/json" \
+    -d @sampleInput.json
+    ```
 
-**Example `curl` command:**
-```bash
-curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
--H "Content-Type: application/json" \
--d @sampleInput.json
-````
+### 2. Money-Weighted Return (MWR)
 
-### 2\. Money-Weighted Return (MWR)
+-   **Endpoint:** `POST /performance/mwr`
+-   **Description:** Calculates a single return figure for the entire period based on market values and cash flows.
+-   **Example `curl` command:**
+    ```bash
+    curl -X POST "[http://127.0.0.1:8000/performance/mwr](http://127.0.0.1:8000/performance/mwr)" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "portfolio_number": "MWR_TEST_01",
+      "beginning_mv": 100000.0,
+      "ending_mv": 115000.0,
+      "cash_flows": [
+        {"amount": 10000.0, "date": "2025-03-15"}
+      ]
+    }'
+    ```
 
-This endpoint calculates a single return figure for the entire period based on market values and cash flows.
+### 3. Position Contribution
 
-  - **Endpoint:** `POST /performance/mwr`
-  - **Payload:** Requires `beginning_mv`, `ending_mv`, and a list of `cash_flows`.
-
-**Example `curl` command:**
-
-```bash
-curl -X POST "[http://127.0.0.1:8000/performance/mwr](http://127.0.0.1:8000/performance/mwr)" \
--H "Content-Type: application/json" \
--d '{
-  "portfolio_number": "MWR_TEST_01",
-  "beginning_mv": 100000.0,
-  "ending_mv": 115000.0,
-  "cash_flows": [
-    {"amount": 10000.0, "date": "2025-03-15"},
-    {"amount": -5000.0, "date": "2025-09-20"}
-  ]
-}'
-```
+-   **Endpoint:** `POST /performance/contribution`
+-   **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions.
+-   **Example `curl` command:**
+    ```bash
+    # (Requires a more detailed JSON payload with both portfolio and position data)
+    echo "See tests/integration/test_contribution_api.py for a sample payload."
+    ```
