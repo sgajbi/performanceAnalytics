@@ -49,7 +49,7 @@ class AttributionRequest(BaseModel):
     portfolio_number: str
     mode: AttributionMode
     frequency: Frequency = Frequency.MONTHLY
-    group_by: List[str] = Field(..., min_items=1, alias="groupBy")
+    group_by: List[str] = Field(..., min_length=1, alias="groupBy")
     model: AttributionModel = AttributionModel.BRINSON_FACHLER
     linking: LinkingMethod = LinkingMethod.CARINO
 

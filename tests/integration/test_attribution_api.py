@@ -23,7 +23,7 @@ def test_attribution_endpoint_happy_path(client):
         "groupBy": ["assetClass", "sector"],
         "model": "BF",
         "linking": "carino",
-        "frequency": "M",
+        "frequency": "monthly",
         "portfolio_data": {
             "report_start_date": "2025-01-01",
             "report_end_date": "2025-01-31",
