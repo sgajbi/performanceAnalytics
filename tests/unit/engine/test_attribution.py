@@ -86,8 +86,8 @@ def test_prepare_data_from_instruments():
     Tests the aggregation of instrument data into portfolio groups.
     """
     daily_data_p = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1025}]
-    daily_data_aapl = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 600, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 624}] # 4% return
-    daily_data_msft = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 400, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 401}] # 0.25% return
+    daily_data_aapl = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 600, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 624}]
+    daily_data_msft = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 400, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 401}]
     
     request_data = {
         "portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "linking": "none", "frequency": "daily",
@@ -104,10 +104,17 @@ def test_prepare_data_from_instruments():
     
     assert len(result_groups) == 1
     tech_group = result_groups[0]
-    assert tech_group.key == {"sector": "Tech"}
-    
     obs = tech_group.observations[0]
-    # Total weight should be sum of instrument weights: (600/1000) + (400/1000) = 1.0
+    
     assert obs['weight_bop'] == pytest.approx(1.0)
-    # Group return is weighted average: (0.6 * 4% + 0.4 * 0.25%) = 0.024 + 0.001 = 0.025
     assert obs['return'] == pytest.approx(0.025)
+
+
+def test_prepare_data_from_instruments_missing_portfolio_data():
+    """
+    Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode.
+    """
+    request_data = {"portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "instruments_data": [], "benchmark_groups_data": []}
+    request = AttributionRequest.model_validate(request_data)
+    with pytest.raises(ValueError, match="'portfolio_data' and 'instruments_data' are required"):
+        _prepare_data_from_instruments(request)

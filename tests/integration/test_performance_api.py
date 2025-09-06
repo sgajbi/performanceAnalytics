@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from main import app
+from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 
 
 @pytest.fixture(scope="module")
@@ -47,3 +48,25 @@ def test_calculate_twr_endpoint_happy_path(client):
     assert len(response_data["breakdowns"]["daily"]) == 5
     assert len(response_data["breakdowns"]["monthly"]) == 1
     assert response_data["breakdowns"]["monthly"][0]["period"] == "2025-01"
+
+
+@pytest.mark.parametrize(
+    "error_class, expected_status",
+    [
+        (InvalidEngineInputError, 400),
+        (EngineCalculationError, 500),
+        (Exception, 500)
+    ]
+)
+def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expected_status):
+    """Tests that the TWR endpoint correctly handles engine exceptions."""
+    mocker.patch('engine.compute.run_calculations', side_effect=error_class("Test Error"))
+    
+    base_path = Path(__file__).parent
+    input_data = load_json_from_file(base_path / "../../sampleInput.json")
+    input_data["frequencies"] = ["daily"]
+    
+    response = client.post("/performance/twr", json=input_data)
+    
+    assert response.status_code == expected_status
+    assert "detail" in response.json()

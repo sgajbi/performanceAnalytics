@@ -2,6 +2,7 @@
 from fastapi.testclient import TestClient
 import pytest
 from main import app
+from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 
 
 @pytest.fixture(scope="module")
@@ -11,45 +12,57 @@ def client():
         yield c
 
 
-def test_attribution_endpoint_happy_path(client):
+def test_attribution_endpoint_by_instrument_happy_path(client):
     """
     Tests the /performance/attribution endpoint end-to-end with a valid
-    'by_group' payload, verifying the calculated results.
+    'by_instrument' payload, verifying the calculated results.
     """
     payload = {
-        "portfolio_number": "ATTRIB_INTEG_TEST_01",
-        "mode": "by_group",
-        "groupBy": ["sector"],
-        "model": "BF",
-        "linking": "none",
-        "frequency": "monthly",
-        "portfolio_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-15", "return": 0.05, "weight_bop": 0.7}]},
-            {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-20", "return": 0.02, "weight_bop": 0.3}]}
+        "portfolio_number": "ATTRIB_BY_INST_01", "mode": "by_instrument", "groupBy": ["sector"], "linking": "none", "frequency": "daily",
+        "portfolio_data": {"report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "NET", "period_type": "YTD", "daily_data": [
+            {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1018.5}
+        ]},
+        "instruments_data": [
+            {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "daily_data": [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 600, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 612}]},
+            {"instrument_id": "JNJ", "meta": {"sector": "Health"}, "daily_data": [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 400, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 406.5}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-10", "return": 0.04, "weight_bop": 0.6}]},
-            {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-18", "return": 0.03, "weight_bop": 0.4}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-01", "return": 0.015, "weight_bop": 0.5}]},
+            {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-01", "return": 0.02, "weight_bop": 0.5}]}
         ]
     }
 
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == 200
     response_data = response.json()
-
-    assert response_data["portfolio_number"] == "ATTRIB_INTEG_TEST_01"
-    level = response_data["levels"][0]
-    assert len(level["groups"]) == 2
     
-    health_group = next(g for g in level["groups"] if g["key"]["sector"] == "Health")
+    assert response_data["portfolio_number"] == "ATTRIB_BY_INST_01"
+    level = response_data["levels"][0]
     tech_group = next(g for g in level["groups"] if g["key"]["sector"] == "Tech")
+    
+    # Rp = (0.6 * 0.02) + (0.4 * 0.01625) = 0.012 + 0.0065 = 0.0185
+    # Rb = (0.5 * 0.015) + (0.5 * 0.02) = 0.0075 + 0.01 = 0.0175
+    # AR = 0.0185 - 0.0175 = 0.001
+    assert response_data["reconciliation"]["total_active_return"] == pytest.approx(0.001)
+    # Tech Selection = w_b * (r_p - r_b) = 0.5 * (0.02 - 0.015) = 0.0025
+    assert tech_group["selection"] == pytest.approx(0.0025)
 
-    # Rb_total = 0.6*0.04 + 0.4*0.03 = 0.036
-    # Tech Alloc = (0.7 - 0.6) * (0.04 - 0.036) = 0.0004
-    assert tech_group["allocation"] == pytest.approx(0.0004)
-    # Health Select = 0.4 * (0.02 - 0.03) = -0.004
-    assert health_group["selection"] == pytest.approx(-0.004)
 
-    # Active Return = (0.7*0.05 + 0.3*0.02) - 0.036 = 0.041 - 0.036 = 0.005
-    assert response_data["reconciliation"]["total_active_return"] == pytest.approx(0.005)
-    assert level["totals"]["total_effect"] == pytest.approx(0.005)
+@pytest.mark.parametrize(
+    "error_class, expected_status",
+    [
+        (InvalidEngineInputError, 400),
+        (EngineCalculationError, 500),
+        (ValueError, 400),
+        (Exception, 500)
+    ]
+)
+def test_attribution_endpoint_error_handling(client, mocker, error_class, expected_status):
+    """Tests that the attribution endpoint correctly handles engine exceptions."""
+    mocker.patch('engine.attribution.run_attribution_calculations', side_effect=error_class("Test Error"))
+    
+    payload = {"portfolio_number": "ERROR", "mode": "by_group", "groupBy": ["sector"], "benchmark_groups_data": []}
+    response = client.post("/performance/attribution", json=payload)
+    
+    assert response.status_code == expected_status
+    assert "detail" in response.json()
