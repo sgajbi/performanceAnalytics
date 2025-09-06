@@ -141,14 +141,13 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
     per_period_p_return = (effects_df['w_p'] * effects_df['r_p']).groupby(level='date').sum()
     per_period_b_return = effects_df.groupby(level='date')['r_b_total'].first()
 
-    # The 'linking' parameter from the request is respected, but Menchero is used for geometric linking.
     if request.linking != LinkingMethod.NONE:
         linked_effects = _link_effects_menchero(effects_df, per_period_b_return)
         group_totals = linked_effects.groupby(level=group_by_key).sum()
         active_return = (1 + per_period_p_return).prod() - 1 - ((1 + per_period_b_return).prod() - 1)
-    else: # Default to simple arithmetic sum
+    else: 
         group_totals = effects_df.groupby(level=group_by_key)[['allocation', 'selection', 'interaction']].sum()
-        active_return = per_period_p_return.sum() - per_period_b_return.sum()
+        active_return = (per_period_p_return - per_period_b_return).sum()
 
     group_totals['total_effect'] = group_totals.sum(axis=1)
     overall_totals = group_totals.sum()
