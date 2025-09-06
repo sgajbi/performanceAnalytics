@@ -20,3 +20,22 @@ class PeriodType(str, Enum):
     Y3 = "Y3"
     Y5 = "Y5"
     EXPLICIT = "EXPLICIT"
+
+
+class AttributionMode(str, Enum):
+    """Defines the input modes for the attribution engine."""
+    BY_INSTRUMENT = "by_instrument"
+    BY_GROUP = "by_group"
+
+
+class AttributionModel(str, Enum):
+    """Defines the supported Brinson-style attribution models."""
+    BRINSON_FACHLER = "BF"
+    BRINSON_HOOD_BEEBOWER = "BHB"
+
+
+class LinkingMethod(str, Enum):
+    """Defines the supported methods for linking multi-period attribution effects."""
+    CARINO = "carino"
+    LOGARITHMIC = "log"
+    NONE = "none"
