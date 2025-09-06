@@ -1,5 +1,6 @@
 # engine/attribution.py
-from app.models.attribution_requests import AttributionRequest
+import pandas as pd
+from app.models.attribution_requests import AttributionRequest, AttributionModel
 from app.models.attribution_responses import (
     AttributionGroupResult,
     AttributionLevelResult,
@@ -7,6 +8,28 @@ from app.models.attribution_responses import (
     AttributionResponse,
     Reconciliation,
 )
+
+
+def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) -> pd.DataFrame:
+    """
+    Calculates single-period attribution effects (A, S, I) for an aligned DataFrame.
+
+    Args:
+        df: DataFrame with columns ['w_p', 'r_p', 'w_b', 'r_b'] and indexed by group.
+            It must also contain the total benchmark return 'r_b_total' for each period.
+    Returns:
+        DataFrame with added columns for 'allocation', 'selection', 'interaction'.
+    """
+    if model == AttributionModel.BRINSON_FACHLER:
+        df['allocation'] = (df['w_p'] - df['w_b']) * (df['r_b'] - df['r_b_total'])
+        df['selection'] = df['w_b'] * (df['r_p'] - df['r_b'])
+        df['interaction'] = (df['w_p'] - df['w_b']) * (df['r_p'] - df['r_b'])
+    elif model == AttributionModel.BRINSON_HOOD_BEEBOWER:
+        df['allocation'] = (df['w_p'] - df['w_b']) * df['r_b']
+        df['selection'] = df['w_p'] * (df['r_p'] - df['r_b'])
+        df['interaction'] = (df['w_p'] - df['w_b']) * (df['r_p'] - df['r_b'])
+
+    return df
 
 
 def run_attribution_calculations(request: AttributionRequest) -> AttributionResponse:
