@@ -1,0 +1,324 @@
+
+
+
+
+
+
+
+
+
+
+# 1. API: POST /performance/twr
+
+
+
+{
+  "portfolio_number": "IMAGE_PORTFOLIO_01",
+  "performance_start_date": "2024-12-31",
+  "metric_basis": "NET",
+  "report_start_date": "2025-01-01",
+  "report_end_date": "2025-01-31",
+  "period_type": "MTD",
+  "frequencies": ["monthly"],
+  "daily_data": [
+    {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 125061.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125071.5},
+    {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 125071.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125123.0},
+    {"Day": 3, "Perf. Date": "2025-01-03", "Begin Market Value": 125123.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125125.4},
+    {"Day": 4, "Perf. Date": "2025-01-04", "Begin Market Value": 125125.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125125.4},
+    {"Day": 5, "Perf. Date": "2025-01-05", "Begin Market Value": 125125.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125160.0},
+    {"Day": 6, "Perf. Date": "2025-01-06", "Begin Market Value": 125160.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125160.0},
+    {"Day": 7, "Perf. Date": "2025-01-07", "Begin Market Value": 125160.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125301.5},
+    {"Day": 8, "Perf. Date": "2025-01-08", "Begin Market Value": 125301.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125333.5},
+    {"Day": 9, "Perf. Date": "2025-01-09", "Begin Market Value": 125333.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125422.0},
+    {"Day": 10, "Perf. Date": "2025-01-10", "Begin Market Value": 125422.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125475.0},
+    {"Day": 11, "Perf. Date": "2025-01-11", "Begin Market Value": 125475.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125501.0},
+    {"Day": 12, "Perf. Date": "2025-01-12", "Begin Market Value": 125501.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125547.0},
+    {"Day": 13, "Perf. Date": "2025-01-13", "Begin Market Value": 125547.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125590.0},
+    {"Day": 14, "Perf. Date": "2025-01-14", "Begin Market Value": 125590.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125651.5},
+    {"Day": 15, "Perf. Date": "2025-01-15", "Begin Market Value": 125651.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125674.5},
+    {"Day": 16, "Perf. Date": "2025-01-16", "Begin Market Value": 125674.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125703.0},
+    {"Day": 17, "Perf. Date": "2025-01-17", "Begin Market Value": 125703.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125714.0},
+    {"Day": 18, "Perf. Date": "2025-01-18", "Begin Market Value": 125714.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125765.0},
+    {"Day": 19, "Perf. Date": "2025-01-19", "Begin Market Value": 125765.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125775.0},
+    {"Day": 20, "Perf. Date": "2025-01-20", "Begin Market Value": 125775.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125816.0},
+    {"Day": 21, "Perf. Date": "2025-01-21", "Begin Market Value": 125816.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125860.0},
+    {"Day": 22, "Perf. Date": "2025-01-22", "Begin Market Value": 125860.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125904.0},
+    {"Day": 23, "Perf. Date": "2025-01-23", "Begin Market Value": 125904.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125954.0},
+    {"Day": 24, "Perf. Date": "2025-01-24", "Begin Market Value": 125954.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125985.0},
+    {"Day": 25, "Perf. Date": "2025-01-25", "Begin Market Value": 125985.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126020.0},
+    {"Day": 26, "Perf. Date": "2025-01-26", "Begin Market Value": 126020.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126050.0},
+    {"Day": 27, "Perf. Date": "2025-01-27", "Begin Market Value": 126050.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126080.0},
+    {"Day": 28, "Perf. Date": "2025-01-28", "Begin Market Value": 126080.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126132.5},
+    {"Day": 29, "Perf. Date": "2025-01-29", "Begin Market Value": 126132.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126158.0},
+    {"Day": 30, "Perf. Date": "2025-01-30", "Begin Market Value": 126158.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126195.0},
+    {"Day": 31, "Perf. Date": "2025-01-31", "Begin Market Value": 126195.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126280.0}
+  ]
+}
+
+# 2. API: POST /performance/mwr
+
+{
+  "portfolio_number": "IMAGE_PORTFOLIO_01",
+  "beginning_mv": 125061.5,
+  "ending_mv": 126280.0,
+  "cash_flows": []
+}
+
+# 3. API: POST /performance/contribution
+
+{
+  "portfolio_number": "IMAGE_PORTFOLIO_01",
+  "portfolio_data": {
+    "report_start_date": "2025-01-01",
+    "report_end_date": "2025-01-31",
+    "metric_basis": "NET",
+    "period_type": "MTD",
+    "daily_data": [
+      {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 125061.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125071.5},
+      {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 125071.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125123.0},
+      {"Day": 3, "Perf. Date": "2025-01-03", "Begin Market Value": 125123.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125125.4},
+      {"Day": 4, "Perf. Date": "2025-01-04", "Begin Market Value": 125125.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125125.4},
+      {"Day": 5, "Perf. Date": "2025-01-05", "Begin Market Value": 125125.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125160.0},
+      {"Day": 6, "Perf. Date": "2025-01-06", "Begin Market Value": 125160.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125160.0},
+      {"Day": 7, "Perf. Date": "2025-01-07", "Begin Market Value": 125160.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125301.5},
+      {"Day": 8, "Perf. Date": "2025-01-08", "Begin Market Value": 125301.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125333.5},
+      {"Day": 9, "Perf. Date": "2025-01-09", "Begin Market Value": 125333.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125422.0},
+      {"Day": 10, "Perf. Date": "2025-01-10", "Begin Market Value": 125422.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125475.0},
+      {"Day": 11, "Perf. Date": "2025-01-11", "Begin Market Value": 125475.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125501.0},
+      {"Day": 12, "Perf. Date": "2025-01-12", "Begin Market Value": 125501.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125547.0},
+      {"Day": 13, "Perf. Date": "2025-01-13", "Begin Market Value": 125547.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125590.0},
+      {"Day": 14, "Perf. Date": "2025-01-14", "Begin Market Value": 125590.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125651.5},
+      {"Day": 15, "Perf. Date": "2025-01-15", "Begin Market Value": 125651.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125674.5},
+      {"Day": 16, "Perf. Date": "2025-01-16", "Begin Market Value": 125674.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125703.0},
+      {"Day": 17, "Perf. Date": "2025-01-17", "Begin Market Value": 125703.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125714.0},
+      {"Day": 18, "Perf. Date": "2025-01-18", "Begin Market Value": 125714.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125765.0},
+      {"Day": 19, "Perf. Date": "2025-01-19", "Begin Market Value": 125765.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125775.0},
+      {"Day": 20, "Perf. Date": "2025-01-20", "Begin Market Value": 125775.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125816.0},
+      {"Day": 21, "Perf. Date": "2025-01-21", "Begin Market Value": 125816.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125860.0},
+      {"Day": 22, "Perf. Date": "2025-01-22", "Begin Market Value": 125860.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125904.0},
+      {"Day": 23, "Perf. Date": "2025-01-23", "Begin Market Value": 125904.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125954.0},
+      {"Day": 24, "Perf. Date": "2025-01-24", "Begin Market Value": 125954.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125985.0},
+      {"Day": 25, "Perf. Date": "2025-01-25", "Begin Market Value": 125985.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126020.0},
+      {"Day": 26, "Perf. Date": "2025-01-26", "Begin Market Value": 126020.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126050.0},
+      {"Day": 27, "Perf. Date": "2025-01-27", "Begin Market Value": 126050.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126080.0},
+      {"Day": 28, "Perf. Date": "2025-01-28", "Begin Market Value": 126080.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126132.5},
+      {"Day": 29, "Perf. Date": "2025-01-29", "Begin Market Value": 126132.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126158.0},
+      {"Day": 30, "Perf. Date": "2025-01-30", "Begin Market Value": 126158.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126195.0},
+      {"Day": 31, "Perf. Date": "2025-01-31", "Begin Market Value": 126195.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126280.0}
+    ]
+  },
+  "positions_data": [
+    {
+      "position_id": "Position 1",
+      "daily_data": [
+        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 50000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50010.0},
+        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 50010.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50030.0},
+        {"Day": 3, "Perf. Date": "2025-01-03", "Begin Market Value": 50030.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50064.0},
+        {"Day": 4, "Perf. Date": "2025-01-04", "Begin Market Value": 50064.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50004.0},
+        {"Day": 5, "Perf. Date": "2025-01-05", "Begin Market Value": 50004.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50024.0},
+        {"Day": 6, "Perf. Date": "2025-01-06", "Begin Market Value": 50024.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50058.0},
+        {"Day": 7, "Perf. Date": "2025-01-07", "Begin Market Value": 50058.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50068.0},
+        {"Day": 8, "Perf. Date": "2025-01-08", "Begin Market Value": 50068.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50088.0},
+        {"Day": 9, "Perf. Date": "2025-01-09", "Begin Market Value": 50088.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50122.0},
+        {"Day": 10, "Perf. Date": "2025-01-10", "Begin Market Value": 50122.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50082.0},
+        {"Day": 11, "Perf. Date": "2025-01-11", "Begin Market Value": 50082.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50082.0},
+        {"Day": 12, "Perf. Date": "2025-01-12", "Begin Market Value": 50082.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50116.0},
+        {"Day": 13, "Perf. Date": "2025-01-13", "Begin Market Value": 50116.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50126.0},
+        {"Day": 14, "Perf. Date": "2025-01-14", "Begin Market Value": 50126.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50146.0},
+        {"Day": 15, "Perf. Date": "2025-01-15", "Begin Market Value": 50146.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50166.0},
+        {"Day": 16, "Perf. Date": "2025-01-16", "Begin Market Value": 50166.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50200.0},
+        {"Day": 17, "Perf. Date": "2025-01-17", "Begin Market Value": 50200.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50220.0},
+        {"Day": 18, "Perf. Date": "2025-01-18", "Begin Market Value": 50220.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50230.0},
+        {"Day": 19, "Perf. Date": "2025-01-19", "Begin Market Value": 50230.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50250.0},
+        {"Day": 20, "Perf. Date": "2025-01-20", "Begin Market Value": 50250.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50270.0},
+        {"Day": 21, "Perf. Date": "2025-01-21", "Begin Market Value": 50270.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50304.0},
+        {"Day": 22, "Perf. Date": "2025-01-22", "Begin Market Value": 50304.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50314.0},
+        {"Day": 23, "Perf. Date": "2025-01-23", "Begin Market Value": 50314.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50354.0},
+        {"Day": 24, "Perf. Date": "2025-01-24", "Begin Market Value": 50354.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50388.0},
+        {"Day": 25, "Perf. Date": "2025-01-25", "Begin Market Value": 50388.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50408.0},
+        {"Day": 26, "Perf. Date": "2025-01-26", "Begin Market Value": 50408.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50428.0},
+        {"Day": 27, "Perf. Date": "2025-01-27", "Begin Market Value": 50428.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50438.0},
+        {"Day": 28, "Perf. Date": "2025-01-28", "Begin Market Value": 50438.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50458.0},
+        {"Day": 29, "Perf. Date": "2025-01-29", "Begin Market Value": 50458.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50478.0},
+        {"Day": 30, "Perf. Date": "2025-01-30", "Begin Market Value": 50478.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50478.0},
+        {"Day": 31, "Perf. Date": "2025-01-31", "Begin Market Value": 50478.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50512.0}
+      ]
+    },
+    {
+      "position_id": "Position 2",
+      "daily_data": [
+        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 75061.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75061.5},
+        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 75061.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75093.0},
+        {"Day": 3, "Perf. Date": "2025-01-03", "Begin Market Value": 75093.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75061.4},
+        {"Day": 4, "Perf. Date": "2025-01-04", "Begin Market Value": 75061.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75081.0},
+        {"Day": 5, "Perf. Date": "2025-01-05", "Begin Market Value": 75081.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75136.0},
+        {"Day": 6, "Perf. Date": "2025-01-06", "Begin Market Value": 75136.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75102.0},
+        {"Day": 7, "Perf. Date": "2025-01-07", "Begin Market Value": 75102.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75233.5},
+        {"Day": 8, "Perf. Date": "2025-01-08", "Begin Market Value": 75233.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75245.5},
+        {"Day": 9, "Perf. Date": "2025-01-09", "Begin Market Value": 75245.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75300.0},
+        {"Day": 10, "Perf. Date": "2025-01-10", "Begin Market Value": 75300.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75393.0},
+        {"Day": 11, "Perf. Date": "2025-01-11", "Begin Market Value": 75393.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75419.0},
+        {"Day": 12, "Perf. Date": "2025-01-12", "Begin Market Value": 75419.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75431.0},
+        {"Day": 13, "Perf. Date": "2025-01-13", "Begin Market Value": 75431.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75464.0},
+        {"Day": 14, "Perf. Date": "2025-01-14", "Begin Market Value": 75464.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75505.5},
+        {"Day": 15, "Perf. Date": "2025-01-15", "Begin Market Value": 75505.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75508.5},
+        {"Day": 16, "Perf. Date": "2025-01-16", "Begin Market Value": 75508.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75503.0},
+        {"Day": 17, "Perf. Date": "2025-01-17", "Begin Market Value": 75503.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75494.0},
+        {"Day": 18, "Perf. Date": "2025-01-18", "Begin Market Value": 75494.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75535.0},
+        {"Day": 19, "Perf. Date": "2025-01-19", "Begin Market Value": 75535.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75545.0},
+        {"Day": 20, "Perf. Date": "2025-01-20", "Begin Market Value": 75545.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75546.0},
+        {"Day": 21, "Perf. Date": "2025-01-21", "Begin Market Value": 75546.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75556.0},
+        {"Day": 22, "Perf. Date": "2025-01-22", "Begin Market Value": 75556.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75590.0},
+        {"Day": 23, "Perf. Date": "2025-01-23", "Begin Market Value": 75590.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75600.0},
+        {"Day": 24, "Perf. Date": "2025-01-24", "Begin Market Value": 75600.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75597.0},
+        {"Day": 25, "Perf. Date": "2025-01-25", "Begin Market Value": 75597.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75612.0},
+        {"Day": 26, "Perf. Date": "2025-01-26", "Begin Market Value": 75612.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75622.0},
+        {"Day": 27, "Perf. Date": "2025-01-27", "Begin Market Value": 75622.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75642.0},
+        {"Day": 28, "Perf. Date": "2025-01-28", "Begin Market Value": 75642.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75674.5},
+        {"Day": 29, "Perf. Date": "2025-01-29", "Begin Market Value": 75674.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75680.0},
+        {"Day": 30, "Perf. Date": "2025-01-30", "Begin Market Value": 75680.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75717.0},
+        {"Day": 31, "Perf. Date": "2025-01-31", "Begin Market Value": 75717.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75768.0}
+      ]
+    }
+  ]
+}
+
+# 4. API: POST /performance/attribution
+
+{
+  "portfolio_number": "IMAGE_PORTFOLIO_01",
+  "mode": "by_instrument",
+  "groupBy": ["sector"],
+  "model": "BF",
+  "linking": "carino",
+  "frequency": "monthly",
+  "portfolio_data": {
+    "report_start_date": "2025-01-01",
+    "report_end_date": "2025-01-31",
+    "metric_basis": "NET",
+    "period_type": "MTD",
+    "daily_data": [
+      {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 125061.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125071.5},
+      {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 125071.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125123.0},
+      {"Day": 3, "Perf. Date": "2025-01-03", "Begin Market Value": 125123.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125125.4},
+      {"Day": 4, "Perf. Date": "2025-01-04", "Begin Market Value": 125125.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125125.4},
+      {"Day": 5, "Perf. Date": "2025-01-05", "Begin Market Value": 125125.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125160.0},
+      {"Day": 6, "Perf. Date": "2025-01-06", "Begin Market Value": 125160.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125160.0},
+      {"Day": 7, "Perf. Date": "2025-01-07", "Begin Market Value": 125160.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125301.5},
+      {"Day": 8, "Perf. Date": "2025-01-08", "Begin Market Value": 125301.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125333.5},
+      {"Day": 9, "Perf. Date": "2025-01-09", "Begin Market Value": 125333.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125422.0},
+      {"Day": 10, "Perf. Date": "2025-01-10", "Begin Market Value": 125422.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125475.0},
+      {"Day": 11, "Perf. Date": "2025-01-11", "Begin Market Value": 125475.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125501.0},
+      {"Day": 12, "Perf. Date": "2025-01-12", "Begin Market Value": 125501.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125547.0},
+      {"Day": 13, "Perf. Date": "2025-01-13", "Begin Market Value": 125547.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125590.0},
+      {"Day": 14, "Perf. Date": "2025-01-14", "Begin Market Value": 125590.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125651.5},
+      {"Day": 15, "Perf. Date": "2025-01-15", "Begin Market Value": 125651.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125674.5},
+      {"Day": 16, "Perf. Date": "2025-01-16", "Begin Market Value": 125674.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125703.0},
+      {"Day": 17, "Perf. Date": "2025-01-17", "Begin Market Value": 125703.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125714.0},
+      {"Day": 18, "Perf. Date": "2025-01-18", "Begin Market Value": 125714.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125765.0},
+      {"Day": 19, "Perf. Date": "2025-01-19", "Begin Market Value": 125765.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125775.0},
+      {"Day": 20, "Perf. Date": "2025-01-20", "Begin Market Value": 125775.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125816.0},
+      {"Day": 21, "Perf. Date": "2025-01-21", "Begin Market Value": 125816.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125860.0},
+      {"Day": 22, "Perf. Date": "2025-01-22", "Begin Market Value": 125860.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125904.0},
+      {"Day": 23, "Perf. Date": "2025-01-23", "Begin Market Value": 125904.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125954.0},
+      {"Day": 24, "Perf. Date": "2025-01-24", "Begin Market Value": 125954.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 125985.0},
+      {"Day": 25, "Perf. Date": "2025-01-25", "Begin Market Value": 125985.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126020.0},
+      {"Day": 26, "Perf. Date": "2025-01-26", "Begin Market Value": 126020.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126050.0},
+      {"Day": 27, "Perf. Date": "2025-01-27", "Begin Market Value": 126050.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126080.0},
+      {"Day": 28, "Perf. Date": "2025-01-28", "Begin Market Value": 126080.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126132.5},
+      {"Day": 29, "Perf. Date": "2025-01-29", "Begin Market Value": 126132.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126158.0},
+      {"Day": 30, "Perf. Date": "2025-01-30", "Begin Market Value": 126158.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126195.0},
+      {"Day": 31, "Perf. Date": "2025-01-31", "Begin Market Value": 126195.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 126280.0}
+    ]
+  },
+  "instruments_data": [
+    {
+      "instrument_id": "Position 1",
+      "meta": {"sector": "Tech"},
+      "daily_data": [
+        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 50000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50010.0},
+        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 50010.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50030.0},
+        {"Day": 3, "Perf. Date": "2025-01-03", "Begin Market Value": 50030.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50064.0},
+        {"Day": 4, "Perf. Date": "2025-01-04", "Begin Market Value": 50064.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50004.0},
+        {"Day": 5, "Perf. Date": "2025-01-05", "Begin Market Value": 50004.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50024.0},
+        {"Day": 6, "Perf. Date": "2025-01-06", "Begin Market Value": 50024.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50058.0},
+        {"Day": 7, "Perf. Date": "2025-01-07", "Begin Market Value": 50058.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50068.0},
+        {"Day": 8, "Perf. Date": "2025-01-08", "Begin Market Value": 50068.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50088.0},
+        {"Day": 9, "Perf. Date": "2025-01-09", "Begin Market Value": 50088.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50122.0},
+        {"Day": 10, "Perf. Date": "2025-01-10", "Begin Market Value": 50122.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50082.0},
+        {"Day": 11, "Perf. Date": "2025-01-11", "Begin Market Value": 50082.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50082.0},
+        {"Day": 12, "Perf. Date": "2025-01-12", "Begin Market Value": 50082.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50116.0},
+        {"Day": 13, "Perf. Date": "2025-01-13", "Begin Market Value": 50116.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50126.0},
+        {"Day": 14, "Perf. Date": "2025-01-14", "Begin Market Value": 50126.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50146.0},
+        {"Day": 15, "Perf. Date": "2025-01-15", "Begin Market Value": 50146.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50166.0},
+        {"Day": 16, "Perf. Date": "2025-01-16", "Begin Market Value": 50166.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50200.0},
+        {"Day": 17, "Perf. Date": "2025-01-17", "Begin Market Value": 50200.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50220.0},
+        {"Day": 18, "Perf. Date": "2025-01-18", "Begin Market Value": 50220.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50230.0},
+        {"Day": 19, "Perf. Date": "2025-01-19", "Begin Market Value": 50230.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50250.0},
+        {"Day": 20, "Perf. Date": "2025-01-20", "Begin Market Value": 50250.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50270.0},
+        {"Day": 21, "Perf. Date": "2025-01-21", "Begin Market Value": 50270.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50304.0},
+        {"Day": 22, "Perf. Date": "2025-01-22", "Begin Market Value": 50304.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50314.0},
+        {"Day": 23, "Perf. Date": "2025-01-23", "Begin Market Value": 50314.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50354.0},
+        {"Day": 24, "Perf. Date": "2025-01-24", "Begin Market Value": 50354.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50388.0},
+        {"Day": 25, "Perf. Date": "2025-01-25", "Begin Market Value": 50388.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50408.0},
+        {"Day": 26, "Perf. Date": "2025-01-26", "Begin Market Value": 50408.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50428.0},
+        {"Day": 27, "Perf. Date": "2025-01-27", "Begin Market Value": 50428.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50438.0},
+        {"Day": 28, "Perf. Date": "2025-01-28", "Begin Market Value": 50438.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50458.0},
+        {"Day": 29, "Perf. Date": "2025-01-29", "Begin Market Value": 50458.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50478.0},
+        {"Day": 30, "Perf. Date": "2025-01-30", "Begin Market Value": 50478.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50478.0},
+        {"Day": 31, "Perf. Date": "2025-01-31", "Begin Market Value": 50478.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 50512.0}
+      ]
+    },
+    {
+      "instrument_id": "Position 2",
+      "meta": {"sector": "Health"},
+      "daily_data": [
+        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 75061.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75061.5},
+        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 75061.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75093.0},
+        {"Day": 3, "Perf. Date": "2025-01-03", "Begin Market Value": 75093.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75061.4},
+        {"Day": 4, "Perf. Date": "2025-01-04", "Begin Market Value": 75061.4, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75081.0},
+        {"Day": 5, "Perf. Date": "2025-01-05", "Begin Market Value": 75081.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75136.0},
+        {"Day": 6, "Perf. Date": "2025-01-06", "Begin Market Value": 75136.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75102.0},
+        {"Day": 7, "Perf. Date": "2025-01-07", "Begin Market Value": 75102.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75233.5},
+        {"Day": 8, "Perf. Date": "2025-01-08", "Begin Market Value": 75233.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75245.5},
+        {"Day": 9, "Perf. Date": "2025-01-09", "Begin Market Value": 75245.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75300.0},
+        {"Day": 10, "Perf. Date": "2025-01-10", "Begin Market Value": 75300.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75393.0},
+        {"Day": 11, "Perf. Date": "2025-01-11", "Begin Market Value": 75393.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75419.0},
+        {"Day": 12, "Perf. Date": "2025-01-12", "Begin Market Value": 75419.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75431.0},
+        {"Day": 13, "Perf. Date": "2025-01-13", "Begin Market Value": 75431.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75464.0},
+        {"Day": 14, "Perf. Date": "2025-01-14", "Begin Market Value": 75464.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75505.5},
+        {"Day": 15, "Perf. Date": "2025-01-15", "Begin Market Value": 75505.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75508.5},
+        {"Day": 16, "Perf. Date": "2025-01-16", "Begin Market Value": 75508.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75503.0},
+        {"Day": 17, "Perf. Date": "2025-01-17", "Begin Market Value": 75503.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75494.0},
+        {"Day": 18, "Perf. Date": "2025-01-18", "Begin Market Value": 75494.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75535.0},
+        {"Day": 19, "Perf. Date": "2025-01-19", "Begin Market Value": 75535.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75545.0},
+        {"Day": 20, "Perf. Date": "2025-01-20", "Begin Market Value": 75545.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75546.0},
+        {"Day": 21, "Perf. Date": "2025-01-21", "Begin Market Value": 75546.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75556.0},
+        {"Day": 22, "Perf. Date": "2025-01-22", "Begin Market Value": 75556.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75590.0},
+        {"Day": 23, "Perf. Date": "2025-01-23", "Begin Market Value": 75590.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75600.0},
+        {"Day": 24, "Perf. Date": "2025-01-24", "Begin Market Value": 75600.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75597.0},
+        {"Day": 25, "Perf. Date": "2025-01-25", "Begin Market Value": 75597.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75612.0},
+        {"Day": 26, "Perf. Date": "2025-01-26", "Begin Market Value": 75612.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75622.0},
+        {"Day": 27, "Perf. Date": "2025-01-27", "Begin Market Value": 75622.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75642.0},
+        {"Day": 28, "Perf. Date": "2025-01-28", "Begin Market Value": 75642.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75674.5},
+        {"Day": 29, "Perf. Date": "2025-01-29", "Begin Market Value": 75674.5, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75680.0},
+        {"Day": 30, "Perf. Date": "2025-01-30", "Begin Market Value": 75680.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75717.0},
+        {"Day": 31, "Perf. Date": "2025-01-31", "Begin Market Value": 75717.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 75768.0}
+      ]
+    }
+  ],
+  "benchmark_groups_data": [
+    {
+      "key": {"sector": "Tech"},
+      "observations": [
+        {"date": "2025-01-31", "return": 0.01, "weight_bop": 0.5}
+      ]
+    },
+    {
+      "key": {"sector": "Health"},
+      "observations": [
+        {"date": "2025-01-31", "return": 0.005, "weight_bop": 0.5}
+      ]
+    }
+  ]
+}
