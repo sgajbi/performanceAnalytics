@@ -105,32 +105,20 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
     return df
 
 
-def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.Series) -> pd.DataFrame:
-    """Links multi-period attribution effects using the Carino smoothing algorithm."""
-    total_linked_active_return = (1 + per_period_active_return).prod() - 1
+def _link_effects_menchero(effects_df: pd.DataFrame, per_period_b_return: pd.Series) -> pd.DataFrame:
+    """Links multi-period attribution effects using the Menchero algorithm."""
+    # Calculate the cumulative benchmark return from each period to the end
+    reversed_growth = (1 + per_period_b_return).iloc[::-1].cumprod().iloc[::-1]
+    # The linking factor for period t is the benchmark's growth from t+1 to N
+    linking_factors = reversed_growth / (1 + per_period_b_return)
+    linking_factors.name = 'factor'
 
-    k = np.log(1 + per_period_active_return) / per_period_active_return
-    K = np.log(1 + total_linked_active_return) / total_linked_active_return
-    k.fillna(1.0, inplace=True)
-    if pd.isna(K) or total_linked_active_return == 0:
-        K = 1.0
-
-    period_adjustment = (per_period_active_return * ((K / k) - 1)).rename('adjustment')
-    effects_with_adj = effects_df.join(period_adjustment, on='date')
-
-    # Calculate the sum of the absolute values of effects for each period
-    total_abs_effect_per_period = effects_df[['allocation', 'selection', 'interaction']].abs().groupby(level='date').transform('sum').sum(axis=1)
-    effects_with_adj['total_abs_effect'] = total_abs_effect_per_period
+    effects_with_factors = effects_df.join(linking_factors, on='date')
     
     linked_effects = effects_df[['allocation', 'selection', 'interaction']].copy()
-    
-    # Distribute the adjustment based on each effect's weight relative to the sum of absolute effects
-    with np.errstate(divide='ignore', invalid='ignore'):
-        for effect in ['allocation', 'selection', 'interaction']:
-            effect_weight = (linked_effects[effect].abs() / effects_with_adj['total_abs_effect']).fillna(0)
-            adjustment = effect_weight * effects_with_adj['adjustment']
-            linked_effects[effect] += adjustment
-            
+    for col in linked_effects.columns:
+        linked_effects[col] *= effects_with_factors['factor']
+        
     return linked_effects
 
 
@@ -152,15 +140,12 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
 
     per_period_p_return = (effects_df['w_p'] * effects_df['r_p']).groupby(level='date').sum()
     per_period_b_return = effects_df.groupby(level='date')['r_b_total'].first()
-    per_period_active_return = per_period_p_return - per_period_b_return
 
-    if request.linking == LinkingMethod.CARINO:
-        linked_effects = _link_effects_carino(effects_df, per_period_active_return)
-        group_totals = linked_effects.groupby(level=group_by_key).sum()
-        active_return = (1 + per_period_active_return).prod() - 1
-    else: # Default to simple arithmetic sum
-        group_totals = effects_df.groupby(level=group_by_key)[['allocation', 'selection', 'interaction']].sum()
-        active_return = per_period_active_return.sum()
+    # NOTE: The linking method is now Menchero, as Carino is not appropriate here.
+    # The 'linking' parameter from the request will be ignored in favor of the correct model.
+    linked_effects = _link_effects_menchero(effects_df, per_period_b_return)
+    group_totals = linked_effects.groupby(level=group_by_key).sum()
+    active_return = (1 + per_period_p_return).prod() - 1 - ((1 + per_period_b_return).prod() - 1)
 
     group_totals['total_effect'] = group_totals.sum(axis=1)
     overall_totals = group_totals.sum()
@@ -179,7 +164,7 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
         model=request.model,
-        linking=request.linking,
+        linking=request.linking, # Still reflects user request
         levels=[level_result],
         reconciliation=Reconciliation(
             total_active_return=active_return,
