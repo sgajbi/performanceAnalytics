@@ -78,10 +78,10 @@ async def calculate_attribution_endpoint(request: AttributionRequest):
     active return into allocation, selection, and interaction effects.
     """
     try:
-        # NOTE: This is a direct call to the engine for Phase 1.
-        # The adapter layer will be integrated in subsequent phases.
         response = run_attribution_calculations(request)
         return response
+    except (NotImplementedError, ValueError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

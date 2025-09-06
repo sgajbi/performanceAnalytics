@@ -8,8 +8,10 @@ from engine.attribution import (
     _calculate_single_period_effects,
     _align_and_prepare_data,
     run_attribution_calculations,
+    _prepare_data_from_instruments,
 )
 from app.models.attribution_requests import AttributionRequest
+from app.models.requests import DailyInputData
 
 
 @pytest.fixture
@@ -40,7 +42,7 @@ def by_group_request_data():
 def test_align_and_prepare_data_by_group(by_group_request_data):
     """Tests the data preparation and alignment logic for a by_group request."""
     request = AttributionRequest.model_validate(by_group_request_data)
-    aligned_df = _align_and_prepare_data(request)
+    aligned_df = _align_and_prepare_data(request, request.portfolio_groups_data)
     assert not aligned_df.empty
     assert aligned_df.index.names == ['date', 'group_0']
 
@@ -74,11 +76,39 @@ def test_run_attribution_calculations_geometric_linking(by_group_request_data):
     """
     request = AttributionRequest.model_validate(by_group_request_data)
     response = run_attribution_calculations(request)
-
-    # Assert that the components are calculated correctly
     assert response.reconciliation.total_active_return == pytest.approx(0.0195438)
     assert response.reconciliation.sum_of_effects == pytest.approx(0.0193728)
-    
-    # Assert that the residual correctly captures the known mathematical difference
     expected_residual = 0.0195438 - 0.0193728
     assert response.reconciliation.residual == pytest.approx(expected_residual)
+
+
+def test_prepare_data_from_instruments():
+    """
+    Tests the aggregation of instrument data into portfolio groups.
+    """
+    daily_data_p = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1025}]
+    daily_data_aapl = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 600, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 624}] # 4% return
+    daily_data_msft = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 400, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 401}] # 0.25% return
+    
+    request_data = {
+        "portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "linking": "none",
+        "portfolio_data": {"report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "NET", "period_type": "YTD", "daily_data": daily_data_p},
+        "instruments_data": [
+            {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "daily_data": daily_data_aapl},
+            {"instrument_id": "MSFT", "meta": {"sector": "Tech"}, "daily_data": daily_data_msft}
+        ],
+        "benchmark_groups_data": []
+    }
+    request = AttributionRequest.model_validate(request_data)
+
+    result_groups = _prepare_data_from_instruments(request)
+    
+    assert len(result_groups) == 1
+    tech_group = result_groups[0]
+    assert tech_group.key == {"sector": "Tech"}
+    
+    obs = tech_group.observations[0]
+    # Total weight should be sum of instrument weights: (600/1000) + (400/1000) = 1.0
+    assert obs['weight_bop'] == pytest.approx(1.0)
+    # Group return is weighted average: (0.6 * 4% + 0.4 * 0.25%) = 2.4% + 0.1% = 2.5%
+    assert obs['return'] == pytest.approx(0.025)
