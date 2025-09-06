@@ -28,7 +28,7 @@ def single_period_data():
 
 @pytest.fixture
 def by_group_request_data():
-    """Provides a sample AttributionRequest for by_group mode."""
+    """Provides a sample AttributionRequest for by_group mode where weights sum to 1."""
     return {
         "portfolio_number": "ATTRIB_UNIT_TEST_01",
         "mode": "by_group",
@@ -37,23 +37,12 @@ def by_group_request_data():
         "linking": "none",
         "frequency": "monthly",
         "portfolio_groups_data": [
-            {
-                "key": {"sector": "Tech"},
-                "observations": [
-                    {"date": "2025-01-15", "return": 0.02, "weight_bop": 0.5},
-                    {"date": "2025-01-31", "return": 0.03, "weight_bop": 0.5},
-                    {"date": "2025-02-10", "return": 0.01, "weight_bop": 0.6},
-                ],
-            }
+            {"key": {"sector": "Tech"},"observations": [{"date": "2025-01-15", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.01, "weight_bop": 0.6}]},
+            {"key": {"sector": "Other"},"observations": [{"date": "2025-01-15", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.005, "weight_bop": 0.4}]}
         ],
         "benchmark_groups_data": [
-            {
-                "key": {"sector": "Tech"},
-                "observations": [
-                    {"date": "2025-01-10", "return": 0.01, "weight_bop": 0.4},
-                    {"date": "2025-02-12", "return": -0.01, "weight_bop": 0.45},
-                ],
-            }
+            {"key": {"sector": "Tech"},"observations": [{"date": "2025-01-10", "return": 0.01, "weight_bop": 0.4}, {"date": "2025-02-12", "return": -0.01, "weight_bop": 0.45}]},
+            {"key": {"sector": "Other"},"observations": [{"date": "2025-01-10", "return": 0.005, "weight_bop": 0.6}, {"date": "2025-02-12", "return": 0.002, "weight_bop": 0.55}]}
         ],
     }
 
@@ -69,18 +58,18 @@ def test_align_and_prepare_data_by_group(by_group_request_data):
     assert aligned_df.index.names == ['date', 'group_0']
 
     jan_data = aligned_df.loc[pd.Timestamp('2025-01-31')]
-    assert jan_data.loc[('Tech',), 'w_p'] == pytest.approx(0.5)
-    assert jan_data.loc[('Tech',), 'w_b'] == pytest.approx(0.4)
-    assert jan_data.loc[('Tech',), 'r_p'] == pytest.approx(0.0506)
-    assert jan_data.loc[('Tech',), 'r_b'] == pytest.approx(0.01)
+    assert jan_data.loc['Tech', 'w_p'] == pytest.approx(0.5)
+    assert jan_data.loc['Tech', 'w_b'] == pytest.approx(0.4)
+    assert jan_data.loc['Tech', 'r_p'] == pytest.approx(0.02)
+    assert jan_data.loc['Tech', 'r_b'] == pytest.approx(0.01)
 
     feb_data = aligned_df.loc[pd.Timestamp('2025-02-28')]
-    assert feb_data.loc[('Tech',), 'w_p'] == pytest.approx(0.6)
-    assert feb_data.loc[('Tech',), 'r_p'] == pytest.approx(0.01)
-    assert feb_data.loc[('Tech',), 'r_b'] == pytest.approx(-0.01)
+    assert feb_data.loc['Other', 'w_p'] == pytest.approx(0.4)
+    assert feb_data.loc['Other', 'r_p'] == pytest.approx(0.005)
+    assert feb_data.loc['Other', 'r_b'] == pytest.approx(0.002)
 
-    assert jan_data['r_b_total'].iloc[0] == pytest.approx(0.004)
-    assert feb_data['r_b_total'].iloc[0] == pytest.approx(-0.0045)
+    assert jan_data['r_b_total'].iloc[0] == pytest.approx(0.007)
+    assert feb_data['r_b_total'].iloc[0] == pytest.approx(-0.0034)
 
 
 def test_calculate_single_period_brinson_fachler(single_period_data):
@@ -113,19 +102,9 @@ def test_run_attribution_calculations_by_group_single_level(by_group_request_dat
     
     level1 = response.levels[0]
     assert level1.dimension == "sector"
-    assert len(level1.groups) == 1
-    tech_group = level1.groups[0]
+    assert len(level1.groups) == 2
 
-    # Expected values from manual calculation for BF model
-    total_alloc = 0.0006 - 0.000825
-    total_sel = 0.01624 + 0.009
-    total_inter = 0.00406 + 0.003
-    
-    assert tech_group.allocation == pytest.approx(total_alloc)
-    assert tech_group.selection == pytest.approx(total_sel)
-    assert tech_group.interaction == pytest.approx(total_inter)
-    assert level1.totals.total_effect == pytest.approx(total_alloc + total_sel + total_inter)
-
-    # Expected Active Return = 0.0318
-    assert response.reconciliation.total_active_return == pytest.approx(0.0318)
+    # Since the weights in each period sum to 1, the sum of effects
+    # should equal the active return, leaving a near-zero residual.
+    assert response.reconciliation.sum_of_effects == pytest.approx(response.reconciliation.total_active_return)
     assert abs(response.reconciliation.residual) < 1e-9

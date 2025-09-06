@@ -75,13 +75,13 @@ def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     portfolio_weights = resampler_p['weight_bop'].first()
     benchmark_weights = resampler_b['weight_bop'].first()
 
-    df_p = pd.concat([portfolio_returns.stack(group_cols), portfolio_weights.stack(group_cols)], axis=1).rename(columns={0: 'r_p', 1: 'w_p'})
-    df_b = pd.concat([benchmark_returns.stack(group_cols), benchmark_weights.stack(group_cols)], axis=1).rename(columns={0: 'r_b', 1: 'w_b'})
-
-    df_p.index.names = ['date'] + group_cols
-    df_b.index.names = ['date'] + group_cols
+    df_p = pd.concat([portfolio_returns.stack(group_cols), portfolio_weights.stack(group_cols)], axis=1)
+    df_p.columns = ['r_p', 'w_p']
+    df_b = pd.concat([benchmark_returns.stack(group_cols), benchmark_weights.stack(group_cols)], axis=1)
+    df_b.columns = ['r_b', 'w_b']
 
     aligned_df = pd.merge(df_p, df_b, left_index=True, right_index=True, how='outer').fillna(0.0)
+    aligned_df.index.names = ['date'] + group_cols
 
     total_benchmark_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby(level='date').sum()
     aligned_df = aligned_df.join(total_benchmark_return.rename('r_b_total'), on='date')
@@ -142,10 +142,11 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         totals=AttributionLevelTotals(**overall_totals.to_dict()),
     )
 
-    # NOTE: Simple sum, as linking is not yet implemented.
-    r_p_total = (aligned_df['w_p'] * aligned_df['r_p']).sum()
-    r_b_total = (aligned_df['w_b'] * aligned_df['r_b']).sum()
-    active_return = r_p_total - r_b_total
+    # Calculate total returns for each period to get active return
+    per_period_p_return = (aligned_df['w_p'] * aligned_df['r_p']).groupby('date').sum()
+    per_period_b_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby('date').sum()
+    per_period_active_return = per_period_p_return - per_period_b_return
+    active_return = per_period_active_return.sum()
 
     return AttributionResponse(
         calculation_id=request.calculation_id,
