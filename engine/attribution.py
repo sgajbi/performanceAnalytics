@@ -148,13 +148,17 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
     return df
 
 
-def _link_effects_menchero(effects_df: pd.DataFrame, per_period_b_return: pd.Series) -> pd.DataFrame:
-    """Links multi-period attribution effects using the Menchero algorithm."""
-    reversed_growth = (1 + per_period_b_return).iloc[::-1].cumprod().iloc[::-1]
-    linking_factors = reversed_growth / (1 + per_period_b_return); linking_factors.name = 'factor'
-    effects_with_factors = effects_df.join(linking_factors, on='date')
+def _link_effects_top_down(effects_df: pd.DataFrame, geometric_total_ar: float, arithmetic_total_ar: float) -> pd.DataFrame:
+    """Links multi-period effects by scaling the arithmetic sum to match the geometric total."""
+    if arithmetic_total_ar == 0:
+        return effects_df # Avoid division by zero
+    
+    scaling_factor = geometric_total_ar / arithmetic_total_ar
+    
     linked_effects = effects_df[['allocation', 'selection', 'interaction']].copy()
-    for col in linked_effects.columns: linked_effects[col] *= effects_with_factors['factor']
+    for col in linked_effects.columns:
+        linked_effects[col] *= scaling_factor
+        
     return linked_effects
 
 
@@ -178,17 +182,26 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
     effects_df = _calculate_single_period_effects(aligned_df, request.model)
     per_period_p_return = (effects_df['w_p'] * effects_df['r_p']).groupby(level='date').sum()
     per_period_b_return = effects_df.groupby(level='date')['r_b_total'].first()
+    per_period_active_return = per_period_p_return - per_period_b_return
 
     if request.linking != LinkingMethod.NONE:
-        linked_effects = _link_effects_menchero(effects_df, per_period_b_return)
-        group_totals = linked_effects.groupby(level=group_by_key).sum()
-        active_return = (1 + per_period_p_return).prod() - 1 - ((1 + per_period_b_return).prod() - 1)
+        geometric_active_return = (1 + per_period_p_return).prod() - 1 - ((1 + per_period_b_return).prod() - 1)
+        arithmetic_active_return = per_period_active_return.sum()
+        scaled_effects = _link_effects_top_down(effects_df, geometric_active_return, arithmetic_active_return)
+        group_totals = scaled_effects.groupby(level=group_by_key).sum()
+        active_return = geometric_active_return
     else: 
         group_totals = effects_df.groupby(level=group_by_key)[['allocation', 'selection', 'interaction']].sum()
-        active_return = (per_period_p_return - per_period_b_return).sum()
+        active_return = per_period_active_return.sum()
 
     group_totals['total_effect'] = group_totals.sum(axis=1)
     overall_totals = group_totals.sum()
+    
+    # Format to percentages
+    group_totals *= 100
+    overall_totals *= 100
+    active_return *= 100
+
     group_results = []
     for group_name, row in group_totals.iterrows():
         group_results.append(AttributionGroupResult(key={request.group_by[0]: group_name}, **row.to_dict()))

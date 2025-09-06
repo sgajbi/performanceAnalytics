@@ -78,7 +78,7 @@ def calculate_position_contribution(
             
             ror_port_t = port_daily_ror.iloc[i]
             k_t = k_daily.iloc[i]
-            
+        
             adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
             smoothed_c = c_p_t + adjustment
             
@@ -92,7 +92,6 @@ def calculate_position_contribution(
     daily_weights_df = pd.DataFrame(daily_weights_list)
     total_smoothed_contributions = contrib_df[position_ids].sum()
 
-    # FIX: Implement RFC-004 Adjusted Average Weight Calculation
     is_reset = portfolio_results[PortfolioColumns.PERF_RESET] == 1
     last_reset_idx = -1
     if is_reset.any():
@@ -106,25 +105,24 @@ def calculate_position_contribution(
         average_weights = total_valid_weights / adjusted_day_count
     else:
         average_weights = pd.Series(0.0, index=position_ids)
-    # --- End FIX ---
 
     final_results = {}
     for pos_id in position_ids:
         pos_total_return = (1 + (position_results_map[pos_id][PortfolioColumns.DAILY_ROR] / 100)).prod() - 1
         
         final_results[pos_id] = {
-            "total_contribution": total_smoothed_contributions[pos_id],
+            "total_contribution": total_smoothed_contributions[pos_id] * 100,
             "average_weight": average_weights.get(pos_id, 0.0),
-            "total_return": pos_total_return
+            "total_return": pos_total_return * 100
         }
 
-    sum_of_contributions = sum(data["total_contribution"] for data in final_results.values())
+    sum_of_contributions = sum(data["total_contribution"] / 100 for data in final_results.values())
     residual = port_total_ror - sum_of_contributions
     
     sum_of_weights = sum(data["average_weight"] for data in final_results.values())
     if sum_of_weights != 0:
         for pos_id in position_ids:
             weight_proportion = final_results[pos_id]["average_weight"] / sum_of_weights
-            final_results[pos_id]["total_contribution"] += residual * weight_proportion
+            final_results[pos_id]["total_contribution"] += residual * weight_proportion * 100
 
     return final_results

@@ -8,10 +8,6 @@ def calculate_money_weighted_return(
 ) -> float:
     """
     Calculates the money-weighted return using a simplified Modified Dietz formula.
-
-    Formula: (Ending MV - Beginning MV - Net Cash Flow) / (Beginning MV + Net Cash Flow)
-    Note: A true Modified Dietz would weight cash flows by time. This is a simplified
-    version based on the portfolio-analytics-system's initial implementation.
     """
     net_cash_flow = sum(cf['amount'] for cf in cash_flows)
 
@@ -22,4 +18,4 @@ def calculate_money_weighted_return(
 
     numerator = ending_mv - beginning_mv - net_cash_flow
     
-    return numerator / denominator
+    return (numerator / denominator) * 100

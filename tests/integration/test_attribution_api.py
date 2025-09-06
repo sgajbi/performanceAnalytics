@@ -40,8 +40,8 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
     level = response_data["levels"][0]
     tech_group = next(g for g in level["groups"] if g["key"]["sector"] == "Tech")
     
-    assert response_data["reconciliation"]["total_active_return"] == pytest.approx(0.001)
-    assert tech_group["selection"] == pytest.approx(0.0025)
+    assert response_data["reconciliation"]["total_active_return"] == pytest.approx(0.1)
+    assert tech_group["selection"] == pytest.approx(0.25)
 
 
 @pytest.mark.parametrize(
@@ -50,6 +50,7 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
         (InvalidEngineInputError, 400),
         (EngineCalculationError, 500),
         (ValueError, 400),
+        (NotImplementedError, 400),
         (Exception, 500)
     ]
 )

@@ -8,14 +8,11 @@ from engine.mwr import calculate_money_weighted_return
 @pytest.mark.parametrize(
     "beginning_mv, ending_mv, cash_flows, expected_mwr",
     [
-        # Simple case: No cash flows
-        (100.0, 110.0, [], 0.10),
-        # Case with positive and negative cash flows
+        (100.0, 110.0, [], 10.0),
         (100000.0, 115000.0, [
             {"amount": 10000.0, "date": "2025-03-15"},
             {"amount": -5000.0, "date": "2025-09-20"},
-        ], 0.09523809),
-        # Case where denominator would be zero
+        ], 9.523809),
         (100.0, 110.0, [{"amount": -100.0, "date": "2025-01-01"}], 0.0),
     ]
 )

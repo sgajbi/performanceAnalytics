@@ -9,6 +9,7 @@ from engine.attribution import (
     _align_and_prepare_data,
     run_attribution_calculations,
     _prepare_data_from_instruments,
+    _link_effects_top_down,
 )
 from app.models.attribution_requests import AttributionRequest
 
@@ -69,16 +70,11 @@ def test_run_attribution_calculations_arithmetic_linking(by_group_request_data):
 
 
 def test_run_attribution_calculations_geometric_linking(by_group_request_data):
-    """
-    Tests the main orchestrator with Menchero linking, verifying the components
-    and the final, expected residual.
-    """
+    """Tests the main orchestrator with top-down geometric linking enabled."""
     request = AttributionRequest.model_validate(by_group_request_data)
     response = run_attribution_calculations(request)
-    assert response.reconciliation.total_active_return == pytest.approx(0.0195438)
-    assert response.reconciliation.sum_of_effects == pytest.approx(0.0193728)
-    expected_residual = 0.0195438 - 0.0193728
-    assert response.reconciliation.residual == pytest.approx(expected_residual)
+    assert abs(response.reconciliation.residual) < 1e-9
+    assert response.reconciliation.sum_of_effects == pytest.approx(response.reconciliation.total_active_return)
 
 
 def test_prepare_data_from_instruments():
@@ -114,7 +110,7 @@ def test_prepare_data_from_instruments_missing_portfolio_data():
     """
     Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode.
     """
-    request_data = {"portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "instruments_data": [], "benchmark_groups_data": []}
+    request_data = {"portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "instruments_data": [], "benchmark_groups_data": [], "linking": "none"}
     request = AttributionRequest.model_validate(request_data)
     with pytest.raises(ValueError, match="'portfolio_data' and 'instruments_data' are required"):
         _prepare_data_from_instruments(request)

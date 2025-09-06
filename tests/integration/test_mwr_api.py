@@ -29,6 +29,6 @@ def test_calculate_mwr_endpoint_happy_path(client):
     response_data = response.json()
     assert response_data["portfolio_number"] == "MWR_TEST_01"
     
-    # (115000 - 100000 - 5000) / (100000 + 5000) = 10000 / 105000 = ~0.095238
-    expected_mwr = 0.09523809
+    # Engine now returns a percentage
+    expected_mwr = 9.523809
     assert response_data["money_weighted_return"] == pytest.approx(expected_mwr)
