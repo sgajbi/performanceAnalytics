@@ -112,7 +112,7 @@ def calculate_position_contribution(
         
         final_results[pos_id] = {
             "total_contribution": total_smoothed_contributions[pos_id] * 100,
-            "average_weight": average_weights.get(pos_id, 0.0),
+            "average_weight": average_weights.get(pos_id, 0.0) * 100,
             "total_return": pos_total_return * 100
         }
 

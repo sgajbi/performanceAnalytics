@@ -150,7 +150,7 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
     assert total_contribution_sum == pytest.approx(port_total_return)
 
     total_average_weight = sum(data["average_weight"] for data in result.values())
-    assert total_average_weight == pytest.approx(1.0)
+    assert total_average_weight == pytest.approx(100.0)
 
     assert result["Stock_A"]["total_contribution"] == pytest.approx(1.95905395)
     assert result["Stock_B"]["total_contribution"] == pytest.approx(0.99421707)
@@ -173,4 +173,4 @@ def test_contribution_adjusts_average_weight_for_nip_day(robust_nip_day_scenario
     """
     portfolio_results, position_results_map = robust_nip_day_scenario
     result = calculate_position_contribution(portfolio_results, position_results_map)
-    assert result["Stock_A"]["average_weight"] == pytest.approx(0.5625)
+    assert result["Stock_A"]["average_weight"] == pytest.approx(56.25)
