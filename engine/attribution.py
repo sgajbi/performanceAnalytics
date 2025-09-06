@@ -117,13 +117,12 @@ def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.
     period_adjustment = (per_period_active_return * ((K / k) - 1)).rename('adjustment')
     effects_with_adj = effects_df.join(period_adjustment, on='date')
 
-    total_period_effect = effects_df['allocation'] + effects_df['selection'] + effects_df['interaction']
-    
+    total_period_effect = (effects_df['allocation'] + effects_df['selection'] + effects_df['interaction'])
+    effects_with_adj['total_period_effect'] = total_period_effect.groupby(level='date').transform('sum')
+
     linked_effects = effects_df[['allocation', 'selection', 'interaction']].copy()
     with np.errstate(divide='ignore', invalid='ignore'):
-        effect_weights = (linked_effects.abs()
-                          .div(total_period_effect.abs(), level='date')
-                          .fillna(0))
+        effect_weights = (linked_effects.div(effects_with_adj['total_period_effect'], axis=0).fillna(0))
 
     adjustments = effect_weights.mul(effects_with_adj['adjustment'], axis=0)
     linked_effects += adjustments
