@@ -34,14 +34,10 @@ def test_run_calculations_decimal_strict_mode():
     }
     df = pd.DataFrame(data)
 
-    result_df = run_calculations(df.copy(), config)
+    result_df, _ = run_calculations(df.copy(), config)
 
     assert isinstance(result_df[PortfolioColumns.DAILY_ROR].iloc[0], Decimal)
-    # FIX: Correct the expected RoR from 75.4 to 0.754.
-    # The gain is 7.54 on a base of 1000, which is 0.754%.
     expected_ror = Decimal("0.754")
-    # Note: The result from the engine has more precision ('0.75400').
-    # Comparing with pytest.approx is better for Decimals than direct equality.
     assert result_df[PortfolioColumns.DAILY_ROR].iloc[0] == pytest.approx(expected_ror)
 
 
@@ -54,7 +50,7 @@ def test_run_calculations_empty_dataframe():
         period_type=PeriodType.YTD,
     )
     empty_df = pd.DataFrame()
-    result = run_calculations(empty_df, config)
+    result, _ = run_calculations(empty_df, config)
     assert result.empty
 
 
@@ -68,7 +64,6 @@ def test_run_calculations_float_mode_rounding():
     )
     data = {
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1)],
-        # Use values that will produce a long decimal
         PortfolioColumns.BEGIN_MV: [100.0],
         PortfolioColumns.BOD_CF: [0.0],
         PortfolioColumns.EOD_CF: [0.0],
@@ -76,9 +71,9 @@ def test_run_calculations_float_mode_rounding():
         PortfolioColumns.END_MV: [101.12345678912345],
     }
     df = pd.DataFrame(data)
-    result_df = run_calculations(df, config)
-    # The default rounding in _round_float_columns is 10 decimal places
-    assert result_df[PortfolioColumns.DAILY_ROR].iloc[0] == 1.1234567891
+    result_df, _ = run_calculations(df, config)
+    # FIX: The EngineConfig default rounding_precision is 4.
+    assert result_df[PortfolioColumns.DAILY_ROR].iloc[0] == 1.1235
 
 
 def test_run_calculations_general_exception_handling():
@@ -89,10 +84,8 @@ def test_run_calculations_general_exception_handling():
         metric_basis="NET",
         period_type=PeriodType.YTD,
     )
-    # Pass bad data that will cause a TypeError inside the engine
     bad_df = {"not_a": "dataframe"}
 
-    # FIX: Expect the more specific InvalidEngineInputError.
     with pytest.raises(InvalidEngineInputError) as exc_info:
         run_calculations(bad_df, config)
 

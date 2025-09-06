@@ -3,6 +3,7 @@ from typing import Dict, List, Any, Optional
 from uuid import UUID
 from pydantic import BaseModel
 from common.enums import AttributionModel, LinkingMethod
+from core.envelope import Meta, Diagnostics, Audit
 
 
 class AttributionGroupResult(BaseModel):
@@ -45,3 +46,8 @@ class AttributionResponse(BaseModel):
     linking: LinkingMethod
     levels: List[AttributionLevelResult]
     reconciliation: Reconciliation
+
+    # --- Shared Envelope Fields ---
+    meta: Optional[Meta] = None
+    diagnostics: Optional[Diagnostics] = None
+    audit: Optional[Audit] = None

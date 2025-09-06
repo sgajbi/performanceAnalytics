@@ -41,7 +41,8 @@ def test_engine_characterization_scenarios(scenario_func, scenario_name):
     engine_config, input_df, expected_df = scenario_func()
 
     # 2. Act
-    result_df = run_calculations(input_df, engine_config)
+    # FIX: Unpack the tuple returned by run_calculations
+    result_df, _ = run_calculations(input_df, engine_config)
 
     # 3. Assert
     # Select only the columns we want to compare from the result

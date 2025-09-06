@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.core.constants import *
 from common.enums import Frequency
+from core.envelope import Audit, Diagnostics, Meta
 
 
 class PerformanceSummary(BaseModel):
@@ -32,3 +33,8 @@ class PerformanceResponse(BaseModel):
     calculation_id: UUID
     portfolio_number: str
     breakdowns: PerformanceBreakdown
+
+    # --- Shared Envelope Fields (Now Mandatory) ---
+    meta: Meta
+    diagnostics: Diagnostics
+    audit: Audit

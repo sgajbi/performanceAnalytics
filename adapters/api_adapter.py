@@ -11,7 +11,7 @@ from app.core.constants import (
 from app.models.requests import PerformanceRequest
 from app.models.responses import PerformanceBreakdown, PerformanceResultItem, PerformanceSummary
 from common.enums import Frequency
-from engine.config import EngineConfig
+from engine.config import EngineConfig, PrecisionMode
 from engine.schema import API_TO_ENGINE_MAP, ENGINE_TO_API_MAP, PortfolioColumns
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 def create_engine_config(request: PerformanceRequest) -> EngineConfig:
     """Creates an EngineConfig object from an API PerformanceRequest."""
+    # This function now reads the new precision and rounding fields from the request.
     return EngineConfig(
         performance_start_date=request.performance_start_date,
         report_start_date=request.report_start_date,
@@ -26,6 +27,7 @@ def create_engine_config(request: PerformanceRequest) -> EngineConfig:
         metric_basis=request.metric_basis,
         period_type=request.period_type,
         rounding_precision=request.rounding_precision,
+        precision_mode=PrecisionMode(request.precision_mode),
     )
 
 
@@ -61,7 +63,6 @@ def format_breakdowns_for_response(
         for i, result_item in enumerate(results):
             summary_data = result_item["summary"]
 
-            # FIX: Pydantic requires keys matching the ALIASES for validation here.
             pydantic_summary_data = {
                 BEGIN_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.BEGIN_MV),
                 END_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.END_MV),

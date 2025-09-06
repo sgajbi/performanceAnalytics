@@ -14,6 +14,7 @@ from app.core.constants import (
     PERF_DATE_FIELD,
 )
 from common.enums import Frequency, PeriodType
+from core.envelope import Annualization, Calendar, Flags, Output, Periods
 
 
 class DailyInputData(BaseModel):
@@ -37,3 +38,13 @@ class PerformanceRequest(BaseModel):
     frequencies: List[Frequency] = [Frequency.DAILY]
     rounding_precision: int = 4
     daily_data: List[DailyInputData]
+
+    # --- Shared Envelope Fields (Optional) ---
+    as_of: Optional[date] = None
+    currency: str = "USD"
+    precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
+    calendar: Calendar = Field(default_factory=Calendar)
+    annualization: Annualization = Field(default_factory=Annualization)
+    periods: Optional[Periods] = None
+    output: Output = Field(default_factory=Output)
+    flags: Flags = Field(default_factory=Flags)

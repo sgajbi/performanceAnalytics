@@ -13,8 +13,8 @@ class PrecisionMode(str, Enum):
     - FLOAT64: Uses standard NumPy float64 for high performance.
     - DECIMAL_STRICT: Uses Python's Decimal type for auditable precision.
     """
-    FLOAT64 = "float64"
-    DECIMAL_STRICT = "decimal_strict"
+    FLOAT64 = "FLOAT64"
+    DECIMAL_STRICT = "DECIMAL_STRICT"
 
 
 @dataclass(frozen=True)

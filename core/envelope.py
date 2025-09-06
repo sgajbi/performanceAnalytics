@@ -1,0 +1,104 @@
+# core/envelope.py
+from datetime import date
+from typing import Dict, List, Literal, Optional
+from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field, model_validator
+
+
+# --- Shared Request Components ---
+class Calendar(BaseModel):
+    type: Literal["BUSINESS", "NATURAL"] = "BUSINESS"
+    trading_calendar: Optional[str] = "NYSE"
+
+
+class Annualization(BaseModel):
+    enabled: bool = False
+    basis: Literal["BUS/252", "ACT/365", "ACT/ACT"] = "BUS/252"
+    periods_per_year: Optional[int] = None
+
+
+class ExplicitPeriod(BaseModel):
+    start: date
+    end: date
+
+
+class RollingPeriod(BaseModel):
+    months: Optional[int] = None
+    days: Optional[int] = None
+
+    @model_validator(mode="after")
+    def check_exclusive_fields(self) -> "RollingPeriod":
+        if not (self.months is None) ^ (self.days is None):
+            raise ValueError('Exactly one of "months" or "days" must be specified for rolling period.')
+        return self
+
+
+class Periods(BaseModel):
+    type: Literal["YTD", "QTD", "MTD", "WTD", "Y1", "Y3", "Y5", "ITD", "ROLLING", "EXPLICIT"] = "EXPLICIT"
+    explicit: Optional[ExplicitPeriod] = None
+    rolling: Optional[RollingPeriod] = None
+
+    @model_validator(mode="after")
+    def check_conditional_fields(self) -> "Periods":
+        if self.type == "EXPLICIT" and self.explicit is None:
+            raise ValueError('"explicit" period definition is required when type is "EXPLICIT"')
+        if self.type == "ROLLING" and self.rolling is None:
+            raise ValueError('"rolling" period definition is required when type is "ROLLING"')
+        return self
+
+
+class Output(BaseModel):
+    include_timeseries: bool = False
+    include_cumulative: bool = False
+    top_n: Optional[int] = 20
+
+
+class Flags(BaseModel):
+    fail_fast: bool = False
+
+
+class BaseRequest(BaseModel):
+    """Base Pydantic model for all performance-related API requests."""
+
+    calculation_id: UUID = Field(default_factory=uuid4)
+    as_of: date
+    currency: str = "USD"
+    precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
+    rounding_precision: int = 6
+    calendar: Calendar = Field(default_factory=Calendar)
+    annualization: Annualization = Field(default_factory=Annualization)
+    periods: Periods
+    output: Output = Field(default_factory=Output)
+    flags: Flags = Field(default_factory=Flags)
+
+
+# --- Shared Response Components ---
+class Meta(BaseModel):
+    calculation_id: UUID
+    engine_version: str
+    precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"]
+    annualization: Annualization
+    calendar: Calendar
+    periods: Dict
+
+
+class Diagnostics(BaseModel):
+    nip_days: int
+    reset_days: int
+    effective_period_start: date
+    notes: List[str] = Field(default_factory=list)
+
+
+class Audit(BaseModel):
+    sum_of_parts_vs_total_bp: Optional[float] = None
+    residual_applied_bp: Optional[float] = None
+    counts: Dict[str, int] = Field(default_factory=dict)
+
+
+class BaseResponse(BaseModel):
+    """Base Pydantic model for all performance-related API responses."""
+
+    meta: Meta
+    diagnostics: Diagnostics
+    audit: Audit
