@@ -44,7 +44,6 @@ def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
     assert "calculation_id" in response_data
     assert "breakdowns" in response_data
 
-    # Assert that the new shared footer is present and populated
     assert "meta" in response_data
     assert response_data["meta"]["engine_version"] is not None
     assert response_data["meta"]["precision_mode"] == "FLOAT64"
@@ -65,7 +64,6 @@ def test_calculate_twr_endpoint_decimal_strict_mode(client):
     base_path = Path(__file__).parent
     input_data = load_json_from_file(base_path / "../../sampleInput.json")
 
-    # Override settings for this specific test
     input_data["calculation_id"] = str(uuid4())
     input_data["frequencies"] = ["daily"]
     input_data["precision_mode"] = "DECIMAL_STRICT"
@@ -75,10 +73,8 @@ def test_calculate_twr_endpoint_decimal_strict_mode(client):
     response_data = response.json()
 
     assert response_data["meta"]["precision_mode"] == "DECIMAL_STRICT"
-    # Verify a calculated value has high precision (is not a standard float)
-    daily_ror = response_data["breakdowns"]["daily"][2]["summary"]["Final Cumulative ROR %"]
-    # In strict mode, the output is a string that can be cast to Decimal.
-    # FIX: The expected value in the original test was incorrect. The engine is correct.
+    # FIX: The test should check for the new, default field name.
+    daily_ror = response_data["breakdowns"]["daily"][2]["summary"]["period_return_pct"]
     assert Decimal(str(daily_ror)) == pytest.approx(Decimal("0.4558139535"))
 
 
