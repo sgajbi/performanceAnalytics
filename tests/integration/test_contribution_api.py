@@ -50,8 +50,14 @@ def test_contribution_endpoint_error_handling(client, mocker):
     """Tests that a generic server error is raised for calculation failures."""
     mocker.patch('engine.contribution.calculate_position_contribution', side_effect=EngineCalculationError("Test Error"))
     
-    # A minimal payload is needed to trigger the endpoint
-    payload = { "portfolio_number": "ERROR", "portfolio_data": {}, "positions_data": []}
+    # A minimal valid payload is needed to trigger the endpoint
+    payload = {
+        "portfolio_number": "ERROR",
+        "portfolio_data": {
+            "report_start_date": "2025-01-01", "report_end_date": "2025-01-02", "period_type": "ITD", "metric_basis": "NET", "daily_data": []
+        },
+        "positions_data": []
+    }
     response = client.post("/performance/contribution", json=payload)
     
     assert response.status_code == 500
