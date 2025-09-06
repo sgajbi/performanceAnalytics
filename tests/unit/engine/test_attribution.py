@@ -63,15 +63,15 @@ def test_align_and_prepare_data_by_group(by_group_request_data):
     assert aligned_df.index.names == ['date', 'group_0']
 
     jan_data = aligned_df.loc[pd.Timestamp('2025-01-31')]
-    assert jan_data.loc[('Tech',), 'w_p'] == pytest.approx(0.5)
-    assert jan_data.loc[('Tech',), 'w_b'] == pytest.approx(0.4)
-    assert jan_data.loc[('Tech',), 'r_p'] == pytest.approx(0.0506) # (1.02*1.03)-1
-    assert jan_data.loc[('Tech',), 'r_b'] == pytest.approx(0.01)
+    assert jan_data.loc['Tech', 'w_p'] == pytest.approx(0.5)
+    assert jan_data.loc['Tech', 'w_b'] == pytest.approx(0.4)
+    assert jan_data.loc['Tech', 'r_p'] == pytest.approx(0.0506) # (1.02*1.03)-1
+    assert jan_data.loc['Tech', 'r_b'] == pytest.approx(0.01)
 
     feb_data = aligned_df.loc[pd.Timestamp('2025-02-28')]
-    assert feb_data.loc[('Tech',), 'w_p'] == pytest.approx(0.6)
-    assert feb_data.loc[('Tech',), 'r_p'] == pytest.approx(0.01)
-    assert feb_data.loc[('Tech',), 'r_b'] == pytest.approx(-0.01)
+    assert feb_data.loc['Tech', 'w_p'] == pytest.approx(0.6)
+    assert feb_data.loc['Tech', 'r_p'] == pytest.approx(0.01)
+    assert feb_data.loc['Tech', 'r_b'] == pytest.approx(-0.01)
 
     assert jan_data['r_b_total'].iloc[0] == pytest.approx(0.004) # 0.4 * 0.01
     assert feb_data['r_b_total'].iloc[0] == pytest.approx(-0.0045) # 0.45 * -0.01

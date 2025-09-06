@@ -75,8 +75,8 @@ def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     portfolio_weights = resampler_p['weight_bop'].first()
     benchmark_weights = resampler_b['weight_bop'].first()
 
-    df_p = pd.concat([portfolio_returns.stack(level=list(range(1, len(group_by) + 1))), portfolio_weights.stack(level=list(range(1, len(group_by) + 1)))], axis=1).rename(columns={0: 'r_p', 1: 'w_p'})
-    df_b = pd.concat([benchmark_returns.stack(level=list(range(1, len(group_by) + 1))), benchmark_weights.stack(level=list(range(1, len(group_by) + 1)))], axis=1).rename(columns={0: 'r_b', 1: 'w_b'})
+    df_p = pd.concat([portfolio_returns.stack(), portfolio_weights.stack()], axis=1).rename(columns={0: 'r_p', 1: 'w_p'})
+    df_b = pd.concat([benchmark_returns.stack(), benchmark_weights.stack()], axis=1).rename(columns={0: 'r_b', 1: 'w_b'})
 
     df_p.index.names = ['date'] + group_cols
     df_b.index.names = ['date'] + group_cols
