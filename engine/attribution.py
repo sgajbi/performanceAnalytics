@@ -39,7 +39,7 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         metric_basis=request.portfolio_data.metric_basis,
         period_type=PeriodType.ITD,
     )
-    
+
     portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
     portfolio_df[PortfolioColumns.PERF_DATE] = pd.to_datetime(portfolio_df[PortfolioColumns.PERF_DATE])
     portfolio_df = portfolio_df.set_index(PortfolioColumns.PERF_DATE)
@@ -49,14 +49,15 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     for inst in request.instruments_data:
         inst_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in inst.daily_data])
         if inst_df.empty: continue
-        
-        inst_results = run_calculations(inst_df.copy(), twr_config)
+
+        # FIX: Unpack the tuple returned by run_calculations
+        inst_results, _ = run_calculations(inst_df.copy(), twr_config)
         inst_results[PortfolioColumns.PERF_DATE] = pd.to_datetime(inst_results[PortfolioColumns.PERF_DATE])
         inst_results = inst_results.set_index(PortfolioColumns.PERF_DATE)
-        
+
         inst_bop_mv = inst_results[PortfolioColumns.BEGIN_MV] + inst_results[PortfolioColumns.BOD_CF]
         inst_results['weight_bop'] = inst_bop_mv / portfolio_bop_mv
-        
+
         for key, value in inst.meta.items():
             inst_results[key] = value
         all_instruments.append(inst_results.reset_index())
@@ -65,18 +66,18 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
 
     full_df = pd.concat(all_instruments)
     group_cols = request.group_by
-    
+
     full_df['weighted_ror'] = (full_df[PortfolioColumns.DAILY_ROR] / 100) * full_df['weight_bop']
-    
+
     grouped = full_df.groupby([PortfolioColumns.PERF_DATE] + group_cols)
     group_weights = grouped['weight_bop'].sum()
     group_weighted_ror = grouped['weighted_ror'].sum()
-    
+
     with np.errstate(divide='ignore', invalid='ignore'):
         group_returns = (group_weighted_ror / group_weights).fillna(0.0)
 
     aggregated_panel = pd.DataFrame({'return': group_returns, 'weight_bop': group_weights}).reset_index()
-    
+
     output_groups = []
     for keys, group_df in aggregated_panel.groupby(group_cols):
         key_dict = {group_cols[i]: key_val for i, key_val in enumerate(keys if isinstance(keys, tuple) else [keys])}

@@ -1,12 +1,14 @@
 # app/api/endpoints/performance.py
 from fastapi import APIRouter, HTTPException, status
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
+from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
 from app.models.attribution_responses import AttributionResponse
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
 from app.models.responses import PerformanceResponse
+from core.envelope import Audit, Diagnostics, Meta
 from engine.attribution import run_attribution_calculations
 from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
@@ -14,6 +16,7 @@ from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 from engine.mwr import calculate_money_weighted_return
 
 router = APIRouter()
+settings = get_settings()
 
 
 @router.post("/twr", response_model=PerformanceResponse, summary="Calculate Time-Weighted Return")
@@ -24,12 +27,14 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
     """
     try:
         engine_config = create_engine_config(request)
-        engine_df = create_engine_dataframe(
-            [item.model_dump(by_alias=True) for item in request.daily_data]
-        )
-        daily_results_df = run_calculations(engine_df, engine_config)
+        engine_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.daily_data])
+
+        # Engine now returns results and diagnostics
+        daily_results_df, diagnostics_data = run_calculations(engine_df, engine_config)
+
         breakdowns_data = generate_performance_breakdowns(daily_results_df, request.frequencies)
         formatted_breakdowns = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+
     except InvalidEngineInputError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid Input: {e.message}")
     except EngineCalculationError as e:
@@ -39,11 +44,31 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected server error occurred: {str(e)}",
         )
-    # Note: The new response footer will be added in a subsequent step when the context is plumbed through.
+
+    # Populate the shared response footer
+    meta = Meta(
+        calculation_id=request.calculation_id,
+        engine_version=settings.APP_VERSION,
+        precision_mode=request.precision_mode,
+        calendar=request.calendar,
+        annualization=request.annualization,
+        periods={"type": request.period_type.value, "start": str(engine_config.report_start_date or engine_config.performance_start_date), "end": str(engine_config.report_end_date)},
+    )
+    diagnostics = Diagnostics(
+        nip_days=diagnostics_data.get("nip_days", 0),
+        reset_days=diagnostics_data.get("reset_days", 0),
+        effective_period_start=diagnostics_data.get("effective_period_start"),
+        notes=diagnostics_data.get("notes", []),
+    )
+    audit = Audit(counts={"input_rows": len(request.daily_data), "output_rows": len(daily_results_df)})
+
     return PerformanceResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
         breakdowns=formatted_breakdowns,
+        meta=meta,
+        diagnostics=diagnostics,
+        audit=audit,
     )
 
 
@@ -65,7 +90,7 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
             detail=f"An unexpected error occurred during MWR calculation: {str(e)}",
         )
 
-    # Note: The new response footer will be added in a subsequent step when the context is plumbed through.
+    # Note: The new response footer will be added in a subsequent step.
     return MoneyWeightedReturnResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
@@ -80,9 +105,8 @@ async def calculate_attribution_endpoint(request: AttributionRequest):
     active return into allocation, selection, and interaction effects.
     """
     try:
-        # The run_attribution_calculations function is complex and will be updated
-        # to return the full response object in a later step.
         response = run_attribution_calculations(request)
+        # Note: The new response footer will be added in a subsequent step.
         return response
     except (InvalidEngineInputError, ValueError, NotImplementedError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -49,6 +49,7 @@ def test_vectorized_engine_performance(benchmark, large_input_data):
     engine_df = create_engine_dataframe(daily_data_list)
 
     def run():
+        # FIX: run_calculations is the function to benchmark, not just the setup.
         run_calculations(engine_df.copy(), engine_config)
 
     benchmark.group = "Engine Performance (500k rows)"

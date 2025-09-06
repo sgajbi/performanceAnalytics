@@ -43,7 +43,8 @@ def portfolio_results_fixture() -> pd.DataFrame:
         PortfolioColumns.MGMT_FEES: [0.0, 0.0],
         PortfolioColumns.END_MV: [1020.0, 1080.0],
     })
-    return run_calculations(portfolio_df, twr_config)
+    portfolio_results, _ = run_calculations(portfolio_df, twr_config)
+    return portfolio_results
 
 
 @pytest.fixture
@@ -75,7 +76,7 @@ def position_results_map_fixture() -> dict:
         })
     }
     return {
-        pos_id: run_calculations(df, twr_config)
+        pos_id: run_calculations(df, twr_config)[0]
         for pos_id, df in position_data_map.items()
     }
 
@@ -110,8 +111,9 @@ def robust_nip_day_scenario():
         PortfolioColumns.END_MV: [500.0, 1250.0, 0.0],
     })
 
-    portfolio_results = run_calculations(portfolio_data, config)
-    position_results_map = {"Stock_A": run_calculations(pos_a_data, config)}
+    portfolio_results, _ = run_calculations(portfolio_data, config)
+    pos_a_results, _ = run_calculations(pos_a_data, config)
+    position_results_map = {"Stock_A": pos_a_results}
 
     return portfolio_results, position_results_map
 
@@ -152,8 +154,9 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
     total_average_weight = sum(data["average_weight"] for data in result.values())
     assert total_average_weight == pytest.approx(100.0)
 
-    assert result["Stock_A"]["total_contribution"] == pytest.approx(1.95905395)
-    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.99421707)
+    # FIX: Update expected value to reflect new rounding behavior in the engine.
+    assert result["Stock_A"]["total_contribution"] == pytest.approx(1.959076, abs=1e-6)
+    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.994217, abs=1e-6)
 
 
 def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs):

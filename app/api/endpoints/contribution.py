@@ -34,7 +34,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
         portfolio_df = create_engine_dataframe(
             [item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data]
         )
-        portfolio_results = run_calculations(portfolio_df, twr_config)
+        # FIX: Unpack tuple return from engine
+        portfolio_results, _ = run_calculations(portfolio_df, twr_config)
 
         # 3. Calculate performance for each individual position
         position_results_map = {}
@@ -42,7 +43,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
             position_df = create_engine_dataframe(
                 [item.model_dump(by_alias=True) for item in position.daily_data]
             )
-            position_results_map[position.position_id] = run_calculations(position_df, twr_config)
+            # FIX: Unpack tuple return from engine
+            position_results, _ = run_calculations(position_df, twr_config)
+            position_results_map[position.position_id] = position_results
 
         # 4. Calculate the final contribution
         contribution_results = calculate_position_contribution(portfolio_results, position_results_map)

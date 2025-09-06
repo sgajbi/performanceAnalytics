@@ -11,7 +11,7 @@ from app.core.constants import (
 from app.models.requests import PerformanceRequest
 from app.models.responses import PerformanceBreakdown, PerformanceResultItem, PerformanceSummary
 from common.enums import Frequency
-from engine.config import EngineConfig
+from engine.config import EngineConfig, PrecisionMode
 from engine.schema import API_TO_ENGINE_MAP, ENGINE_TO_API_MAP, PortfolioColumns
 
 logger = logging.getLogger(__name__)
@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 
 def create_engine_config(request: PerformanceRequest) -> EngineConfig:
     """Creates an EngineConfig object from an API PerformanceRequest."""
-    # This function will be updated in a subsequent step to use the new `periods` model.
-    # For now, it maintains backward compatibility with the existing date fields.
+    # This function now reads the new precision and rounding fields from the request.
     return EngineConfig(
         performance_start_date=request.performance_start_date,
         report_start_date=request.report_start_date,
@@ -28,6 +27,7 @@ def create_engine_config(request: PerformanceRequest) -> EngineConfig:
         metric_basis=request.metric_basis,
         period_type=request.period_type,
         rounding_precision=request.rounding_precision,
+        precision_mode=PrecisionMode(request.precision_mode),
     )
 
 

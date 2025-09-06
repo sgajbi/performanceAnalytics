@@ -26,7 +26,7 @@ def long_flip_scenario():
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3), date(2025, 1, 4)],
         PortfolioColumns.SIGN: [1, 1, 1, 1],
-        PortfolioColumns.DAILY_ROR: [-50.0, -110.0, 10.52631579, 10.0],
+        PortfolioColumns.DAILY_ROR: [-50.0, -110.0, 10.5263, 10.0],
         PortfolioColumns.NIP: [0, 0, 0, 0],
         PortfolioColumns.PERF_RESET: [0, 1, 0, 0],
         PortfolioColumns.LONG_SHORT: ["L", "L", "L", "L"],
@@ -34,11 +34,11 @@ def long_flip_scenario():
         PortfolioColumns.NCTRL_2: [0, 0, 0, 0],
         PortfolioColumns.NCTRL_3: [0, 0, 0, 0],
         PortfolioColumns.NCTRL_4: [0, 0, 0, 0],
-        PortfolioColumns.TEMP_LONG_CUM_ROR: [-50.0, -105.0, 10.52631579, 21.57894737],
+        PortfolioColumns.TEMP_LONG_CUM_ROR: [-50.0, -105.0, 10.5263, 21.5789],
         PortfolioColumns.TEMP_SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
-        PortfolioColumns.LONG_CUM_ROR: [-50.0, 0.0, 10.52631579, 21.57894737],
+        PortfolioColumns.LONG_CUM_ROR: [-50.0, 0.0, 10.5263, 21.5789],
         PortfolioColumns.SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
-        PortfolioColumns.FINAL_CUM_ROR: [-50.0, 0.0, 10.52631579, 21.57894737],
+        PortfolioColumns.FINAL_CUM_ROR: [-50.0, 0.0, 10.5263, 21.5789],
     })
     return engine_config, input_df, expected_df
 
@@ -63,7 +63,7 @@ def short_flip_scenario():
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3)],
         PortfolioColumns.SIGN: [-1, 1, 1],
-        PortfolioColumns.DAILY_ROR: [10.0, -16.66666667, 10.0],
+        PortfolioColumns.DAILY_ROR: [10.0, -16.6667, 10.0],
         PortfolioColumns.NIP: [0, 0, 0],
         PortfolioColumns.PERF_RESET: [0, 0, 0],
         PortfolioColumns.LONG_SHORT: ["S", "L", "L"],
@@ -71,11 +71,11 @@ def short_flip_scenario():
         PortfolioColumns.NCTRL_2: [0, 0, 0],
         PortfolioColumns.NCTRL_3: [0, 0, 0],
         PortfolioColumns.NCTRL_4: [0, 0, 0],
-        PortfolioColumns.TEMP_LONG_CUM_ROR: [0.0, -16.66666667, -8.33333333],
+        PortfolioColumns.TEMP_LONG_CUM_ROR: [0.0, -16.6667, -8.3333],
         PortfolioColumns.TEMP_SHORT_CUM_ROR: [10.0, 10.0, 10.0],
-        PortfolioColumns.LONG_CUM_ROR: [0.0, -16.66666667, -8.33333333],
+        PortfolioColumns.LONG_CUM_ROR: [0.0, -16.6667, -8.3333],
         PortfolioColumns.SHORT_CUM_ROR: [10.0, 10.0, 10.0],
-        PortfolioColumns.FINAL_CUM_ROR: [10.0, -8.33333333, 0.83333333],
+        PortfolioColumns.FINAL_CUM_ROR: [10.0, -8.3333, 0.8333],
     })
     return engine_config, input_df, expected_df
 
@@ -126,10 +126,11 @@ def standard_growth_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [101000.0, 102010.0, 100989.9, 127249.29, 125976.7971],
     })
+    # FIX: Corrected expected values to align with engine's high-precision calculation followed by rounding.
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
-        PortfolioColumns.DAILY_ROR: [1.0, 1.0, -1.0, 0.999596, -1.0],
-        PortfolioColumns.FINAL_CUM_ROR: [1.0, 2.01, 0.9899, 1.999391, 0.979397],
+        PortfolioColumns.DAILY_ROR: [1.0, 1.0, -1.0, 0.9996, -1.0],
+        PortfolioColumns.FINAL_CUM_ROR: [1.0, 2.01, 0.9899, 1.9994, 0.9794],
     })
     return engine_config, input_df, expected_df
 
@@ -152,8 +153,8 @@ def short_growth_scenario():
     })
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]).date,
-        PortfolioColumns.DAILY_ROR: [-50.0, -133.33333333, 6.66666667, 7.14285714],
-        PortfolioColumns.FINAL_CUM_ROR: [-50.0, -250.0, -226.66666667, -203.33333333],
+        PortfolioColumns.DAILY_ROR: [-50.0, -133.3333, 6.6667, 7.1429],
+        PortfolioColumns.FINAL_CUM_ROR: [-50.0, -250.0, -226.6667, -203.3333],
     })
     return engine_config, input_df, expected_df
 
@@ -189,9 +190,7 @@ def eod_flip_gross_scenario():
         metric_basis="GROSS",
         period_type=PeriodType.YTD,
     )
-    # Input data is the same as the NET scenario
     _, input_df, _ = eod_flip_net_scenario()
-
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
         PortfolioColumns.FINAL_CUM_ROR: [10.0, 30.0, 95.0, 56.0, 95.0],

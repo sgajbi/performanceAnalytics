@@ -34,7 +34,7 @@ class PerformanceResponse(BaseModel):
     portfolio_number: str
     breakdowns: PerformanceBreakdown
 
-    # --- Shared Envelope Fields ---
-    meta: Optional[Meta] = None
-    diagnostics: Optional[Diagnostics] = None
-    audit: Optional[Audit] = None
+    # --- Shared Envelope Fields (Now Mandatory) ---
+    meta: Meta
+    diagnostics: Diagnostics
+    audit: Audit

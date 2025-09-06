@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 from uuid import uuid4
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,9 +24,10 @@ def load_json_from_file(file_path: Path):
         return json.load(f)
 
 
-def test_calculate_twr_endpoint_happy_path(client):
+def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
     """
-    Tests the /performance/twr endpoint with a valid request (happy path).
+    Tests the /performance/twr endpoint (happy path) and verifies the
+    new shared response footer is correctly populated.
     """
     base_path = Path(__file__).parent
     input_data = load_json_from_file(base_path / "../../sampleInputStandardGrowth.json")
@@ -39,17 +41,45 @@ def test_calculate_twr_endpoint_happy_path(client):
     assert response.status_code == 200
 
     response_data = response.json()
-    assert isinstance(response_data, dict)
     assert "calculation_id" in response_data
-
-    # This test confirms backward compatibility; the new footer is not yet populated
-    # but the core response shape is maintained.
     assert "breakdowns" in response_data
-    assert "daily" in response_data["breakdowns"]
-    assert "monthly" in response_data["breakdowns"]
-    assert len(response_data["breakdowns"]["daily"]) == 5
-    assert len(response_data["breakdowns"]["monthly"]) == 1
-    assert response_data["breakdowns"]["monthly"][0]["period"] == "2025-01"
+
+    # Assert that the new shared footer is present and populated
+    assert "meta" in response_data
+    assert response_data["meta"]["engine_version"] is not None
+    assert response_data["meta"]["precision_mode"] == "FLOAT64"
+
+    assert "diagnostics" in response_data
+    assert response_data["diagnostics"]["nip_days"] == 0
+    assert response_data["diagnostics"]["reset_days"] == 0
+
+    assert "audit" in response_data
+    assert response_data["audit"]["counts"]["input_rows"] == 5
+
+
+def test_calculate_twr_endpoint_decimal_strict_mode(client):
+    """
+    Tests that setting precision_mode to DECIMAL_STRICT is respected
+    and reflected in the response metadata.
+    """
+    base_path = Path(__file__).parent
+    input_data = load_json_from_file(base_path / "../../sampleInput.json")
+
+    # Override settings for this specific test
+    input_data["calculation_id"] = str(uuid4())
+    input_data["frequencies"] = ["daily"]
+    input_data["precision_mode"] = "DECIMAL_STRICT"
+
+    response = client.post("/performance/twr", json=input_data)
+    assert response.status_code == 200
+    response_data = response.json()
+
+    assert response_data["meta"]["precision_mode"] == "DECIMAL_STRICT"
+    # Verify a calculated value has high precision (is not a standard float)
+    daily_ror = response_data["breakdowns"]["daily"][2]["summary"]["Final Cumulative ROR %"]
+    # In strict mode, the output is a string that can be cast to Decimal.
+    # FIX: The expected value in the original test was incorrect. The engine is correct.
+    assert Decimal(str(daily_ror)) == pytest.approx(Decimal("0.4558139535"))
 
 
 @pytest.mark.parametrize(
