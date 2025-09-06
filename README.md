@@ -1,15 +1,10 @@
-
-
-### **File: `README.md`**
-
-I will add a new "Advanced Usage" section to the `README.md` to link to the new guide.
-
-```markdown
 # Portfolio Performance Analytics API (V3 Engine)
 
-An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`. It provides two primary services:
+An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`. It provides three primary services:
 1.  **Performance Calculation**: Endpoints for calculating **Time-Weighted Return (TWR)** with frequency-based breakdowns and **Money-Weighted Return (MWR)**.
 2.  **Contribution Analysis**: An endpoint for calculating **Position Contribution** to explain the drivers of portfolio performance.
+3.  **Attribution Analysis**: An endpoint for calculating single-level, multi-period **Performance Attribution** (Brinson-style) to explain a portfolio's active return against a benchmark.
+
 ---
 
 ## Key Features
@@ -18,7 +13,10 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 -   **Flexible TWR Breakdowns:** Aggregate daily performance into monthly, quarterly, or yearly summaries.
 -   **Standard MWR Calculation:** Provides a money-weighted return for analyzing investor performance.
 -   **Advanced Contribution Engine:** Uses the Carino smoothing algorithm to accurately link multi-period position contributions.
+-   **Brinson Attribution Engine:** Decomposes active return into Allocation, Selection, and Interaction effects using Brinson-Fachler or Brinson-Hood-Beebower models.
+-   **Geometric Attribution Linking:** Uses the Menchero algorithm to ensure multi-period attribution effects correctly account for compounding.
 -   **Decoupled Architecture:** All calculation logic is in a standalone `engine` library.
+
 ---
 
 ## Setup and Installation
@@ -84,25 +82,19 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 ### 2. Money-Weighted Return (MWR)
 
 -   **Endpoint:** `POST /performance/mwr`
--   **Example `curl` command:**
-    ```bash
-    curl -X POST "[http://127.0.0.1:8000/performance/mwr](http://127.0.0.1:8000/performance/mwr)" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "portfolio_number": "MWR_TEST_01",
-      "beginning_mv": 100000.0,
-      "ending_mv": 115000.0,
-      "cash_flows": [
-        {"amount": 10000.0, "date": "2025-03-15"}
-      ]
-    }'
-    ```
+-   **Example Payload:** See `tests/integration/test_mwr_api.py`.
 
 ### 3. Position Contribution
 
 -   **Endpoint:** `POST /performance/contribution`
 -   **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions.
--   **Example:** See `tests/integration/test_contribution_api.py` for a sample payload.
+-   **Example Payload:** See `tests/integration/test_contribution_api.py`.
+
+### 4. Performance Attribution
+
+-   **Endpoint:** `POST /performance/attribution`
+-   **Description:** Decomposes the portfolio's active return against a benchmark into allocation, selection, and interaction effects.
+-   **Example Payload:** See `tests/integration/test_attribution_api.py`.
 
 ---
 
@@ -111,6 +103,3 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 The core calculation logic is a standalone library. For instructions on how to use it directly in your own Python scripts for batch processing or analysis, see the guide:
 
 -   **[Using the Performance Engine as a Standalone Library](./docs/guides/standalone_engine_usage.md)**
-````
-
- 
