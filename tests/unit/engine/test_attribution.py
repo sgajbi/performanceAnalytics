@@ -60,7 +60,7 @@ def test_calculate_single_period_brinson_hood_beebower(single_period_data):
     assert total_effects == pytest.approx(0.021)
 
 
-def test_run_attribution_calculations_by_group_no_linking(by_group_request_data):
+def test_run_attribution_calculations_arithmetic_linking(by_group_request_data):
     """Tests the main orchestrator with simple arithmetic linking."""
     request = AttributionRequest.model_validate(by_group_request_data)
     response = run_attribution_calculations(request)
@@ -74,15 +74,12 @@ def test_link_effects_carino():
         'allocation': [0.005, -0.002], 'selection': [0.010, 0.005], 'interaction': [0.001, -0.001]
     }, index=pd.MultiIndex.from_product([dates, ['Equity']], names=['date', 'group']))
     
-    per_period_returns = pd.DataFrame({
-        'p_return': [0.026, 0.002], 'b_return': [0.010, 0.000]
-    }, index=dates)
-
-    linked_effects = _link_effects_carino(effects_df, per_period_returns)
+    per_period_active_return = pd.Series([0.016, 0.002], index=dates)
+    linked_effects = _link_effects_carino(effects_df, per_period_active_return)
     
-    # Total Active Return = (1.026*1.002)-1 - (1.01*1.0)-1 = 1.028052 - 1.01 = 0.018052
+    # Total Active Return = (1 + 0.016) * (1 + 0.002) - 1 = 0.018032
     total_linked_effect = linked_effects.sum().sum()
-    assert total_linked_effect == pytest.approx(0.018052)
+    assert total_linked_effect == pytest.approx(0.018032)
 
 
 def test_run_attribution_calculations_with_carino_linking(by_group_request_data):

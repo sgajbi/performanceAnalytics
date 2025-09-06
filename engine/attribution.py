@@ -105,22 +105,18 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
     return df
 
 
-def _link_effects_carino(effects_df: pd.DataFrame, per_period_returns: pd.DataFrame) -> pd.DataFrame:
+def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.Series) -> pd.DataFrame:
     """Links multi-period attribution effects using the Carino smoothing algorithm."""
-    active_return = per_period_returns['p_return'] - per_period_returns['b_return']
-    total_active_return = (1 + per_period_returns['p_return']).prod() - (1 + per_period_returns['b_return']).prod()
+    total_linked_active_return = (1 + per_period_active_return).prod() - 1
 
-    # Calculate Carino smoothing factors k (per-period) and K (total)
-    k = np.log(1 + active_return) / active_return
-    K = np.log(1 + total_active_return) / total_active_return
+    k = np.log(1 + per_period_active_return) / per_period_active_return
+    K = np.log(1 + total_linked_active_return) / total_linked_active_return
     k.fillna(1.0, inplace=True)
-    if pd.isna(K): K = 1.0
+    if pd.isna(K) or total_linked_active_return == 0: K = 1.0
 
-    # Calculate the scaling coefficient for each period
     period_coeffs = (K / k).rename('coeff')
     effects_with_coeffs = effects_df.join(period_coeffs, on='date')
 
-    # Scale the effects
     effect_cols = ['allocation', 'selection', 'interaction']
     for col in effect_cols:
         effects_with_coeffs[col] *= effects_with_coeffs['coeff']
@@ -145,14 +141,16 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
     effects_df = _calculate_single_period_effects(aligned_df, request.model)
 
     per_period_p_return = (effects_df['w_p'] * effects_df['r_p']).groupby(level='date').sum()
-    per_period_b_return = (effects_df['w_b'] * effects_df['r_b']).groupby(level='date').sum()
-    per_period_returns = pd.DataFrame({'p_return': per_period_p_return, 'b_return': per_period_b_return})
+    per_period_b_return = effects_df.groupby(level='date')['r_b_total'].first()
+    per_period_active_return = per_period_p_return - per_period_b_return
 
     if request.linking == LinkingMethod.CARINO:
-        linked_effects = _link_effects_carino(effects_df, per_period_returns)
+        linked_effects = _link_effects_carino(effects_df, per_period_active_return)
         group_totals = linked_effects.groupby(level=group_by_key).sum()
+        active_return = (1 + per_period_active_return).prod() - 1
     else: # Default to simple arithmetic sum
         group_totals = effects_df.groupby(level=group_by_key)[['allocation', 'selection', 'interaction']].sum()
+        active_return = per_period_active_return.sum()
 
     group_totals['total_effect'] = group_totals.sum(axis=1)
     overall_totals = group_totals.sum()
@@ -166,10 +164,6 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         groups=sorted(group_results, key=lambda x: x.key[request.group_by[0]]),
         totals=AttributionLevelTotals(**overall_totals.to_dict()),
     )
-
-    total_p_return = (1 + per_period_returns['p_return']).prod() - 1
-    total_b_return = (1 + per_period_returns['b_return']).prod() - 1
-    active_return = total_p_return - total_b_return
 
     return AttributionResponse(
         calculation_id=request.calculation_id,
