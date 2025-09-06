@@ -118,16 +118,19 @@ def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.
     period_adjustment = (per_period_active_return * ((K / k) - 1)).rename('adjustment')
     effects_with_adj = effects_df.join(period_adjustment, on='date')
 
-    total_period_effect_by_group = (effects_df['allocation'] + effects_df['selection'] + effects_df['interaction'])
-    effects_with_adj['total_period_effect'] = total_period_effect_by_group.groupby(level='date').transform('sum')
+    # Calculate the sum of the absolute values of effects for each period
+    total_abs_effect_per_period = effects_df[['allocation', 'selection', 'interaction']].abs().groupby(level='date').transform('sum').sum(axis=1)
+    effects_with_adj['total_abs_effect'] = total_abs_effect_per_period
     
     linked_effects = effects_df[['allocation', 'selection', 'interaction']].copy()
+    
+    # Distribute the adjustment based on each effect's weight relative to the sum of absolute effects
     with np.errstate(divide='ignore', invalid='ignore'):
-        effect_weights = linked_effects.div(effects_with_adj['total_period_effect'], axis=0).fillna(0)
-
-    adjustments = effect_weights.mul(effects_with_adj['adjustment'], axis=0)
-    linked_effects += adjustments
-        
+        for effect in ['allocation', 'selection', 'interaction']:
+            effect_weight = (linked_effects[effect].abs() / effects_with_adj['total_abs_effect']).fillna(0)
+            adjustment = effect_weight * effects_with_adj['adjustment']
+            linked_effects[effect] += adjustment
+            
     return linked_effects
 
 
