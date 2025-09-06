@@ -75,9 +75,9 @@ def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     portfolio_weights = resampler_p['weight_bop'].first()
     benchmark_weights = resampler_b['weight_bop'].first()
 
-    df_p = pd.concat([portfolio_returns.stack(group_cols), portfolio_weights.stack(group_cols)], axis=1)
+    df_p = pd.concat([portfolio_returns.stack(), portfolio_weights.stack()], axis=1)
     df_p.columns = ['r_p', 'w_p']
-    df_b = pd.concat([benchmark_returns.stack(group_cols), benchmark_weights.stack(group_cols)], axis=1)
+    df_b = pd.concat([benchmark_returns.stack(), benchmark_weights.stack()], axis=1)
     df_b.columns = ['r_b', 'w_b']
 
     aligned_df = pd.merge(df_p, df_b, left_index=True, right_index=True, how='outer').fillna(0.0)
@@ -86,7 +86,7 @@ def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     total_benchmark_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby(level='date').sum()
     aligned_df = aligned_df.join(total_benchmark_return.rename('r_b_total'), on='date')
 
-    return aligned_df.reset_index()
+    return aligned_df
 
 
 def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) -> pd.DataFrame:
@@ -120,9 +120,9 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         return AttributionResponse(calculation_id=request.calculation_id, portfolio_number=request.portfolio_number, model=request.model, linking=request.linking, levels=[dummy_level], reconciliation=Reconciliation(total_active_return=0.0, sum_of_effects=0.0, residual=0.0))
 
     group_by_key = 'group_0'
-    effects_df = _calculate_single_period_effects(aligned_df.set_index(['date', group_by_key]), request.model)
+    effects_df = _calculate_single_period_effects(aligned_df, request.model)
 
-    group_totals = effects_df.groupby(group_by_key)[['allocation', 'selection', 'interaction']].sum()
+    group_totals = effects_df.groupby(level=group_by_key)[['allocation', 'selection', 'interaction']].sum()
     group_totals['total_effect'] = group_totals.sum(axis=1)
     overall_totals = group_totals.sum()
 
@@ -142,9 +142,8 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         totals=AttributionLevelTotals(**overall_totals.to_dict()),
     )
 
-    # Calculate total returns for each period to get active return
-    per_period_p_return = (aligned_df['w_p'] * aligned_df['r_p']).groupby('date').sum()
-    per_period_b_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby('date').sum()
+    per_period_p_return = (effects_df['w_p'] * effects_df['r_p']).groupby(level='date').sum()
+    per_period_b_return = (effects_df['w_b'] * effects_df['r_b']).groupby(level='date').sum()
     per_period_active_return = per_period_p_return - per_period_b_return
     active_return = per_period_active_return.sum()
 

@@ -37,12 +37,12 @@ def by_group_request_data():
         "linking": "none",
         "frequency": "monthly",
         "portfolio_groups_data": [
-            {"key": {"sector": "Tech"},"observations": [{"date": "2025-01-15", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.01, "weight_bop": 0.6}]},
-            {"key": {"sector": "Other"},"observations": [{"date": "2025-01-15", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.005, "weight_bop": 0.4}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-15", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.01, "weight_bop": 0.6}]},
+            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-15", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.005, "weight_bop": 0.4}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"sector": "Tech"},"observations": [{"date": "2025-01-10", "return": 0.01, "weight_bop": 0.4}, {"date": "2025-02-12", "return": -0.01, "weight_bop": 0.45}]},
-            {"key": {"sector": "Other"},"observations": [{"date": "2025-01-10", "return": 0.005, "weight_bop": 0.6}, {"date": "2025-02-12", "return": 0.002, "weight_bop": 0.55}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-10", "return": 0.01, "weight_bop": 0.4}, {"date": "2025-02-12", "return": -0.01, "weight_bop": 0.45}]},
+            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-10", "return": 0.005, "weight_bop": 0.6}, {"date": "2025-02-12", "return": 0.002, "weight_bop": 0.55}]}
         ],
     }
 
