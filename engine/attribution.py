@@ -32,22 +32,19 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     if not request.portfolio_data or not request.instruments_data:
         raise ValueError("'portfolio_data' and 'instruments_data' are required for 'by_instrument' mode.")
 
-    # 1. Create a common TWR engine config
     twr_config = EngineConfig(
         performance_start_date=request.portfolio_data.report_start_date,
         report_start_date=request.portfolio_data.report_start_date,
         report_end_date=request.portfolio_data.report_end_date,
         metric_basis=request.portfolio_data.metric_basis,
-        period_type=PeriodType.ITD, # Use ITD to get daily returns for the whole period
+        period_type=PeriodType.ITD,
     )
-
-    # 2. Get total portfolio daily data to calculate instrument weights
+    
     portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
     portfolio_df[PortfolioColumns.PERF_DATE] = pd.to_datetime(portfolio_df[PortfolioColumns.PERF_DATE])
     portfolio_df = portfolio_df.set_index(PortfolioColumns.PERF_DATE)
     portfolio_bop_mv = portfolio_df[PortfolioColumns.BEGIN_MV] + portfolio_df[PortfolioColumns.BOD_CF]
 
-    # 3. Calculate daily returns and weights for each instrument
     all_instruments = []
     for inst in request.instruments_data:
         inst_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in inst.daily_data])
@@ -58,32 +55,26 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         inst_results = inst_results.set_index(PortfolioColumns.PERF_DATE)
         
         inst_bop_mv = inst_results[PortfolioColumns.BEGIN_MV] + inst_results[PortfolioColumns.BOD_CF]
-        
-        # Calculate daily weight relative to total portfolio
         inst_results['weight_bop'] = inst_bop_mv / portfolio_bop_mv
         
-        # Add metadata for grouping
         for key, value in inst.meta.items():
             inst_results[key] = value
         all_instruments.append(inst_results.reset_index())
 
-    if not all_instruments:
-        return []
+    if not all_instruments: return []
 
-    # 4. Aggregate instrument data to group level
     full_df = pd.concat(all_instruments)
     group_cols = request.group_by
+    
+    full_df['weighted_ror'] = full_df[PortfolioColumns.DAILY_ROR] / 100 * full_df['weight_bop']
+    
     grouped = full_df.groupby([PortfolioColumns.PERF_DATE] + group_cols)
-    
     group_weights = grouped['weight_bop'].sum()
+    group_weighted_ror = grouped['weighted_ror'].sum()
     
-    # Weighted average of instrument returns for group return
-    # R_group = sum(w_inst * r_inst) / sum(w_inst)
-    weighted_ror = full_df[PortfolioColumns.DAILY_ROR] * full_df['weight_bop']
-    weighted_ror.index = full_df[PortfolioColumns.PERF_DATE]
-    group_returns = weighted_ror.groupby([full_df[col] for col in [PortfolioColumns.PERF_DATE] + group_cols]).sum() / group_weights
+    with np.errstate(divide='ignore', invalid='ignore'):
+        group_returns = (group_weighted_ror / group_weights).fillna(0.0)
 
-    # 5. Format into PortfolioGroup objects
     aggregated_panel = pd.DataFrame({'return': group_returns, 'weight_bop': group_weights}).reset_index()
     
     output_groups = []
@@ -92,7 +83,7 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         output_groups.append(
             PortfolioGroup(
                 key=key_dict,
-                observations=group_df[['Perf. Date', 'return', 'weight_bop']].to_dict(orient='records')
+                observations=group_df[[PortfolioColumns.PERF_DATE, 'return', 'weight_bop']].rename(columns={PortfolioColumns.PERF_DATE: 'date'}).to_dict(orient='records')
             )
         )
     return output_groups

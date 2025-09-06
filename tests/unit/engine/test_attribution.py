@@ -11,7 +11,6 @@ from engine.attribution import (
     _prepare_data_from_instruments,
 )
 from app.models.attribution_requests import AttributionRequest
-from app.models.requests import DailyInputData
 
 
 @pytest.fixture
@@ -91,7 +90,7 @@ def test_prepare_data_from_instruments():
     daily_data_msft = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 400, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 401}] # 0.25% return
     
     request_data = {
-        "portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "linking": "none",
+        "portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "linking": "none", "frequency": "daily",
         "portfolio_data": {"report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "NET", "period_type": "YTD", "daily_data": daily_data_p},
         "instruments_data": [
             {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "daily_data": daily_data_aapl},
@@ -111,4 +110,5 @@ def test_prepare_data_from_instruments():
     # Total weight should be sum of instrument weights: (600/1000) + (400/1000) = 1.0
     assert obs['weight_bop'] == pytest.approx(1.0)
     # Group return is weighted average: (0.6 * 4% + 0.4 * 0.25%) = 2.4% + 0.1% = 2.5%
-    assert obs['return'] == pytest.approx(0.025)
+    # Note: TWR engine returns are percentages
+    assert obs['return'] == pytest.approx(2.5)
