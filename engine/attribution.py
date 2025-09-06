@@ -109,25 +109,27 @@ def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.
     """Links multi-period attribution effects using the Carino smoothing algorithm."""
     total_linked_active_return = (1 + per_period_active_return).prod() - 1
     
-    effects_df['active_return_period'] = effects_df.groupby(level='date').transform('sum')['allocation'] + \
-                                         effects_df.groupby(level='date').transform('sum')['selection'] + \
-                                         effects_df.groupby(level='date').transform('sum')['interaction']
-
-    k = np.log(1 + effects_df['active_return_period']) / effects_df['active_return_period']
+    # Calculate per-period total effect, which equals the per-period active return
+    total_period_effect = effects_df['allocation'] + effects_df['selection'] + effects_df['interaction']
+    
+    k = np.log(1 + total_period_effect) / total_period_effect
     K = np.log(1 + total_linked_active_return) / total_linked_active_return
     k.fillna(1.0, inplace=True)
     if pd.isna(K) or total_linked_active_return == 0: K = 1.0
-
-    adjustment_factor = effects_df['active_return_period'] * ((K / k) - 1)
-    total_period_effect = effects_df['allocation'] + effects_df['selection'] + effects_df['interaction']
     
-    # Distribute adjustment pro-rata to each effect's magnitude
-    for effect in ['allocation', 'selection', 'interaction']:
-        with np.errstate(divide='ignore', invalid='ignore'):
-            effect_weight = (effects_df[effect] / total_period_effect).fillna(0)
-        effects_df[effect] += adjustment_factor * effect_weight
-        
-    return effects_df[['allocation', 'selection', 'interaction']]
+    # Calculate the total adjustment needed for each period
+    period_adjustment = total_period_effect * ((K / k) - 1)
+    
+    # Distribute the period adjustment pro-rata to each effect's original magnitude
+    with np.errstate(divide='ignore', invalid='ignore'):
+        effect_weights = (effects_df[['allocation', 'selection', 'interaction']].abs()
+                          .div(effects_df[['allocation', 'selection', 'interaction']].abs().sum(axis=1), axis=0)
+                          .fillna(0))
+
+    adjustments = effect_weights.mul(period_adjustment, axis=0)
+    
+    linked_effects = effects_df[['allocation', 'selection', 'interaction']] + adjustments
+    return linked_effects
 
 
 def run_attribution_calculations(request: AttributionRequest) -> AttributionResponse:
