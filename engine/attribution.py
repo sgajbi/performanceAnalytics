@@ -1,6 +1,7 @@
 # engine/attribution.py
 from typing import List
 import pandas as pd
+import numpy as np
 
 from app.models.attribution_requests import (
     AttributionRequest,
@@ -15,7 +16,7 @@ from app.models.attribution_responses import (
     AttributionResponse,
     Reconciliation,
 )
-from common.enums import AttributionMode
+from common.enums import AttributionMode, LinkingMethod
 
 
 def _prepare_panel_from_groups(
@@ -50,7 +51,6 @@ def _prepare_panel_from_groups(
 def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     """
     Pre-processes and aligns portfolio and benchmark group data for attribution.
-    NOTE: Phase 2 implementation for 'by_group' mode and single level.
     """
     if request.mode != AttributionMode.BY_GROUP:
         return pd.DataFrame()
@@ -75,9 +75,9 @@ def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     portfolio_weights = resampler_p['weight_bop'].first()
     benchmark_weights = resampler_b['weight_bop'].first()
 
-    df_p = pd.concat([portfolio_returns.stack(), portfolio_weights.stack()], axis=1)
+    df_p = pd.concat([portfolio_returns.stack(group_cols), portfolio_weights.stack(group_cols)], axis=1)
     df_p.columns = ['r_p', 'w_p']
-    df_b = pd.concat([benchmark_returns.stack(), benchmark_weights.stack()], axis=1)
+    df_b = pd.concat([benchmark_returns.stack(group_cols), benchmark_weights.stack(group_cols)], axis=1)
     df_b.columns = ['r_b', 'w_b']
 
     aligned_df = pd.merge(df_p, df_b, left_index=True, right_index=True, how='outer').fillna(0.0)
@@ -105,10 +105,32 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
     return df
 
 
+def _link_effects_carino(effects_df: pd.DataFrame, per_period_returns: pd.DataFrame) -> pd.DataFrame:
+    """Links multi-period attribution effects using the Carino smoothing algorithm."""
+    active_return = per_period_returns['p_return'] - per_period_returns['b_return']
+    total_active_return = (1 + per_period_returns['p_return']).prod() - (1 + per_period_returns['b_return']).prod()
+
+    # Calculate Carino smoothing factors k (per-period) and K (total)
+    k = np.log(1 + active_return) / active_return
+    K = np.log(1 + total_active_return) / total_active_return
+    k.fillna(1.0, inplace=True)
+    if pd.isna(K): K = 1.0
+
+    # Calculate the scaling coefficient for each period
+    period_coeffs = (K / k).rename('coeff')
+    effects_with_coeffs = effects_df.join(period_coeffs, on='date')
+
+    # Scale the effects
+    effect_cols = ['allocation', 'selection', 'interaction']
+    for col in effect_cols:
+        effects_with_coeffs[col] *= effects_with_coeffs['coeff']
+
+    return effects_with_coeffs[effect_cols]
+
+
 def run_attribution_calculations(request: AttributionRequest) -> AttributionResponse:
     """
     Orchestrates the full multi-level performance attribution calculation.
-    NOTE: Phase 2 implementation for single-level 'by_group' mode.
     """
     if request.mode != AttributionMode.BY_GROUP or len(request.group_by) > 1:
         raise NotImplementedError("Only single-level 'by_group' mode is supported.")
@@ -122,19 +144,22 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
     group_by_key = 'group_0'
     effects_df = _calculate_single_period_effects(aligned_df, request.model)
 
-    group_totals = effects_df.groupby(level=group_by_key)[['allocation', 'selection', 'interaction']].sum()
+    per_period_p_return = (effects_df['w_p'] * effects_df['r_p']).groupby(level='date').sum()
+    per_period_b_return = (effects_df['w_b'] * effects_df['r_b']).groupby(level='date').sum()
+    per_period_returns = pd.DataFrame({'p_return': per_period_p_return, 'b_return': per_period_b_return})
+
+    if request.linking == LinkingMethod.CARINO:
+        linked_effects = _link_effects_carino(effects_df, per_period_returns)
+        group_totals = linked_effects.groupby(level=group_by_key).sum()
+    else: # Default to simple arithmetic sum
+        group_totals = effects_df.groupby(level=group_by_key)[['allocation', 'selection', 'interaction']].sum()
+
     group_totals['total_effect'] = group_totals.sum(axis=1)
     overall_totals = group_totals.sum()
 
     group_results = []
     for group_name, row in group_totals.iterrows():
-        group_results.append(AttributionGroupResult(
-            key={request.group_by[0]: group_name},
-            allocation=row['allocation'],
-            selection=row['selection'],
-            interaction=row['interaction'],
-            total_effect=row['total_effect']
-        ))
+        group_results.append(AttributionGroupResult(key={request.group_by[0]: group_name}, **row.to_dict()))
 
     level_result = AttributionLevelResult(
         dimension=request.group_by[0],
@@ -142,10 +167,9 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         totals=AttributionLevelTotals(**overall_totals.to_dict()),
     )
 
-    per_period_p_return = (effects_df['w_p'] * effects_df['r_p']).groupby(level='date').sum()
-    per_period_b_return = (effects_df['w_b'] * effects_df['r_b']).groupby(level='date').sum()
-    per_period_active_return = per_period_p_return - per_period_b_return
-    active_return = per_period_active_return.sum()
+    total_p_return = (1 + per_period_returns['p_return']).prod() - 1
+    total_b_return = (1 + per_period_returns['b_return']).prod() - 1
+    active_return = total_p_return - total_b_return
 
     return AttributionResponse(
         calculation_id=request.calculation_id,
