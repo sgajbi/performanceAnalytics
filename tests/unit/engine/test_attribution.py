@@ -109,6 +109,5 @@ def test_prepare_data_from_instruments():
     obs = tech_group.observations[0]
     # Total weight should be sum of instrument weights: (600/1000) + (400/1000) = 1.0
     assert obs['weight_bop'] == pytest.approx(1.0)
-    # Group return is weighted average: (0.6 * 4% + 0.4 * 0.25%) = 2.4% + 0.1% = 2.5%
-    # Note: TWR engine returns are percentages
-    assert obs['return'] == pytest.approx(2.5)
+    # Group return is weighted average: (0.6 * 4% + 0.4 * 0.25%) = 0.024 + 0.001 = 0.025
+    assert obs['return'] == pytest.approx(0.025)

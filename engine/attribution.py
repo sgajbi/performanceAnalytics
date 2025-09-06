@@ -66,7 +66,7 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     full_df = pd.concat(all_instruments)
     group_cols = request.group_by
     
-    full_df['weighted_ror'] = full_df[PortfolioColumns.DAILY_ROR] / 100 * full_df['weight_bop']
+    full_df['weighted_ror'] = (full_df[PortfolioColumns.DAILY_ROR] / 100) * full_df['weight_bop']
     
     grouped = full_df.groupby([PortfolioColumns.PERF_DATE] + group_cols)
     group_weights = grouped['weight_bop'].sum()
