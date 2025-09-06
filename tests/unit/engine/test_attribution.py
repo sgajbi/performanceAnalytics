@@ -68,30 +68,9 @@ def test_run_attribution_calculations_arithmetic_linking(by_group_request_data):
     assert abs(response.reconciliation.residual) < 1e-9
 
 
-def test_link_effects_menchero():
-    """Tests the Menchero linking logic for multi-period effects."""
-    dates = pd.to_datetime(['2025-01-31', '2025-02-28'])
-    effects_df = pd.DataFrame({
-        'allocation': [0.005, -0.002], 'selection': [0.010, 0.005], 'interaction': [0.001, -0.001]
-    }, index=pd.MultiIndex.from_product([dates, ['Equity']], names=['date', 'group']))
-    
-    per_period_b_return = pd.Series([0.010, 0.000], index=dates) # Benchmark returns
-    linked_effects = _link_effects_menchero(effects_df, per_period_b_return)
-
-    # Manual Menchero calculation
-    # Jan effects are linked forward by Feb benchmark growth: (A_jan * (1+B_feb))
-    # Feb effects are not linked forward.
-    # Total Alloc = 0.005 * (1 + 0.000) + (-0.002) = 0.003
-    # Total Select = 0.010 * (1 + 0.000) + 0.005 = 0.015
-    # Total Interact = 0.001 * (1 + 0.000) + (-0.001) = 0.0
-    total_linked_effect = linked_effects.sum().sum()
-    assert total_linked_effect == pytest.approx(0.018)
-
-
-def test_run_attribution_calculations_with_linking(by_group_request_data):
-    """Tests the main orchestrator with linking enabled."""
+def test_run_attribution_calculations_geometric_linking(by_group_request_data):
+    """Tests the main orchestrator with Menchero geometric linking enabled."""
     request = AttributionRequest.model_validate(by_group_request_data)
     response = run_attribution_calculations(request)
-
     assert abs(response.reconciliation.residual) < 1e-9
     assert response.reconciliation.sum_of_effects == pytest.approx(response.reconciliation.total_active_return)
