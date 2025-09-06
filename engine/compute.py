@@ -42,6 +42,21 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 
         df[PortfolioColumns.LONG_SHORT] = np.where(df[PortfolioColumns.SIGN] == -1, "S", "L")
 
+        # Capture reset events before filtering
+        reset_events = []
+        reset_rows = df[df[PortfolioColumns.PERF_RESET] == 1]
+        for _, row in reset_rows.iterrows():
+            reason_codes = []
+            if row[PortfolioColumns.NCTRL_1]: reason_codes.append("NCTRL_1")
+            if row[PortfolioColumns.NCTRL_2]: reason_codes.append("NCTRL_2")
+            if row[PortfolioColumns.NCTRL_3]: reason_codes.append("NCTRL_3")
+            if row[PortfolioColumns.NCTRL_4]: reason_codes.append("NCTRL_4")
+            reset_events.append({
+                "date": row[PortfolioColumns.PERF_DATE].date(),
+                "reason": ",".join(reason_codes) or "UNKNOWN",
+                "impacted_rows": 1
+            })
+
         final_df = _filter_results_to_reporting_period(df, config)
 
         if config.precision_mode != PrecisionMode.DECIMAL_STRICT:
@@ -52,6 +67,7 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
             "reset_days": int(final_df[PortfolioColumns.PERF_RESET].sum()),
             "effective_period_start": df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE].min().date(),
             "notes": [],
+            "resets": reset_events
         }
 
     except InvalidEngineInputError:

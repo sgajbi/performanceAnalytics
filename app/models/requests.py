@@ -27,6 +27,14 @@ class DailyInputData(BaseModel):
     end_market_value: float = Field(..., alias=END_MARKET_VALUE_FIELD)
 
 
+class FeeEffect(BaseModel):
+    enabled: bool = False
+
+
+class ResetPolicy(BaseModel):
+    emit: bool = False
+
+
 class PerformanceRequest(BaseModel):
     calculation_id: UUID = Field(default_factory=uuid4)
     portfolio_number: str
@@ -36,15 +44,20 @@ class PerformanceRequest(BaseModel):
     report_end_date: date
     period_type: PeriodType
     frequencies: List[Frequency] = [Frequency.DAILY]
-    rounding_precision: int = 4
     daily_data: List[DailyInputData]
 
-    # --- Shared Envelope Fields (Optional) ---
+    # --- RFC-014 Shared Envelope Fields (Optional) ---
     as_of: Optional[date] = None
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
+    # FIX: Remove redundant field to rely on the shared envelope default
+    rounding_precision: int = 6
     calendar: Calendar = Field(default_factory=Calendar)
     annualization: Annualization = Field(default_factory=Annualization)
     periods: Optional[Periods] = None
     output: Output = Field(default_factory=Output)
     flags: Flags = Field(default_factory=Flags)
+
+    # --- RFC-015 TWR-Specific Enhancements ---
+    fee_effect: FeeEffect = Field(default_factory=FeeEffect)
+    reset_policy: ResetPolicy = Field(default_factory=ResetPolicy)

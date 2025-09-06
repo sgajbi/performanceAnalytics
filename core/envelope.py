@@ -15,7 +15,7 @@ class Calendar(BaseModel):
 class Annualization(BaseModel):
     enabled: bool = False
     basis: Literal["BUS/252", "ACT/365", "ACT/ACT"] = "BUS/252"
-    periods_per_year: Optional[int] = None
+    periods_per_year: Optional[float] = None
 
 
 class ExplicitPeriod(BaseModel):
@@ -56,6 +56,7 @@ class Output(BaseModel):
 
 class Flags(BaseModel):
     fail_fast: bool = False
+    compat_legacy_names: bool = False
 
 
 class BaseRequest(BaseModel):

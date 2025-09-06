@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 def create_engine_config(request: PerformanceRequest) -> EngineConfig:
     """Creates an EngineConfig object from an API PerformanceRequest."""
-    # This function now reads the new precision and rounding fields from the request.
     return EngineConfig(
         performance_start_date=request.performance_start_date,
         report_start_date=request.report_start_date,
@@ -48,7 +47,7 @@ def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
 
 
 def format_breakdowns_for_response(
-    breakdowns_data: Dict[Frequency, List[Dict]], daily_results_df: pd.DataFrame
+    breakdowns_data: Dict[Frequency, List[Dict]], daily_results_df: pd.DataFrame, compat_legacy_names: bool
 ) -> PerformanceBreakdown:
     """
     Takes the pure breakdown dict from the engine and formats it into
@@ -63,12 +62,17 @@ def format_breakdowns_for_response(
         for i, result_item in enumerate(results):
             summary_data = result_item["summary"]
 
+            # Handle backward compatibility for field renaming
+            if freq == Frequency.DAILY and compat_legacy_names:
+                summary_data[FINAL_CUMULATIVE_ROR_PERCENT_FIELD] = summary_data.pop("period_return_pct")
+
             pydantic_summary_data = {
                 BEGIN_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.BEGIN_MV),
                 END_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.END_MV),
                 "net_cash_flow": summary_data.get("net_cash_flow"),
-                FINAL_CUMULATIVE_ROR_PERCENT_FIELD: summary_data.get(PortfolioColumns.FINAL_CUM_ROR),
+                **summary_data,
             }
+
             summary_model = PerformanceSummary.model_validate(pydantic_summary_data)
 
             daily_data_for_period = None

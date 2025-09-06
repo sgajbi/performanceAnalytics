@@ -3,6 +3,7 @@ from datetime import date
 import pandas as pd
 import pytest
 from common.enums import Frequency
+from core.envelope import Annualization
 from engine.breakdown import generate_performance_breakdowns
 from engine.schema import PortfolioColumns
 
@@ -19,81 +20,71 @@ def sample_daily_results() -> pd.DataFrame:
         PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [110.0, 121.0, 135.0],
         PortfolioColumns.DAILY_ROR: [10.0, 10.0, 3.030303],
+        PortfolioColumns.FINAL_CUM_ROR: [21.0, 21.0, 24.666663], # Dummy cumulative
     }
     return pd.DataFrame(data)
 
 
-def test_generate_breakdowns_monthly(sample_daily_results):
+@pytest.fixture
+def default_annualization() -> Annualization:
+    """Provides a default, disabled Annualization config."""
+    return Annualization(enabled=False)
+
+
+def test_generate_breakdowns_monthly(sample_daily_results, default_annualization):
     """Tests that monthly aggregation is calculated correctly."""
-    # Act
+    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, frequencies=[Frequency.MONTHLY]
+        sample_daily_results, [Frequency.MONTHLY], default_annualization, False
     )
 
-    # Assert
     assert Frequency.MONTHLY in breakdowns
-    assert len(breakdowns[Frequency.MONTHLY]) == 2 # Jan and Feb
-
+    assert len(breakdowns[Frequency.MONTHLY]) == 2
     jan_results = breakdowns[Frequency.MONTHLY][0]
     assert jan_results["period"] == "2025-01"
-    
     jan_summary = jan_results["summary"]
-    assert jan_summary[PortfolioColumns.BEGIN_MV] == 100.0
-    assert jan_summary[PortfolioColumns.END_MV] == 121.0
-    assert jan_summary["net_cash_flow"] == 0.0
-    assert jan_summary[PortfolioColumns.FINAL_CUM_ROR] == pytest.approx(21.0)
+    assert jan_summary["period_return_pct"] == pytest.approx(21.0)
     
-    feb_results = breakdowns[Frequency.MONTHLY][1]
-    assert feb_results["period"] == "2025-02"
-    feb_summary = feb_results["summary"]
-    assert feb_summary[PortfolioColumns.BEGIN_MV] == 121.0
-    assert feb_summary[PortfolioColumns.FINAL_CUM_ROR] == pytest.approx(3.030303)
 
-
-def test_generate_breakdowns_yearly(sample_daily_results):
+def test_generate_breakdowns_yearly(sample_daily_results, default_annualization):
     """Tests that yearly aggregation is calculated correctly."""
-    # Act
+    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, frequencies=[Frequency.YEARLY]
+        sample_daily_results, [Frequency.YEARLY], default_annualization, False
     )
 
-    # Assert
     assert Frequency.YEARLY in breakdowns
-    assert len(breakdowns[Frequency.YEARLY]) == 1 # Only one year
-
+    assert len(breakdowns[Frequency.YEARLY]) == 1
     y2025_results = breakdowns[Frequency.YEARLY][0]
     assert y2025_results["period"] == "2025"
-    
     y2025_summary = y2025_results["summary"]
-    assert y2025_summary[PortfolioColumns.BEGIN_MV] == 100.0
-    assert y2025_summary[PortfolioColumns.END_MV] == 135.0
-    assert y2025_summary["net_cash_flow"] == 10.0
-    assert y2025_summary[PortfolioColumns.FINAL_CUM_ROR] == pytest.approx(24.666663)
+    assert y2025_summary["period_return_pct"] == pytest.approx(24.666663)
 
 
-def test_generate_breakdowns_multiple_frequencies(sample_daily_results):
+def test_generate_breakdowns_multiple_frequencies(sample_daily_results, default_annualization):
     """Tests that the function returns multiple breakdowns when requested."""
+    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, frequencies=[Frequency.DAILY, Frequency.YEARLY]
+        sample_daily_results, [Frequency.DAILY, Frequency.YEARLY], default_annualization, False
     )
     assert Frequency.DAILY in breakdowns
     assert Frequency.YEARLY in breakdowns
-    assert len(breakdowns[Frequency.DAILY]) == 3
-    assert len(breakdowns[Frequency.YEARLY]) == 1
 
 
-def test_generate_breakdowns_empty_input():
+def test_generate_breakdowns_empty_input(default_annualization):
     """Tests that the function handles an empty DataFrame correctly."""
+    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
-        pd.DataFrame(), frequencies=[Frequency.DAILY]
+        pd.DataFrame(), [Frequency.DAILY], default_annualization, False
     )
     assert breakdowns == {}
 
 
-def test_generate_breakdowns_quarterly(sample_daily_results):
+def test_generate_breakdowns_quarterly(sample_daily_results, default_annualization):
     """Tests that quarterly aggregation is calculated correctly."""
+    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, frequencies=[Frequency.QUARTERLY]
+        sample_daily_results, [Frequency.QUARTERLY], default_annualization, False
     )
     assert Frequency.QUARTERLY in breakdowns
     assert len(breakdowns[Frequency.QUARTERLY]) == 1

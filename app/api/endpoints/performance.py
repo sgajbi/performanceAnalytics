@@ -29,11 +29,18 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
         engine_config = create_engine_config(request)
         engine_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.daily_data])
 
-        # Engine now returns results and diagnostics
         daily_results_df, diagnostics_data = run_calculations(engine_df, engine_config)
 
-        breakdowns_data = generate_performance_breakdowns(daily_results_df, request.frequencies)
-        formatted_breakdowns = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+        # Pass request flags and annualization settings to the breakdown generator
+        breakdowns_data = generate_performance_breakdowns(
+            daily_results_df,
+            request.frequencies,
+            request.annualization,
+            request.output.include_cumulative,
+        )
+        formatted_breakdowns = format_breakdowns_for_response(
+            breakdowns_data, daily_results_df, request.flags.compat_legacy_names
+        )
 
     except InvalidEngineInputError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid Input: {e.message}")
@@ -45,7 +52,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
             detail=f"An unexpected server error occurred: {str(e)}",
         )
 
-    # Populate the shared response footer
     meta = Meta(
         calculation_id=request.calculation_id,
         engine_version=settings.APP_VERSION,
@@ -62,14 +68,19 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
     )
     audit = Audit(counts={"input_rows": len(request.daily_data), "output_rows": len(daily_results_df)})
 
-    return PerformanceResponse(
-        calculation_id=request.calculation_id,
-        portfolio_number=request.portfolio_number,
-        breakdowns=formatted_breakdowns,
-        meta=meta,
-        diagnostics=diagnostics,
-        audit=audit,
-    )
+    response_payload = {
+        "calculation_id": request.calculation_id,
+        "portfolio_number": request.portfolio_number,
+        "breakdowns": formatted_breakdowns,
+        "meta": meta,
+        "diagnostics": diagnostics,
+        "audit": audit,
+    }
+
+    if request.reset_policy.emit and diagnostics_data.get("resets"):
+        response_payload["reset_events"] = diagnostics_data["resets"]
+
+    return PerformanceResponse.model_validate(response_payload)
 
 
 @router.post("/mwr", response_model=MoneyWeightedReturnResponse, summary="Calculate Money-Weighted Return")
@@ -90,7 +101,6 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
             detail=f"An unexpected error occurred during MWR calculation: {str(e)}",
         )
 
-    # Note: The new response footer will be added in a subsequent step.
     return MoneyWeightedReturnResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
@@ -106,7 +116,6 @@ async def calculate_attribution_endpoint(request: AttributionRequest):
     """
     try:
         response = run_attribution_calculations(request)
-        # Note: The new response footer will be added in a subsequent step.
         return response
     except (InvalidEngineInputError, ValueError, NotImplementedError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -5,6 +5,8 @@ from enum import Enum
 class Frequency(str, Enum):
     """Defines the supported frequency types for performance breakdowns."""
     DAILY = "daily"
+    # FIX: Add the missing WEEKLY member to align with RFC-015 and engine logic.
+    WEEKLY = "weekly"
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"
     YEARLY = "yearly"
