@@ -8,7 +8,7 @@
 
 ## 1\. Executive Summary
 
-This document specifies a significant upgrade to the `/performance/mwr` endpoint. [cite\_start]The goal is to enhance its accuracy and transparency by introducing superior calculation methods and aligning it with the new API standards from RFC 014. The current implementation uses a simple Dietz method[cite: 579, 580], which is less accurate for portfolios with intra-period cash flows.
+This document specifies a significant upgrade to the `/performance/mwr` endpoint. The goal is to enhance its accuracy and transparency by introducing superior calculation methods and aligning it with the new API standards from RFC 014. The current implementation uses a simple Dietz method, which is less accurate for portfolios with intra-period cash flows.
 
 This RFC proposes replacing the default calculation with the industry-standard **XIRR** (eXtended Internal Rate of Return) method, which correctly handles irregularly timed cash flows. We will also implement the **Modified Dietz** method as a robust fallback and retain the **Simple Dietz** method as a final failsafe. The endpoint will also gain support for **annualization** and provide detailed **convergence diagnostics** in the response.
 

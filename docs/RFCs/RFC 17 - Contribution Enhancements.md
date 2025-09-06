@@ -8,7 +8,7 @@
 
 ## 1\. Executive Summary
 
-This document specifies enhancements for the `/performance/contribution` endpoint. [cite\_start]While the current engine correctly calculates multi-period contribution using the Carino smoothing algorithm[cite: 636], it lacks flexibility. This RFC introduces **configurable weighting schemes**, **explicit control over smoothing**, and **richer time-series outputs**. These features will allow users to perform more nuanced analysis, such as viewing un-smoothed daily contributions or using different standard methodologies for calculating position weights. This work aligns the endpoint with the shared API envelope from RFC 14 and increases its analytical power.
+This document specifies enhancements for the `/performance/contribution` endpoint. While the current engine correctly calculates multi-period contribution using the Carino smoothing algorithm, it lacks flexibility. This RFC introduces **configurable weighting schemes**, **explicit control over smoothing**, and **richer time-series outputs**. These features will allow users to perform more nuanced analysis, such as viewing un-smoothed daily contributions or using different standard methodologies for calculating position weights. This work aligns the endpoint with the shared API envelope from RFC 14 and increases its analytical power.
 
 ## 2\. Current State Analysis
 
@@ -36,7 +36,7 @@ A new `smoothing` object will allow users to enable or disable the Carino algori
 
   * **Trigger:** The `smoothing.method` field in the `ContributionRequest`.
   * **Options:**
-      * [cite\_start]`"CARINO"` (Default): Applies the Carino smoothing algorithm as is currently done[cite: 636].
+      * `"CARINO"` (Default): Applies the Carino smoothing algorithm as is currently done.
       * `"NONE"`: Skips the smoothing and adjustment steps, resulting in a simple arithmetic sum of daily contributions (`Weight * Return`). This is useful for simple validation and analysis that does not require perfect reconciliation for compounding.
   * **Logic:** The main loop in `engine.contribution.calculate_position_contribution` will conditionally apply the Carino adjustment factor.
 
