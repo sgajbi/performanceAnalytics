@@ -2,7 +2,7 @@
 import pandas as pd
 import pytest
 
-from common.enums import AttributionModel, Frequency, AttributionMode
+from common.enums import AttributionModel
 from engine.attribution import _calculate_single_period_effects, _align_and_prepare_data
 from app.models.attribution_requests import AttributionRequest
 
@@ -60,7 +60,7 @@ def test_align_and_prepare_data_by_group(by_group_request_data):
     aligned_df = _align_and_prepare_data(request)
 
     assert not aligned_df.empty
-    assert aligned_df.index.names == ['date', 'group']
+    assert aligned_df.index.names == ['date', 'group_0']
 
     jan_data = aligned_df.loc[pd.Timestamp('2025-01-31')]
     assert jan_data.loc[('Tech',), 'w_p'] == pytest.approx(0.5)
