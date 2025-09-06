@@ -20,7 +20,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
     """
     try:
         # 1. Create a single config object for all TWR calculations
-        # The TWR engine needs a performance_start_date, which we can derive.
         perf_start_date = request.portfolio_data.daily_data[0].perf_date
         
         twr_config = EngineConfig(
@@ -49,7 +48,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
         contribution_results = calculate_position_contribution(portfolio_results, position_results_map)
 
         # 5. Format the response
-        total_portfolio_return = (1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
+        total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
         
         position_contributions = [
             PositionContribution(

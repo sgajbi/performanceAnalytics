@@ -139,6 +139,25 @@ Here are three request files for a consistent two-month portfolio containing two
   ]
 }
 ```
+### **File: `E2E_MWR_Request.json`**
+
+```json
+{
+  "portfolio_number": "E2E_PORTFOLIO_01",
+  "beginning_mv": 100000.0,
+  "ending_mv": 115000.0,
+  "cash_flows": [
+    {
+      "amount": 10000.0,
+      "date": "2025-02-01"
+    },
+    {
+      "amount": -5000.0,
+      "date": "2025-02-02"
+    }
+  ]
+}
+```
 
 ### **File: `E2E_Contribution_Request.json`**
 
