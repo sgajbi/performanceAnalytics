@@ -1,5 +1,5 @@
 # app/models/attribution_responses.py
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from uuid import UUID
 from pydantic import BaseModel
 from common.enums import AttributionModel, LinkingMethod
