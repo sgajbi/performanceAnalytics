@@ -108,20 +108,26 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
 def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.Series) -> pd.DataFrame:
     """Links multi-period attribution effects using the Carino smoothing algorithm."""
     total_linked_active_return = (1 + per_period_active_return).prod() - 1
+    
+    effects_df['active_return_period'] = effects_df.groupby(level='date').transform('sum')['allocation'] + \
+                                         effects_df.groupby(level='date').transform('sum')['selection'] + \
+                                         effects_df.groupby(level='date').transform('sum')['interaction']
 
-    k = np.log(1 + per_period_active_return) / per_period_active_return
+    k = np.log(1 + effects_df['active_return_period']) / effects_df['active_return_period']
     K = np.log(1 + total_linked_active_return) / total_linked_active_return
     k.fillna(1.0, inplace=True)
     if pd.isna(K) or total_linked_active_return == 0: K = 1.0
 
-    period_coeffs = (K / k).rename('coeff')
-    effects_with_coeffs = effects_df.join(period_coeffs, on='date')
-
-    effect_cols = ['allocation', 'selection', 'interaction']
-    for col in effect_cols:
-        effects_with_coeffs[col] *= effects_with_coeffs['coeff']
-
-    return effects_with_coeffs[effect_cols]
+    adjustment_factor = effects_df['active_return_period'] * ((K / k) - 1)
+    total_period_effect = effects_df['allocation'] + effects_df['selection'] + effects_df['interaction']
+    
+    # Distribute adjustment pro-rata to each effect's magnitude
+    for effect in ['allocation', 'selection', 'interaction']:
+        with np.errstate(divide='ignore', invalid='ignore'):
+            effect_weight = (effects_df[effect] / total_period_effect).fillna(0)
+        effects_df[effect] += adjustment_factor * effect_weight
+        
+    return effects_df[['allocation', 'selection', 'interaction']]
 
 
 def run_attribution_calculations(request: AttributionRequest) -> AttributionResponse:
