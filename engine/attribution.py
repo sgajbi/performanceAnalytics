@@ -108,18 +108,18 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
 def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.Series) -> pd.DataFrame:
     """Links multi-period attribution effects using the Carino smoothing algorithm."""
     total_linked_active_return = (1 + per_period_active_return).prod() - 1
-    
+
     # Calculate per-period total effect, which equals the per-period active return
     total_period_effect = effects_df['allocation'] + effects_df['selection'] + effects_df['interaction']
-    
+
     k = np.log(1 + total_period_effect) / total_period_effect
     K = np.log(1 + total_linked_active_return) / total_linked_active_return
     k.fillna(1.0, inplace=True)
     if pd.isna(K) or total_linked_active_return == 0: K = 1.0
-    
+
     # Calculate the total adjustment needed for each period
     period_adjustment = total_period_effect * ((K / k) - 1)
-    
+
     # Distribute the period adjustment pro-rata to each effect's original magnitude
     with np.errstate(divide='ignore', invalid='ignore'):
         effect_weights = (effects_df[['allocation', 'selection', 'interaction']].abs()
@@ -127,7 +127,7 @@ def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.
                           .fillna(0))
 
     adjustments = effect_weights.mul(period_adjustment, axis=0)
-    
+
     linked_effects = effects_df[['allocation', 'selection', 'interaction']] + adjustments
     return linked_effects
 
