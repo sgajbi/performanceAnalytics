@@ -41,7 +41,9 @@ def test_calculate_twr_endpoint_happy_path(client):
     response_data = response.json()
     assert isinstance(response_data, dict)
     assert "calculation_id" in response_data
-    
+
+    # This test confirms backward compatibility; the new footer is not yet populated
+    # but the core response shape is maintained.
     assert "breakdowns" in response_data
     assert "daily" in response_data["breakdowns"]
     assert "monthly" in response_data["breakdowns"]
@@ -61,12 +63,12 @@ def test_calculate_twr_endpoint_happy_path(client):
 def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expected_status):
     """Tests that the TWR endpoint correctly handles engine exceptions."""
     mocker.patch('app.api.endpoints.performance.run_calculations', side_effect=error_class("Test Error"))
-    
+
     base_path = Path(__file__).parent
     input_data = load_json_from_file(base_path / "../../sampleInput.json")
     input_data["frequencies"] = ["daily"]
-    
+
     response = client.post("/performance/twr", json=input_data)
-    
+
     assert response.status_code == expected_status
     assert "detail" in response.json()

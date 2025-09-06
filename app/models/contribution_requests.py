@@ -1,6 +1,6 @@
 # app/models/contribution_requests.py
 from datetime import date
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
@@ -14,6 +14,7 @@ from app.core.constants import (
     PERF_DATE_FIELD,
 )
 from common.enums import PeriodType
+from core.envelope import Annualization, Calendar, Flags, Output, Periods
 
 
 class PositionDailyData(BaseModel):
@@ -47,3 +48,14 @@ class ContributionRequest(BaseModel):
     portfolio_number: str
     portfolio_data: PortfolioData
     positions_data: List[PositionData]
+
+    # --- Shared Envelope Fields (Optional) ---
+    as_of: Optional[date] = None
+    currency: str = "USD"
+    precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
+    rounding_precision: int = 6
+    calendar: Calendar = Field(default_factory=Calendar)
+    annualization: Annualization = Field(default_factory=Annualization)
+    periods: Optional[Periods] = None
+    output: Output = Field(default_factory=Output)
+    flags: Flags = Field(default_factory=Flags)

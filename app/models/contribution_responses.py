@@ -1,9 +1,10 @@
 # app/models/contribution_responses.py
 from datetime import date
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
+from core.envelope import Audit, Diagnostics, Meta
 
 
 class PositionContribution(BaseModel):
@@ -23,3 +24,8 @@ class ContributionResponse(BaseModel):
     total_portfolio_return: float
     total_contribution: float
     position_contributions: List[PositionContribution]
+
+    # --- Shared Envelope Fields ---
+    meta: Optional[Meta] = None
+    diagnostics: Optional[Diagnostics] = None
+    audit: Optional[Audit] = None

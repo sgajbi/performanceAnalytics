@@ -12,6 +12,7 @@ from common.enums import (
     LinkingMethod,
     PeriodType,
 )
+from core.envelope import Annualization, Calendar, Flags, Output, Periods
 from app.models.requests import DailyInputData
 
 
@@ -60,3 +61,14 @@ class AttributionRequest(BaseModel):
 
     # Benchmark is always by group
     benchmark_groups_data: List[BenchmarkGroup]
+
+    # --- Shared Envelope Fields (Optional) ---
+    as_of: Optional[date] = None
+    currency: str = "USD"
+    precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
+    rounding_precision: int = 6
+    calendar: Calendar = Field(default_factory=Calendar)
+    annualization: Annualization = Field(default_factory=Annualization)
+    periods: Optional[Periods] = None
+    output: Output = Field(default_factory=Output)
+    flags: Flags = Field(default_factory=Flags)

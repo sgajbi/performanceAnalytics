@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 def create_engine_config(request: PerformanceRequest) -> EngineConfig:
     """Creates an EngineConfig object from an API PerformanceRequest."""
+    # This function will be updated in a subsequent step to use the new `periods` model.
+    # For now, it maintains backward compatibility with the existing date fields.
     return EngineConfig(
         performance_start_date=request.performance_start_date,
         report_start_date=request.report_start_date,
@@ -61,7 +63,6 @@ def format_breakdowns_for_response(
         for i, result_item in enumerate(results):
             summary_data = result_item["summary"]
 
-            # FIX: Pydantic requires keys matching the ALIASES for validation here.
             pydantic_summary_data = {
                 BEGIN_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.BEGIN_MV),
                 END_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.END_MV),

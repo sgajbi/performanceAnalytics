@@ -39,6 +39,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected server error occurred: {str(e)}",
         )
+    # Note: The new response footer will be added in a subsequent step when the context is plumbed through.
     return PerformanceResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
@@ -64,6 +65,7 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
             detail=f"An unexpected error occurred during MWR calculation: {str(e)}",
         )
 
+    # Note: The new response footer will be added in a subsequent step when the context is plumbed through.
     return MoneyWeightedReturnResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
@@ -78,6 +80,8 @@ async def calculate_attribution_endpoint(request: AttributionRequest):
     active return into allocation, selection, and interaction effects.
     """
     try:
+        # The run_attribution_calculations function is complex and will be updated
+        # to return the full response object in a later step.
         response = run_attribution_calculations(request)
         return response
     except (InvalidEngineInputError, ValueError, NotImplementedError) as e:

@@ -21,7 +21,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
     try:
         # 1. Create a single config object for all TWR calculations
         perf_start_date = request.portfolio_data.daily_data[0].perf_date
-        
+
         twr_config = EngineConfig(
             performance_start_date=perf_start_date,
             report_start_date=request.portfolio_data.report_start_date,
@@ -43,13 +43,13 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
                 [item.model_dump(by_alias=True) for item in position.daily_data]
             )
             position_results_map[position.position_id] = run_calculations(position_df, twr_config)
-            
+
         # 4. Calculate the final contribution
         contribution_results = calculate_position_contribution(portfolio_results, position_results_map)
 
         # 5. Format the response
         total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
-        
+
         position_contributions = [
             PositionContribution(
                 position_id=pos_id,
@@ -65,6 +65,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
             detail=f"An unexpected error occurred during contribution calculation: {str(e)}",
         )
 
+    # Note: The new response footer will be added in a subsequent step when the context is plumbed through.
     return ContributionResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
