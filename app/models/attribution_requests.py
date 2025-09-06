@@ -1,10 +1,27 @@
 # app/models/attribution_requests.py
-from typing import Dict, List, Literal, Optional, Any
+from datetime import date
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field
-from common.enums import AttributionMode, AttributionModel, LinkingMethod, Frequency
-from app.models.contribution_requests import PortfolioData
+
+from common.enums import (
+    AttributionMode,
+    AttributionModel,
+    Frequency,
+    LinkingMethod,
+    PeriodType,
+)
 from app.models.requests import DailyInputData
+
+
+class AttributionPortfolioData(BaseModel):
+    """Contains the full time series and config for the total portfolio for attribution."""
+    report_start_date: date
+    report_end_date: date
+    metric_basis: Literal["NET", "GROSS"]
+    period_type: PeriodType
+    daily_data: List[DailyInputData]
 
 
 class InstrumentData(BaseModel):
@@ -17,13 +34,13 @@ class InstrumentData(BaseModel):
 class BenchmarkGroup(BaseModel):
     """Time series data for a single benchmark group."""
     key: Dict[str, Any]
-    observations: List[Dict] # e.g., {"date": "YYYY-MM-DD", "return": 0.05, "weight_bop": 0.10}
+    observations: List[Dict]
 
 
 class PortfolioGroup(BaseModel):
     """Pre-aggregated time series data for a single portfolio group."""
     key: Dict[str, Any]
-    observations: List[Dict] # e.g., {"date": "YYYY-MM-DD", "return": 0.05, "weight_bop": 0.10}
+    observations: List[Dict]
 
 
 class AttributionRequest(BaseModel):
@@ -32,12 +49,12 @@ class AttributionRequest(BaseModel):
     portfolio_number: str
     mode: AttributionMode
     frequency: Frequency = Frequency.MONTHLY
-    group_by: List[str] = Field(..., min_length=1, alias="groupBy")
+    group_by: List[str] = Field(..., min_items=1, alias="groupBy")
     model: AttributionModel = AttributionModel.BRINSON_FACHLER
     linking: LinkingMethod = LinkingMethod.CARINO
 
     # Mode-dependent fields
-    portfolio_data: Optional[PortfolioData] = None
+    portfolio_data: Optional[AttributionPortfolioData] = None
     instruments_data: Optional[List[InstrumentData]] = None
     portfolio_groups_data: Optional[List[PortfolioGroup]] = None
 
