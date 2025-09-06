@@ -80,7 +80,7 @@ async def calculate_attribution_endpoint(request: AttributionRequest):
     try:
         response = run_attribution_calculations(request)
         return response
-    except (InvalidEngineInputError, ValueError) as e:
+    except (InvalidEngineInputError, ValueError, NotImplementedError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except EngineCalculationError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Calculation Error: {e.message}")
