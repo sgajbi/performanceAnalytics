@@ -1,10 +1,13 @@
 # app/api/endpoints/performance.py
 from fastapi import APIRouter, HTTPException, status
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
+from app.models.attribution_requests import AttributionRequest
+from app.models.attribution_responses import AttributionResponse
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
 from app.models.responses import PerformanceResponse
+from engine.attribution import run_attribution_calculations
 from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
@@ -66,3 +69,21 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
         portfolio_number=request.portfolio_number,
         money_weighted_return=mwr,
     )
+
+
+@router.post("/attribution", response_model=AttributionResponse, summary="Calculate Multi-Level Performance Attribution")
+async def calculate_attribution_endpoint(request: AttributionRequest):
+    """
+    Calculates multi-level, Brinson-style performance attribution, decomposing
+    active return into allocation, selection, and interaction effects.
+    """
+    try:
+        # NOTE: This is a direct call to the engine for Phase 1.
+        # The adapter layer will be integrated in subsequent phases.
+        response = run_attribution_calculations(request)
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected server error occurred: {str(e)}",
+        )
