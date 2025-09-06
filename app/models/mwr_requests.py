@@ -13,6 +13,12 @@ class CashFlow(BaseModel):
     date: date
 
 
+class Solver(BaseModel):
+    method: str = "brent"
+    max_iter: int = 200
+    tolerance: float = 1e-10
+
+
 class MoneyWeightedReturnRequest(BaseModel):
     """Request model for calculating Money-Weighted Return."""
     calculation_id: UUID = Field(default_factory=uuid4)
@@ -21,8 +27,13 @@ class MoneyWeightedReturnRequest(BaseModel):
     ending_mv: float
     cash_flows: List[CashFlow]
 
-    # --- Shared Envelope Fields (Optional) ---
-    as_of: Optional[date] = None
+    # --- RFC-016 Enhancements ---
+    mwr_method: Literal["XIRR", "MODIFIED_DIETZ", "DIETZ"] = "XIRR"
+    solver: Solver = Field(default_factory=Solver)
+    emit_cashflows_used: bool = True
+
+    # --- RFC-014 Shared Envelope Fields (Optional) ---
+    as_of: date
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
     rounding_precision: int = 6

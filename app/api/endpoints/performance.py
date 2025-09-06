@@ -31,7 +31,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
 
         daily_results_df, diagnostics_data = run_calculations(engine_df, engine_config)
 
-        # Pass request flags and annualization settings to the breakdown generator
         breakdowns_data = generate_performance_breakdowns(
             daily_results_df,
             request.frequencies,
@@ -89,11 +88,13 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
     Calculates the money-weighted return (MWR) for a portfolio over a given period.
     """
     try:
-        cash_flows_dict = [cf.model_dump() for cf in request.cash_flows]
-        mwr = calculate_money_weighted_return(
+        mwr_result = calculate_money_weighted_return(
             beginning_mv=request.beginning_mv,
             ending_mv=request.ending_mv,
-            cash_flows=cash_flows_dict
+            cash_flows=request.cash_flows,
+            calculation_method=request.mwr_method,
+            annualization=request.annualization,
+            as_of=request.as_of,
         )
     except Exception as e:
         raise HTTPException(
@@ -101,11 +102,32 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
             detail=f"An unexpected error occurred during MWR calculation: {str(e)}",
         )
 
-    return MoneyWeightedReturnResponse(
+    meta = Meta(
         calculation_id=request.calculation_id,
-        portfolio_number=request.portfolio_number,
-        money_weighted_return=mwr,
+        engine_version=settings.APP_VERSION,
+        precision_mode=request.precision_mode,
+        annualization=request.annualization,
+        calendar=request.calendar,
+        periods={"type": "EXPLICIT", "start": str(mwr_result.start_date), "end": str(mwr_result.end_date)},
     )
+    diagnostics = Diagnostics(
+        nip_days=0,
+        reset_days=0,
+        effective_period_start=mwr_result.start_date,
+        notes=mwr_result.notes,
+    )
+    audit = Audit(counts={"cashflows": len(request.cash_flows)})
+
+    response_payload = {
+        "calculation_id": request.calculation_id,
+        "portfolio_number": request.portfolio_number,
+        **mwr_result.model_dump(),
+        "meta": meta,
+        "diagnostics": diagnostics,
+        "audit": audit,
+    }
+
+    return MoneyWeightedReturnResponse.model_validate(response_payload)
 
 
 @router.post("/attribution", response_model=AttributionResponse, summary="Calculate Multi-Level Performance Attribution")
