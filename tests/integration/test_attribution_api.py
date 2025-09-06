@@ -40,11 +40,7 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
     level = response_data["levels"][0]
     tech_group = next(g for g in level["groups"] if g["key"]["sector"] == "Tech")
     
-    # Rp = (0.6 * 0.02) + (0.4 * 0.01625) = 0.012 + 0.0065 = 0.0185
-    # Rb = (0.5 * 0.015) + (0.5 * 0.02) = 0.0075 + 0.01 = 0.0175
-    # AR = 0.0185 - 0.0175 = 0.001
     assert response_data["reconciliation"]["total_active_return"] == pytest.approx(0.001)
-    # Tech Selection = w_b * (r_p - r_b) = 0.5 * (0.02 - 0.015) = 0.0025
     assert tech_group["selection"] == pytest.approx(0.0025)
 
 
@@ -59,9 +55,9 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
 )
 def test_attribution_endpoint_error_handling(client, mocker, error_class, expected_status):
     """Tests that the attribution endpoint correctly handles engine exceptions."""
-    mocker.patch('engine.attribution.run_attribution_calculations', side_effect=error_class("Test Error"))
+    mocker.patch('app.api.endpoints.performance.run_attribution_calculations', side_effect=error_class("Test Error"))
     
-    payload = {"portfolio_number": "ERROR", "mode": "by_group", "groupBy": ["sector"], "benchmark_groups_data": []}
+    payload = {"portfolio_number": "ERROR", "mode": "by_group", "groupBy": ["sector"], "benchmark_groups_data": [], "linking": "none"}
     response = client.post("/performance/attribution", json=payload)
     
     assert response.status_code == expected_status

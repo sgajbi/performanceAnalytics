@@ -48,7 +48,7 @@ def test_contribution_endpoint_happy_path(client):
 
 def test_contribution_endpoint_error_handling(client, mocker):
     """Tests that a generic server error is raised for calculation failures."""
-    mocker.patch('engine.contribution.calculate_position_contribution', side_effect=EngineCalculationError("Test Error"))
+    mocker.patch('app.api.endpoints.contribution.calculate_position_contribution', side_effect=EngineCalculationError("Test Error"))
     
     # A minimal valid payload is needed to trigger the endpoint
     payload = {
