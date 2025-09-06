@@ -109,26 +109,25 @@ def _link_effects_carino(effects_df: pd.DataFrame, per_period_active_return: pd.
     """Links multi-period attribution effects using the Carino smoothing algorithm."""
     total_linked_active_return = (1 + per_period_active_return).prod() - 1
 
-    # Calculate per-period total effect, which equals the per-period active return
-    total_period_effect = effects_df['allocation'] + effects_df['selection'] + effects_df['interaction']
-
-    k = np.log(1 + total_period_effect) / total_period_effect
+    k = np.log(1 + per_period_active_return) / per_period_active_return
     K = np.log(1 + total_linked_active_return) / total_linked_active_return
     k.fillna(1.0, inplace=True)
     if pd.isna(K) or total_linked_active_return == 0: K = 1.0
 
-    # Calculate the total adjustment needed for each period
-    period_adjustment = total_period_effect * ((K / k) - 1)
+    period_adjustment = (per_period_active_return * ((K / k) - 1)).rename('adjustment')
+    effects_with_adj = effects_df.join(period_adjustment, on='date')
 
-    # Distribute the period adjustment pro-rata to each effect's original magnitude
+    total_period_effect = effects_df['allocation'] + effects_df['selection'] + effects_df['interaction']
+    
+    linked_effects = effects_df[['allocation', 'selection', 'interaction']].copy()
     with np.errstate(divide='ignore', invalid='ignore'):
-        effect_weights = (effects_df[['allocation', 'selection', 'interaction']].abs()
-                          .div(effects_df[['allocation', 'selection', 'interaction']].abs().sum(axis=1), axis=0)
+        effect_weights = (linked_effects.abs()
+                          .div(total_period_effect.abs(), level='date')
                           .fillna(0))
 
-    adjustments = effect_weights.mul(period_adjustment, axis=0)
-
-    linked_effects = effects_df[['allocation', 'selection', 'interaction']] + adjustments
+    adjustments = effect_weights.mul(effects_with_adj['adjustment'], axis=0)
+    linked_effects += adjustments
+        
     return linked_effects
 
 
