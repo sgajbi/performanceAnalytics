@@ -75,8 +75,8 @@ def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     portfolio_weights = resampler_p['weight_bop'].first()
     benchmark_weights = resampler_b['weight_bop'].first()
 
-    df_p = pd.concat([portfolio_returns.stack(), portfolio_weights.stack()], axis=1).rename(columns={0: 'r_p', 1: 'w_p'})
-    df_b = pd.concat([benchmark_returns.stack(), benchmark_weights.stack()], axis=1).rename(columns={0: 'r_b', 1: 'w_b'})
+    df_p = pd.concat([portfolio_returns.stack(group_cols), portfolio_weights.stack(group_cols)], axis=1).rename(columns={0: 'r_p', 1: 'w_p'})
+    df_b = pd.concat([benchmark_returns.stack(group_cols), benchmark_weights.stack(group_cols)], axis=1).rename(columns={0: 'r_b', 1: 'w_b'})
 
     df_p.index.names = ['date'] + group_cols
     df_b.index.names = ['date'] + group_cols
@@ -86,7 +86,7 @@ def _align_and_prepare_data(request: AttributionRequest) -> pd.DataFrame:
     total_benchmark_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby(level='date').sum()
     aligned_df = aligned_df.join(total_benchmark_return.rename('r_b_total'), on='date')
 
-    return aligned_df
+    return aligned_df.reset_index()
 
 
 def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) -> pd.DataFrame:
@@ -108,22 +108,54 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
 def run_attribution_calculations(request: AttributionRequest) -> AttributionResponse:
     """
     Orchestrates the full multi-level performance attribution calculation.
-    NOTE: This is a placeholder implementation.
+    NOTE: Phase 2 implementation for single-level 'by_group' mode.
     """
-    dummy_level = AttributionLevelResult(
+    if request.mode != AttributionMode.BY_GROUP or len(request.group_by) > 1:
+        raise NotImplementedError("Only single-level 'by_group' mode is supported.")
+
+    aligned_df = _align_and_prepare_data(request)
+
+    if aligned_df.empty:
+        dummy_level = AttributionLevelResult(dimension=request.group_by[0], groups=[], totals=AttributionLevelTotals(allocation=0.0, selection=0.0, interaction=0.0, total_effect=0.0))
+        return AttributionResponse(calculation_id=request.calculation_id, portfolio_number=request.portfolio_number, model=request.model, linking=request.linking, levels=[dummy_level], reconciliation=Reconciliation(total_active_return=0.0, sum_of_effects=0.0, residual=0.0))
+
+    group_by_key = 'group_0'
+    effects_df = _calculate_single_period_effects(aligned_df.set_index(['date', group_by_key]), request.model)
+
+    group_totals = effects_df.groupby(group_by_key)[['allocation', 'selection', 'interaction']].sum()
+    group_totals['total_effect'] = group_totals.sum(axis=1)
+    overall_totals = group_totals.sum()
+
+    group_results = []
+    for group_name, row in group_totals.iterrows():
+        group_results.append(AttributionGroupResult(
+            key={request.group_by[0]: group_name},
+            allocation=row['allocation'],
+            selection=row['selection'],
+            interaction=row['interaction'],
+            total_effect=row['total_effect']
+        ))
+
+    level_result = AttributionLevelResult(
         dimension=request.group_by[0],
-        groups=[],
-        totals=AttributionLevelTotals(
-            allocation=0.0, selection=0.0, interaction=0.0, total_effect=0.0
-        ),
+        groups=sorted(group_results, key=lambda x: x.key[request.group_by[0]]),
+        totals=AttributionLevelTotals(**overall_totals.to_dict()),
     )
+
+    # NOTE: Simple sum, as linking is not yet implemented.
+    r_p_total = (aligned_df['w_p'] * aligned_df['r_p']).sum()
+    r_b_total = (aligned_df['w_b'] * aligned_df['r_b']).sum()
+    active_return = r_p_total - r_b_total
+
     return AttributionResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
         model=request.model,
         linking=request.linking,
-        levels=[dummy_level],
+        levels=[level_result],
         reconciliation=Reconciliation(
-            total_active_return=0.0, sum_of_effects=0.0, residual=0.0
+            total_active_return=active_return,
+            sum_of_effects=overall_totals['total_effect'],
+            residual=active_return - overall_totals['total_effect']
         ),
     )
