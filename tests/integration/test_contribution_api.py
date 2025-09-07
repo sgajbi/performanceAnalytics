@@ -81,6 +81,27 @@ def test_contribution_endpoint_no_smoothing(client, happy_path_payload):
     assert response_data["position_contributions"][0]["total_contribution"] == pytest.approx(1.94766, abs=1e-5)
 
 
+def test_contribution_endpoint_with_timeseries(client, happy_path_payload):
+    """
+    Tests that the endpoint correctly returns time-series data when requested.
+    """
+    payload = happy_path_payload.copy()
+    payload["emit"] = {"timeseries": True, "by_position_timeseries": True}
+
+    response = client.post("/performance/contribution", json=payload)
+    assert response.status_code == 200
+    response_data = response.json()
+
+    assert "timeseries" in response_data
+    assert len(response_data["timeseries"]) == 2
+    assert response_data["timeseries"][0]["date"] == "2025-01-01"
+
+    assert "by_position_timeseries" in response_data
+    assert len(response_data["by_position_timeseries"]) == 1
+    assert response_data["by_position_timeseries"][0]["position_id"] == "Stock_A"
+    assert len(response_data["by_position_timeseries"][0]["series"]) == 2
+
+
 def test_contribution_endpoint_error_handling(client, mocker):
     """Tests that a generic server error is raised for calculation failures."""
     mocker.patch('app.api.endpoints.contribution.calculate_position_contribution', side_effect=EngineCalculationError("Test Error"))

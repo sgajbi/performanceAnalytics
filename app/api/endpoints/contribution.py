@@ -4,7 +4,13 @@ import pandas as pd
 from adapters.api_adapter import create_engine_dataframe
 from app.core.config import get_settings
 from app.models.contribution_requests import ContributionRequest
-from app.models.contribution_responses import ContributionResponse, PositionContribution
+from app.models.contribution_responses import (
+    ContributionResponse,
+    DailyContribution,
+    PositionContribution,
+    PositionContributionSeries,
+    PositionDailyContribution,
+)
 from core.envelope import Audit, Diagnostics, Meta
 from engine.compute import run_calculations
 from engine.contribution import calculate_position_contribution
@@ -52,10 +58,11 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
 
         # 4. Calculate the final contribution
         contribution_results = calculate_position_contribution(
-            portfolio_results, position_results_map, request.smoothing
+            portfolio_results, position_results_map, request.smoothing, request.emit
         )
-
+        
         # 5. Format the response
+        raw_timeseries = contribution_results.pop("timeseries", None)
         total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
 
         position_contributions = [
@@ -100,7 +107,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
             "calculation_days": len(portfolio_results)
         }
     )
-
+    
+    # 7. Construct final payload including optional time-series
     response_payload = {
         "calculation_id": request.calculation_id,
         "portfolio_number": request.portfolio_number,
@@ -113,5 +121,23 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
         "diagnostics": diagnostics,
         "audit": audit,
     }
+
+    if request.emit.timeseries and raw_timeseries:
+        timeseries = []
+        for row in raw_timeseries:
+            total_contrib = sum(v for k, v in row.items() if k != 'date')
+            timeseries.append(DailyContribution(date=row['date'], total_contribution=total_contrib))
+        response_payload["timeseries"] = timeseries
+
+    if request.emit.by_position_timeseries and raw_timeseries:
+        by_pos_ts = {pos_id: [] for pos_id in position_results_map.keys()}
+        for row in raw_timeseries:
+            for pos_id in by_pos_ts.keys():
+                by_pos_ts[pos_id].append(PositionDailyContribution(date=row['date'], contribution=row.get(pos_id, 0.0)))
+
+        response_payload["by_position_timeseries"] = [
+            PositionContributionSeries(position_id=pos_id, series=series)
+            for pos_id, series in by_pos_ts.items()
+        ]
 
     return ContributionResponse.model_validate(response_payload)

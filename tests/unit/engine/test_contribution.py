@@ -1,7 +1,7 @@
 # tests/unit/engine/test_contribution.py
 import pandas as pd
 import pytest
-from app.models.contribution_requests import Smoothing
+from app.models.contribution_requests import Emit, Smoothing
 from engine.contribution import (
     _calculate_carino_factors,
     _calculate_single_period_weights,
@@ -147,14 +147,14 @@ def test_calculate_carino_factors():
 def test_calculate_position_contribution_orchestrator(portfolio_results_fixture, position_results_map_fixture):
     """Characterization test for the main contribution orchestrator with Carino smoothing."""
     result = calculate_position_contribution(
-        portfolio_results_fixture, position_results_map_fixture, Smoothing(method="CARINO")
+        portfolio_results_fixture, position_results_map_fixture, Smoothing(method="CARINO"), Emit()
     )
     port_total_return = ((1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
 
-    total_contribution_sum = sum(data["total_contribution"] for data in result.values())
+    total_contribution_sum = sum(data["total_contribution"] for data in result.values() if isinstance(data, dict))
     assert total_contribution_sum == pytest.approx(port_total_return)
 
-    total_average_weight = sum(data["average_weight"] for data in result.values())
+    total_average_weight = sum(data["average_weight"] for data in result.values() if isinstance(data, dict))
     assert total_average_weight == pytest.approx(100.0)
 
     assert result["Stock_A"]["total_contribution"] == pytest.approx(1.959076, abs=1e-6)
@@ -164,10 +164,10 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
 def test_calculate_position_contribution_no_smoothing(portfolio_results_fixture, position_results_map_fixture):
     """Tests that with smoothing disabled, the contribution is a simple arithmetic sum."""
     result = calculate_position_contribution(
-        portfolio_results_fixture, position_results_map_fixture, Smoothing(method="NONE")
+        portfolio_results_fixture, position_results_map_fixture, Smoothing(method="NONE"), Emit()
     )
     port_total_return = ((1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
-    total_contribution_sum = sum(data["total_contribution"] for data in result.values())
+    total_contribution_sum = sum(data["total_contribution"] for data in result.values() if isinstance(data, dict))
 
     assert total_contribution_sum != pytest.approx(port_total_return)
     assert result["Stock_A"]["total_contribution"] == pytest.approx(1.947688, abs=1e-6)
@@ -190,5 +190,7 @@ def test_contribution_adjusts_average_weight_for_nip_day(robust_nip_day_scenario
     Tests that average weight is correctly adjusted for NIP days per RFC-004.
     """
     portfolio_results, position_results_map = robust_nip_day_scenario
-    result = calculate_position_contribution(portfolio_results, position_results_map, Smoothing(method="CARINO"))
+    result = calculate_position_contribution(
+        portfolio_results, position_results_map, Smoothing(method="CARINO"), Emit()
+    )
     assert result["Stock_A"]["average_weight"] == pytest.approx(56.25)

@@ -3,7 +3,7 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
-from app.models.contribution_requests import Smoothing
+from app.models.contribution_requests import Emit, Smoothing
 from engine.schema import PortfolioColumns
 
 
@@ -42,10 +42,12 @@ def _calculate_carino_factors(ror_series: pd.Series) -> pd.Series:
 def calculate_position_contribution(
     portfolio_results: pd.DataFrame,
     position_results_map: Dict[str, pd.DataFrame],
-    smoothing: Smoothing, # New parameter
+    smoothing: Smoothing,
+    emit: Emit,
 ) -> Dict[str, Dict]:
     """
-    Orchestrates the full position contribution calculation with configurable smoothing.
+    Orchestrates the full position contribution calculation with configurable smoothing
+    and optional time-series emission.
     """
     portfolio_date_index = pd.to_datetime(portfolio_results[PortfolioColumns.PERF_DATE])
     aligned_position_results = {}
@@ -127,5 +129,8 @@ def calculate_position_contribution(
         for pos_id in position_ids:
             weight_proportion = final_results[pos_id]["average_weight"] / sum_of_weights
             final_results[pos_id]["total_contribution"] += residual * weight_proportion * 100
+
+    if emit.timeseries:
+        final_results["timeseries"] = contrib_df[["date"] + position_ids].to_dict(orient="records")
 
     return final_results
