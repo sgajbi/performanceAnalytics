@@ -3,7 +3,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 from app.core.constants import *
 from common.enums import Frequency
@@ -12,27 +12,22 @@ from core.envelope import Audit, Diagnostics, Meta
 
 class PerformanceSummary(BaseModel):
     """A summary of performance for a given period (day, month, etc.)."""
+    model_config = ConfigDict(populate_by_name=True)
+
     begin_market_value: float = Field(..., alias=BEGIN_MARKET_VALUE_FIELD)
     end_market_value: float = Field(..., alias=END_MARKET_VALUE_FIELD)
     net_cash_flow: float
-    # New primary name for period return, old name is for backward compatibility
     period_return_pct: float
-    # Optional fields for new features
     cumulative_return_pct_to_date: Optional[float] = None
     annualized_return_pct: Optional[float] = None
 
-    # This field is used for backward compatibility only and is not a real field.
     final_cumulative_ror: Optional[float] = Field(default=None, alias=FINAL_CUMULATIVE_ROR_PERCENT_FIELD)
 
     @model_validator(mode="before")
     def rename_legacy_field(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        # If the old field name is present, move its value to the new field name
         if FINAL_CUMULATIVE_ROR_PERCENT_FIELD in values:
             values["period_return_pct"] = values.pop(FINAL_CUMULATIVE_ROR_PERCENT_FIELD)
         return values
-
-    class Config:
-        populate_by_name = True
 
 
 class PerformanceResultItem(BaseModel):
@@ -57,7 +52,6 @@ class PerformanceResponse(BaseModel):
     breakdowns: PerformanceBreakdown
     reset_events: Optional[List[ResetEvent]] = None
 
-    # --- Shared Envelope Fields (Mandatory) ---
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit

@@ -2,7 +2,7 @@
 from datetime import date
 from typing import List, Literal, Optional
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.models.mwr_requests import CashFlow
 from core.envelope import Audit, Diagnostics, Meta
@@ -27,10 +27,11 @@ class MWRResult(BaseModel):
 
 class MoneyWeightedReturnResponse(BaseModel):
     """Response model for a Money-Weighted Return calculation."""
+    model_config = ConfigDict(populate_by_name=True)
+
     calculation_id: UUID
     portfolio_number: str
 
-    # --- RFC-016 Fields ---
     mwr: float = Field(alias="money_weighted_return")
     mwr_annualized: Optional[float] = None
     method: Literal["XIRR", "MODIFIED_DIETZ", "DIETZ"]
@@ -40,10 +41,6 @@ class MoneyWeightedReturnResponse(BaseModel):
     end_date: date
     notes: List[str]
 
-    # --- Shared Envelope Fields ---
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit
-
-    class Config:
-        populate_by_name = True
