@@ -1,6 +1,6 @@
 # app/models/contribution_responses.py
 from datetime import date
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -9,6 +9,7 @@ from core.envelope import Audit, Diagnostics, Meta
 
 class PositionContribution(BaseModel):
     """Details the contribution of a single position."""
+
     position_id: str
     total_contribution: float
     average_weight: float
@@ -17,34 +18,72 @@ class PositionContribution(BaseModel):
 
 class DailyContribution(BaseModel):
     """Represents the total contribution for a single day."""
+
     date: date
     total_contribution: float
 
 
 class PositionDailyContribution(BaseModel):
     """Represents a single day's contribution for a position."""
+
     date: date
     contribution: float
 
 
 class PositionContributionSeries(BaseModel):
     """Contains the full contribution time series for a single position."""
+
     position_id: str
     series: List[PositionDailyContribution]
 
 
+
+
+class ContributionSummary(BaseModel):
+    """High-level summary for a multi-level contribution calculation."""
+
+    portfolio_contribution: float
+    coverage_mv_pct: float
+    weighting_scheme: str
+
+
+class ContributionRow(BaseModel):
+    """Represents a single row within a hierarchical level (e.g., a sector or security)."""
+
+    key: Dict[str, Any]
+    contribution: float
+    weight_avg: Optional[float] = None
+    children_count: Optional[int] = None
+    is_other: bool = False
+    residual_bp: Optional[float] = None
+
+
+class ContributionLevel(BaseModel):
+    """Contains the full set of results for a single level of the hierarchy."""
+
+    level: int
+    name: str
+    parent: Optional[str] = None
+    rows: List[ContributionRow]
+
+
 class ContributionResponse(BaseModel):
     """Response model for the Contribution engine."""
+
     calculation_id: UUID
     portfolio_number: str
     report_start_date: date
     report_end_date: date
-    total_portfolio_return: float
-    total_contribution: float
-    position_contributions: List[PositionContribution]
+
+    total_portfolio_return: Optional[float] = None
+    total_contribution: Optional[float] = None
+    position_contributions: Optional[List[PositionContribution]] = None
 
     timeseries: Optional[List[DailyContribution]] = None
     by_position_timeseries: Optional[List[PositionContributionSeries]] = None
+
+    summary: Optional[ContributionSummary] = None
+    levels: Optional[List[ContributionLevel]] = None
 
     meta: Meta
     diagnostics: Diagnostics
