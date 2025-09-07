@@ -15,6 +15,24 @@ class PositionContribution(BaseModel):
     total_return: float
 
 
+class DailyContribution(BaseModel):
+    """Represents the total contribution for a single day."""
+    date: date
+    total_contribution: float
+
+
+class PositionDailyContribution(BaseModel):
+    """Represents a single day's contribution for a position."""
+    date: date
+    contribution: float
+
+
+class PositionContributionSeries(BaseModel):
+    """Contains the full contribution time series for a single position."""
+    position_id: str
+    series: List[PositionDailyContribution]
+
+
 class ContributionResponse(BaseModel):
     """Response model for the Contribution engine."""
     calculation_id: UUID
@@ -25,7 +43,9 @@ class ContributionResponse(BaseModel):
     total_contribution: float
     position_contributions: List[PositionContribution]
 
-    # --- Shared Envelope Fields ---
-    meta: Optional[Meta] = None
-    diagnostics: Optional[Diagnostics] = None
-    audit: Optional[Audit] = None
+    timeseries: Optional[List[DailyContribution]] = None
+    by_position_timeseries: Optional[List[PositionContributionSeries]] = None
+
+    meta: Meta
+    diagnostics: Diagnostics
+    audit: Audit

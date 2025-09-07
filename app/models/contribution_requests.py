@@ -25,6 +25,7 @@ class PositionDailyData(BaseModel):
     bod_cashflow: float = Field(..., alias=BOD_CASHFLOW_FIELD)
     eod_cashflow: float = Field(..., alias=EOD_CASHFLOW_FIELD)
     mgmt_fees: float = Field(..., alias=MGMT_FEES_FIELD)
+    Day: int # Added to match portfolio daily data structure
 
 
 class PositionData(BaseModel):
@@ -42,6 +43,15 @@ class PortfolioData(BaseModel):
     daily_data: List[PositionDailyData]
 
 
+class Smoothing(BaseModel):
+    method: Literal["CARINO", "NONE"] = "CARINO"
+
+
+class Emit(BaseModel):
+    timeseries: bool = False
+    by_position_timeseries: bool = False
+
+
 class ContributionRequest(BaseModel):
     """Request model for the Contribution engine."""
     calculation_id: UUID = Field(default_factory=uuid4)
@@ -49,7 +59,10 @@ class ContributionRequest(BaseModel):
     portfolio_data: PortfolioData
     positions_data: List[PositionData]
 
-    # --- Shared Envelope Fields (Optional) ---
+    weighting_scheme: Literal["BOD", "AVG_CAPITAL"] = "BOD"
+    smoothing: Smoothing = Field(default_factory=Smoothing)
+    emit: Emit = Field(default_factory=Emit)
+
     as_of: Optional[date] = None
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
