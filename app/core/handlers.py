@@ -1,9 +1,14 @@
+# app/core/handlers.py
 import logging
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
-from app.core.exceptions import PerformanceCalculatorError
+from app.core.exceptions import (
+    InvalidInputDataError,
+    MissingConfigurationError,
+    PerformanceCalculatorError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +19,6 @@ async def performance_calculator_exception_handler(request: Request, exc: Perfor
     """
     logger.error(f"PerformanceCalculatorError caught: {exc.message}", exc_info=True)
 
-    # Customize status codes based on the specific exception type if needed
-    # For now, treating all as internal server error unless explicitly designed for client error
     if isinstance(exc, (InvalidInputDataError, MissingConfigurationError)):
         status_code = status.HTTP_400_BAD_REQUEST
     else:

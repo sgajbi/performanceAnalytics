@@ -4,7 +4,9 @@
 class PerformanceCalculatorError(Exception):
     """Base exception for all performance calculator errors."""
 
-    pass
+    def __init__(self, message="Base exception for all performance calculator errors."):
+        self.message = message
+        super().__init__(self.message)
 
 
 class InvalidInputDataError(PerformanceCalculatorError):
