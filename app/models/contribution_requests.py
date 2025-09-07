@@ -26,13 +26,14 @@ class PositionDailyData(BaseModel):
     bod_cashflow: float = Field(..., alias=BOD_CASHFLOW_FIELD)
     eod_cashflow: float = Field(..., alias=EOD_CASHFLOW_FIELD)
     mgmt_fees: float = Field(..., alias=MGMT_FEES_FIELD)
-    Day: int 
+    Day: int  # Added to match portfolio daily data structure
 
 
 class PositionData(BaseModel):
-    """Contains the full time series for a single position."""
+    """Contains the full time series and metadata for a single position."""
 
     position_id: str
+    meta: Dict[str, Any] = Field(default_factory=dict)
     daily_data: List[PositionDailyData]
 
 
@@ -74,6 +75,7 @@ class ContributionRequest(BaseModel):
     portfolio_data: PortfolioData
     positions_data: List[PositionData]
 
+    # --- RFC-019 & RFC-017 Enhancements ---
     hierarchy: Optional[List[str]] = None
     weighting_scheme: WeightingScheme = WeightingScheme.BOD
     smoothing: Smoothing = Field(default_factory=Smoothing)
@@ -81,6 +83,7 @@ class ContributionRequest(BaseModel):
     lookthrough: Lookthrough = Field(default_factory=Lookthrough)
     bucketing: Optional[Dict[str, Any]] = None
 
+    # --- RFC-014 Shared Envelope Fields (Optional) ---
     as_of: Optional[date] = None
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"

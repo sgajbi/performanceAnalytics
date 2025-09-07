@@ -18,7 +18,13 @@ def minimal_contribution_payload():
             "period_type": "ITD",
             "daily_data": [],
         },
-        "positions_data": [],
+        "positions_data": [
+            {
+                "position_id": "Stock_A",
+                "meta": {"sector": "Tech"},
+                "daily_data": []
+            }
+        ],
     }
 
 
@@ -34,6 +40,7 @@ def test_contribution_request_single_level_happy_path(minimal_contribution_paylo
         assert req.weighting_scheme == "BOD"
         assert req.smoothing.method == "CARINO"
         assert req.emit.by_level is False
+        assert req.positions_data[0].meta == {"sector": "Tech"}
     except ValidationError as e:
         pytest.fail(f"Validation failed unexpectedly for single-level request: {e}")
 
@@ -73,6 +80,7 @@ def test_contribution_response_multi_level_happy_path():
     Tests that a valid multi-level contribution response payload is parsed
     correctly by the ContributionResponse Pydantic model.
     """
+    # This payload matches the structure from RFC-019
     payload = {
         "calculation_id": "a4b7e289-7e28-4b7e-8e28-7e284b7e8e28",
         "portfolio_number": "HIERARCHY_01",

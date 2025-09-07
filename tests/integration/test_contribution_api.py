@@ -30,6 +30,7 @@ def happy_path_payload():
         "positions_data": [
             {
                 "position_id": "Stock_A",
+                "meta": {"sector": "Technology"},
                 "daily_data": [
                     {"Perf. Date": "2025-01-01", "Begin Market Value": 600, "End Market Value": 612, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
                     {"Perf. Date": "2025-01-02", "Begin Market Value": 612, "End Market Value": 670, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
