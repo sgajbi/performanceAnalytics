@@ -3,8 +3,25 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
-from app.models.contribution_requests import Emit, Smoothing
+from app.models.contribution_requests import ContributionRequest, Emit, Smoothing
 from engine.schema import PortfolioColumns
+
+
+def calculate_hierarchical_contribution(request: ContributionRequest) -> Dict:
+    """
+    Orchestrates the full multi-level, hierarchical position contribution calculation.
+    (Placeholder implementation)
+    """
+    # This is a placeholder implementation. The full logic will be built here
+    # in subsequent steps.
+    return {
+        "summary": {
+            "portfolio_contribution": 0.0,
+            "coverage_mv_pct": 100.0,
+            "weighting_scheme": request.weighting_scheme.value,
+        },
+        "levels": [],
+    }
 
 
 def _calculate_single_period_weights(
@@ -46,8 +63,7 @@ def calculate_position_contribution(
     emit: Emit,
 ) -> Dict[str, Dict]:
     """
-    Orchestrates the full position contribution calculation with configurable smoothing
-    and optional time-series emission.
+    Orchestrates the original single-level position contribution calculation.
     """
     portfolio_date_index = pd.to_datetime(portfolio_results[PortfolioColumns.PERF_DATE])
     aligned_position_results = {}

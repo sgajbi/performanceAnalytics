@@ -104,17 +104,22 @@ def test_contribution_endpoint_with_timeseries(client, happy_path_payload):
     assert len(response_data["by_position_timeseries"][0]["series"]) == 2
 
 
-def test_contribution_endpoint_hierarchy_not_implemented(client, happy_path_payload):
+def test_contribution_endpoint_hierarchy_returns_placeholder(client, happy_path_payload):
     """
-    Tests that a request with the 'hierarchy' field returns a 501 Not Implemented error.
+    Tests that a request with the 'hierarchy' field returns a 200 OK
+    with a valid but empty placeholder structure.
     """
     payload = happy_path_payload.copy()
     payload["hierarchy"] = ["assetClass", "sector"]
 
     response = client.post("/performance/contribution", json=payload)
 
-    assert response.status_code == 501
-    assert response.json()["detail"] == "Hierarchical contribution analysis is not yet implemented."
+    assert response.status_code == 200
+    data = response.json()
+    assert data["summary"] is not None
+    assert data["summary"]["portfolio_contribution"] == 0.0
+    assert data["levels"] == []
+    assert data["position_contributions"] is None # Should not be populated for hierarchical
 
 
 def test_contribution_endpoint_error_handling(client, mocker):
