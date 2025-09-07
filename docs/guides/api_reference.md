@@ -9,7 +9,7 @@ A root endpoint to verify that the service is running.
 * **Method**: `GET`
 * **Path**: `/`
 * **Response**: A simple JSON object with a welcome message.
-```json
+    ```json
     {
       "message": "Welcome to the Portfolio Performance Analytics API. Access /docs for API documentation."
     }
@@ -69,12 +69,13 @@ Calculates the Money-Weighted Return (MWR) for a portfolio, which measures the p
 
 ## `POST /performance/contribution`
 
-Decomposes the portfolio's total TWR into the individual contributions from its underlying positions.
+Decomposes the portfolio's total TWR into the individual contributions from its underlying positions. Supports both single-level and multi-level hierarchical breakdowns.
 ### Request Body
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `portfolio_number` | string | A unique identifier for the portfolio. |
+| `hierarchy` | array | Optional. An ordered list of metadata keys to group by (e.g., `["sector", "position_id"]`). If provided, triggers a multi-level calculation. |
 | `portfolio_data` | object | Contains the configuration and full time series for the total portfolio. The structure is identical to the main request body of the `/performance/twr` endpoint. |
 | `positions_data` | array | An array of objects, each representing an individual position. |
 | `smoothing` | object | Optional. Controls how multi-period contributions are linked. Default: `{"method": "CARINO"}`. |
@@ -86,13 +87,13 @@ Decomposes the portfolio's total TWR into the individual contributions from its 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `position_id` | string | A unique identifier for the position (e.g., a ticker). |
+| `meta` | object | Optional. A dictionary of key-value pairs for hierarchical grouping (e.g., `{"sector": "Technology"}`). |
 | `daily_data` | array | The full time series for this position, using the same `daily_data` object structure as the `/performance/twr` endpoint. |
 ---
 
 ## `POST /performance/attribution`
 
 Decomposes the portfolio's active return against a benchmark into Allocation, Selection, and Interaction effects, with support for multi-level hierarchical analysis.
-
 ### Request Body
 
 | Parameter | Type | Description |
@@ -106,153 +107,3 @@ Decomposes the portfolio's active return against a benchmark into Allocation, Se
 | `instruments_data`| array | **Required for `by_instrument` mode**. An array of objects, each representing an instrument. Contains `instrument_id`, `meta` (a dict for grouping keys, e.g., `{"sector": "Tech"}`), and `daily_data`. |
 | `portfolio_groups_data`| array | **Required for `by_group` mode**. Pre-aggregated data for portfolio groups. |
 | `benchmark_groups_data`| array | Pre-aggregated data for benchmark groups. |
-````
-
------
-
-### 2\. End-to-End Test Payloads
-
-Here are three request files for a consistent two-month portfolio containing two stocks: "SGA" (Tech) and "JBI" (Health).
-
-### **File: `E2E_TWR_Request.json`**
-
-```json
-{
-  "portfolio_number": "E2E_PORTFOLIO_01",
-  "performance_start_date": "2024-12-31",
-  "metric_basis": "NET",
-  "report_start_date": "2025-01-01",
-  "report_end_date": "2025-02-28",
-  "period_type": "YTD",
-  "frequencies": ["monthly"],
-  "daily_data": [
-    {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 100000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 102000.0},
-    {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 102000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -15.0, "End Market Value": 105000.0},
-    {"Day": 3, "Perf. Date": "2025-02-01", "Begin Market Value": 105000.0, "BOD Cashflow": 10000.0, "Eod Cashflow": 0.0, "Mgmt fees": -25.0, "End Market Value": 118000.0},
-    {"Day": 4, "Perf. Date": "2025-02-02", "Begin Market Value": 118000.0, "BOD Cashflow": 0.0, "Eod Cashflow": -5000.0, "Mgmt fees": 0.0, "End Market Value": 115000.0}
-  ]
-}
-```
-
-### **File: `E2E_MWR_Request.json`**
-
-```json
-{
-  "portfolio_number": "E2E_PORTFOLIO_01",
-  "beginning_mv": 100000.0,
-  "ending_mv": 115000.0,
-  "cash_flows": [
-    {
-      "amount": 10000.0,
-      "date": "2025-02-01"
-    },
-    {
-      "amount": -5000.0,
-      "date": "2025-02-02"
-    }
-  ]
-}
-```
-
-### **File: `E2E_Contribution_Request.json`**
-
-```json
-{
-  "portfolio_number": "E2E_PORTFOLIO_01",
-  "portfolio_data": {
-    "report_start_date": "2025-01-01",
-    "report_end_date": "2025-02-28",
-    "metric_basis": "NET",
-    "period_type": "YTD",
-    "daily_data": [
-      {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 100000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 102000.0},
-      {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 102000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -15.0, "End Market Value": 105000.0},
-      {"Day": 3, "Perf. Date": "2025-02-01", "Begin Market Value": 105000.0, "BOD Cashflow": 10000.0, "Eod Cashflow": 0.0, "Mgmt fees": -25.0, "End Market Value": 118000.0},
-      {"Day": 4, "Perf. Date": "2025-02-02", "Begin Market Value": 118000.0, "BOD Cashflow": 0.0, "Eod Cashflow": -5000.0, "Mgmt fees": 0.0, "End Market Value": 115000.0}
-    ]
-  },
-  "positions_data": [
-    {
-      "position_id": "SGA",
-      "daily_data": [
-        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 60000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 61800.0},
-        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 61800.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -10.0, "End Market Value": 64000.0},
-        {"Day": 3, "Perf. Date": "2025-02-01", "Begin Market Value": 64000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -15.0, "End Market Value": 65000.0},
-        {"Day": 4, "Perf. Date": "2025-02-02", "Begin Market Value": 65000.0, "BOD Cashflow": 0.0, "Eod Cashflow": -5000.0, "Mgmt fees": 0.0, "End Market Value": 61000.0}
-      ]
-    },
-    {
-      "position_id": "JBI",
-      "daily_data": [
-        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 40000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 40200.0},
-        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 40200.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -5.0, "End Market Value": 41000.0},
-        {"Day": 3, "Perf. Date": "2025-02-01", "Begin Market Value": 41000.0, "BOD Cashflow": 10000.0, "Eod Cashflow": 0.0, "Mgmt fees": -10.0, "End Market Value": 53000.0},
-        {"Day": 4, "Perf. Date": "2025-02-02", "Begin Market Value": 53000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 54000.0}
-      ]
-    }
-  ]
-}
-```
-
-### **File: `E2E_Attribution_Request.json`**
-
-```json
-{
-  "portfolio_number": "E2E_PORTFOLIO_01",
-  "mode": "by_instrument",
-  "groupBy": ["sector"],
-  "model": "BF",
-  "linking": "carino",
-  "frequency": "monthly",
-  "portfolio_data": {
-    "report_start_date": "2025-01-01",
-    "report_end_date": "2025-02-28",
-    "metric_basis": "NET",
-    "period_type": "YTD",
-    "daily_data": [
-      {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 100000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 102000.0},
-      {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 102000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -15.0, "End Market Value": 105000.0},
-      {"Day": 3, "Perf. Date": "2025-02-01", "Begin Market Value": 105000.0, "BOD Cashflow": 10000.0, "Eod Cashflow": 0.0, "Mgmt fees": -25.0, "End Market Value": 118000.0},
-      {"Day": 4, "Perf. Date": "2025-02-02", "Begin Market Value": 118000.0, "BOD Cashflow": 0.0, "Eod Cashflow": -5000.0, "Mgmt fees": 0.0, "End Market Value": 115000.0}
-    ]
-  },
-  "instruments_data": [
-    {
-      "instrument_id": "SGA",
-      "meta": {"sector": "Tech"},
-      "daily_data": [
-        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 60000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 61800.0},
-        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 61800.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -10.0, "End Market Value": 64000.0},
-        {"Day": 3, "Perf. Date": "2025-02-01", "Begin Market Value": 64000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -15.0, "End Market Value": 65000.0},
-        {"Day": 4, "Perf. Date": "2025-02-02", "Begin Market Value": 65000.0, "BOD Cashflow": 0.0, "Eod Cashflow": -5000.0, "Mgmt fees": 0.0, "End Market Value": 61000.0}
-      ]
-    },
-    {
-      "instrument_id": "JBI",
-      "meta": {"sector": "Health"},
-      "daily_data": [
-        {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 40000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 40200.0},
-        {"Day": 2, "Perf. Date": "2025-01-02", "Begin Market Value": 40200.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": -5.0, "End Market Value": 41000.0},
-        {"Day": 3, "Perf. Date": "2025-02-01", "Begin Market Value": 41000.0, "BOD Cashflow": 10000.0, "Eod Cashflow": 0.0, "Mgmt fees": -10.0, "End Market Value": 53000.0},
-        {"Day": 4, "Perf. Date": "2025-02-02", "Begin Market Value": 53000.0, "BOD Cashflow": 0.0, "Eod Cashflow": 0.0, "Mgmt fees": 0.0, "End Market Value": 54000.0}
-      ]
-    }
-  ],
-  "benchmark_groups_data": [
-    {
-      "key": {"sector": "Tech"},
-      "observations": [
-        {"date": "2025-01-31", "return": 0.05, "weight_bop": 0.5},
-        {"date": "2025-02-28", "return": 0.02, "weight_bop": 0.5}
-      ]
-    },
-    {
-      "key": {"sector": "Health"},
-      "observations": [
-        {"date": "2025-01-31", "return": 0.01, "weight_bop": 0.5},
-        {"date": "2025-02-28", "return": 0.03, "weight_bop": 0.5}
-      ]
-    }
-  ]
-}
-```
