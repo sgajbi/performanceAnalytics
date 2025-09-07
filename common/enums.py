@@ -4,8 +4,8 @@ from enum import Enum
 
 class Frequency(str, Enum):
     """Defines the supported frequency types for performance breakdowns."""
+
     DAILY = "daily"
-    # FIX: Add the missing WEEKLY member to align with RFC-015 and engine logic.
     WEEKLY = "weekly"
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"
@@ -14,6 +14,7 @@ class Frequency(str, Enum):
 
 class PeriodType(str, Enum):
     """Defines the supported period types for performance calculation."""
+
     MTD = "MTD"
     QTD = "QTD"
     YTD = "YTD"
@@ -26,18 +27,29 @@ class PeriodType(str, Enum):
 
 class AttributionMode(str, Enum):
     """Defines the input modes for the attribution engine."""
+
     BY_INSTRUMENT = "by_instrument"
     BY_GROUP = "by_group"
 
 
 class AttributionModel(str, Enum):
     """Defines the supported Brinson-style attribution models."""
+
     BRINSON_FACHLER = "BF"
     BRINSON_HOOD_BEEBOWER = "BHB"
 
 
 class LinkingMethod(str, Enum):
     """Defines the supported methods for linking multi-period attribution effects."""
+
     CARINO = "carino"
     LOGARITHMIC = "log"
     NONE = "none"
+
+
+class WeightingScheme(str, Enum):
+    """Defines the supported weighting schemes for contribution analysis."""
+
+    BOD = "BOD"
+    AVG_CAPITAL = "AVG_CAPITAL"
+    TWR_DENOM = "TWR_DENOM"
