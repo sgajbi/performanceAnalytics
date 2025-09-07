@@ -11,32 +11,6 @@ def client():
     with TestClient(app) as c:
         yield c
 
-@pytest.fixture(scope="module")
-def happy_path_payload():
-    """Provides a standard, valid payload for contribution tests."""
-    return {
-        "portfolio_number": "CONTRIB_TEST_01",
-        "portfolio_data": {
-            "report_start_date": "2025-01-01",
-            "report_end_date": "2025-01-02",
-            "period_type": "ITD",
-            "metric_basis": "NET",
-            "daily_data": [
-                { "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "End Market Value": 1020, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
-                { "Perf. Date": "2025-01-02", "Begin Market Value": 1020, "End Market Value": 1080, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2}
-            ]
-        },
-        "positions_data": [
-            {
-                "position_id": "Stock_A",
-                "daily_data": [
-                    { "Perf. Date": "2025-01-01", "Begin Market Value": 600, "End Market Value": 612, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
-                    { "Perf. Date": "2025-01-02", "Begin Market Value": 612, "End Market Value": 670, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2}
-                ]
-            }
-        ]
-    }
-
 
 def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payload):
     """
@@ -102,18 +76,66 @@ def test_contribution_endpoint_with_timeseries(client, happy_path_payload):
     assert len(response_data["by_position_timeseries"][0]["series"]) == 2
 
 
+def test_contribution_endpoint_hierarchy_happy_path(client, happy_path_payload):
+    """
+    Tests that a request with the 'hierarchy' field returns a 200 OK
+    with a correctly aggregated hierarchical result.
+    """
+    payload = happy_path_payload.copy()
+    payload["hierarchy"] = ["sector", "position_id"]
+    payload["positions_data"].append(
+        {
+            "position_id": "Stock_B",
+            "meta": {"sector": "Technology"},
+            "daily_data": [
+                {"Perf. Date": "2025-01-01", "Begin Market Value": 400, "End Market Value": 408, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
+                {"Perf. Date": "2025-01-02", "Begin Market Value": 408, "End Market Value": 410, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+            ],
+        }
+    )
+
+    response = client.post("/performance/contribution", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    # Summary checks
+    assert "summary" in data
+    assert data["summary"]["portfolio_contribution"] == pytest.approx(2.95327, abs=1e-5)
+
+    # Level checks
+    assert len(data["levels"]) == 2
+    sector_level = data["levels"][0]
+    position_level = data["levels"][1]
+
+    assert sector_level["name"] == "sector"
+    assert len(sector_level["rows"]) == 1
+    tech_sector = sector_level["rows"][0]
+    assert tech_sector["key"] == {"sector": "Technology"}
+    assert tech_sector["contribution"] == pytest.approx(data["summary"]["portfolio_contribution"])
+
+    assert position_level["name"] == "position_id"
+    assert len(position_level["rows"]) == 2
+    stock_a_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_A")
+    stock_b_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_B")
+
+    # Check that children sum to parent
+    assert stock_a_row["contribution"] + stock_b_row["contribution"] == pytest.approx(tech_sector["contribution"])
+
+
 def test_contribution_endpoint_error_handling(client, mocker):
     """Tests that a generic server error is raised for calculation failures."""
-    mocker.patch('app.api.endpoints.contribution.calculate_position_contribution', side_effect=EngineCalculationError("Test Error"))
+    mocker.patch("app.api.endpoints.contribution.calculate_position_contribution", side_effect=EngineCalculationError("Test Error"))
 
     payload = {
         "portfolio_number": "ERROR",
         "portfolio_data": {
-            "report_start_date": "2025-01-01", "report_end_date": "2025-01-02", "period_type": "ITD", "metric_basis": "NET", "daily_data": [
-                {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1025}
-            ]
+            "report_start_date": "2025-01-01",
+            "report_end_date": "2025-01-02",
+            "period_type": "ITD",
+            "metric_basis": "NET",
+            "daily_data": [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1025}],
         },
-        "positions_data": []
+        "positions_data": [],
     }
     response = client.post("/performance/contribution", json=payload)
 

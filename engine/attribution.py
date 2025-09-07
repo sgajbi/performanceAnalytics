@@ -41,9 +41,9 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     )
 
     portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
-    portfolio_df[PortfolioColumns.PERF_DATE] = pd.to_datetime(portfolio_df[PortfolioColumns.PERF_DATE])
-    portfolio_df = portfolio_df.set_index(PortfolioColumns.PERF_DATE)
-    portfolio_bop_mv = portfolio_df[PortfolioColumns.BEGIN_MV] + portfolio_df[PortfolioColumns.BOD_CF]
+    portfolio_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(portfolio_df[PortfolioColumns.PERF_DATE.value])
+    portfolio_df = portfolio_df.set_index(PortfolioColumns.PERF_DATE.value)
+    portfolio_bop_mv = portfolio_df[PortfolioColumns.BEGIN_MV.value] + portfolio_df[PortfolioColumns.BOD_CF.value]
 
     all_instruments = []
     for inst in request.instruments_data:
@@ -51,10 +51,10 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         if inst_df.empty: continue
 
         inst_results, _ = run_calculations(inst_df.copy(), twr_config)
-        inst_results[PortfolioColumns.PERF_DATE] = pd.to_datetime(inst_results[PortfolioColumns.PERF_DATE])
-        inst_results = inst_results.set_index(PortfolioColumns.PERF_DATE)
+        inst_results[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(inst_results[PortfolioColumns.PERF_DATE.value])
+        inst_results = inst_results.set_index(PortfolioColumns.PERF_DATE.value)
 
-        inst_bop_mv = inst_results[PortfolioColumns.BEGIN_MV] + inst_results[PortfolioColumns.BOD_CF]
+        inst_bop_mv = inst_results[PortfolioColumns.BEGIN_MV.value] + inst_results[PortfolioColumns.BOD_CF.value]
         inst_results['weight_bop'] = inst_bop_mv / portfolio_bop_mv
 
         for key, value in inst.meta.items():
@@ -66,9 +66,9 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     full_df = pd.concat(all_instruments)
     group_cols = request.group_by
 
-    full_df['weighted_ror'] = (full_df[PortfolioColumns.DAILY_ROR] / 100) * full_df['weight_bop']
+    full_df['weighted_ror'] = (full_df[PortfolioColumns.DAILY_ROR.value] / 100) * full_df['weight_bop']
 
-    grouped = full_df.groupby([PortfolioColumns.PERF_DATE] + group_cols)
+    grouped = full_df.groupby([PortfolioColumns.PERF_DATE.value] + group_cols)
     group_weights = grouped['weight_bop'].sum()
     group_weighted_ror = grouped['weighted_ror'].sum()
 
@@ -83,7 +83,7 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         output_groups.append(
             PortfolioGroup(
                 key=key_dict,
-                observations=group_df[[PortfolioColumns.PERF_DATE, 'return', 'weight_bop']].rename(columns={PortfolioColumns.PERF_DATE: 'date'}).to_dict(orient='records')
+                observations=group_df[[PortfolioColumns.PERF_DATE.value, 'return', 'weight_bop']].rename(columns={PortfolioColumns.PERF_DATE.value: 'date'}).to_dict(orient='records')
             )
         )
     return output_groups
@@ -125,8 +125,10 @@ def _align_and_prepare_data(request: AttributionRequest, portfolio_groups_data: 
     portfolio_weights = resampler_p['weight_bop'].first()
     benchmark_weights = resampler_b['weight_bop'].first()
 
-    df_p = pd.concat([portfolio_returns.stack(group_by, future_stack=True), portfolio_weights.stack(group_by, future_stack=True)], axis=1); df_p.columns = ['r_p', 'w_p']
-    df_b = pd.concat([benchmark_returns.stack(group_by, future_stack=True), benchmark_weights.stack(group_by, future_stack=True)], axis=1); df_b.columns = ['r_b', 'w_b']
+    df_p = pd.concat([portfolio_returns.stack(group_by, future_stack=True), portfolio_weights.stack(group_by, future_stack=True)], axis=1)
+    df_p.columns = ['r_p', 'w_p']
+    df_b = pd.concat([benchmark_returns.stack(group_by, future_stack=True), benchmark_weights.stack(group_by, future_stack=True)], axis=1)
+    df_b.columns = ['r_b', 'w_b']
     aligned_df = pd.merge(df_p, df_b, left_index=True, right_index=True, how='outer').fillna(0.0)
     aligned_df.index.names = ['date'] + group_by
     total_benchmark_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby(level='date').sum()
@@ -141,7 +143,7 @@ def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) 
         df['interaction'] = (df['w_p'] - df['w_b']) * (df['r_p'] - df['r_b'])
     elif model == AttributionModel.BRINSON_HOOD_BEEBOWER:
         # BHB model defines Allocation differently and has no Interaction effect by standard definition,
-        # but for consistency we calculate it. Selection is often defined differently as well.
+        # but for consistency we calculate it.
         # This implementation uses a common variant.
         df['allocation'] = (df['w_p'] - df['w_b']) * df['r_b']
         df['selection'] = df['w_p'] * (df['r_p'] - df['r_b'])

@@ -2,9 +2,8 @@
 
 An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`. It provides three primary services:
 1.  **Performance Calculation**: Endpoints for calculating **Time-Weighted Return (TWR)** with frequency-based breakdowns and **Money-Weighted Return (MWR)**.
-2.  **Contribution Analysis**: An endpoint for calculating **Position Contribution** to explain the drivers of portfolio performance.
+2.  **Contribution Analysis**: An endpoint for calculating **Position Contribution** to explain the drivers of portfolio performance. Supports both single-level and multi-level hierarchical breakdowns.
 3.  **Attribution Analysis**: An endpoint for calculating single-level, multi-period **Performance Attribution** (Brinson-style) to explain a portfolio's active return against a benchmark.
-
 ---
 
 ## Key Features
@@ -12,11 +11,10 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 -   **High-Performance TWR Engine:** Core daily calculations are vectorized using Pandas and NumPy.
 -   **Flexible TWR Breakdowns:** Aggregate daily performance into monthly, quarterly, or yearly summaries.
 -   **Standard MWR Calculation:** Provides a money-weighted return for analyzing investor performance.
--   **Advanced Contribution Engine:** Uses the Carino smoothing algorithm to accurately link multi-period position contributions.
+-   **Advanced Contribution Engine:** Uses the Carino smoothing algorithm to accurately link multi-period position contributions. Supports multi-level hierarchical aggregation (e.g., by sector, then by security).
 -   **Brinson Attribution Engine:** Decomposes active return into Allocation, Selection, and Interaction effects using Brinson-Fachler or Brinson-Hood-Beebower models.
 -   **Geometric Attribution Linking:** Uses the Menchero algorithm to ensure multi-period attribution effects correctly account for compounding.
 -   **Decoupled Architecture:** All calculation logic is in a standalone `engine` library.
-
 ---
 
 ## Setup and Installation
@@ -87,7 +85,7 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 ### 3. Position Contribution
 
 -   **Endpoint:** `POST /performance/contribution`
--   **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions.
+-   **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions. Can be run at a single level or as a multi-level hierarchy (e.g., by sector).
 -   **Example Payload:** See `tests/integration/test_contribution_api.py`.
 
 ### 4. Performance Attribution

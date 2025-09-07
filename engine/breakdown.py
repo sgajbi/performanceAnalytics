@@ -15,17 +15,17 @@ def _calculate_period_summary_dict(
     first_day = period_df.iloc[0]
     last_day = period_df.iloc[-1]
 
-    period_ror = (1 + period_df[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
+    period_ror = (1 + period_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
 
     summary = {
-        PortfolioColumns.BEGIN_MV: first_day[PortfolioColumns.BEGIN_MV],
-        PortfolioColumns.END_MV: last_day[PortfolioColumns.END_MV],
-        "net_cash_flow": (period_df[PortfolioColumns.BOD_CF] + period_df[PortfolioColumns.EOD_CF]).sum(),
+        PortfolioColumns.BEGIN_MV.value: first_day[PortfolioColumns.BEGIN_MV.value],
+        PortfolioColumns.END_MV.value: last_day[PortfolioColumns.END_MV.value],
+        "net_cash_flow": (period_df[PortfolioColumns.BOD_CF.value] + period_df[PortfolioColumns.EOD_CF.value]).sum(),
         "period_return_pct": period_ror * 100,
     }
 
     if include_cumulative:
-        summary["cumulative_return_pct_to_date"] = last_day[PortfolioColumns.FINAL_CUM_ROR]
+        summary["cumulative_return_pct_to_date"] = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
 
     if annualization.enabled:
         ppy = annualization.periods_per_year or (252 if annualization.basis == "BUS/252" else 365.25)
@@ -48,7 +48,7 @@ def generate_performance_breakdowns(
     if daily_df.empty:
         return {}
 
-    daily_df_indexed = daily_df.set_index(pd.to_datetime(daily_df[PortfolioColumns.PERF_DATE]))
+    daily_df_indexed = daily_df.set_index(pd.to_datetime(daily_df[PortfolioColumns.PERF_DATE.value]))
     breakdowns = {}
 
     for freq in frequencies:
@@ -56,14 +56,14 @@ def generate_performance_breakdowns(
         if freq == Frequency.DAILY:
             for _, row in daily_df.iterrows():
                 summary = {
-                    PortfolioColumns.BEGIN_MV: row[PortfolioColumns.BEGIN_MV],
-                    PortfolioColumns.END_MV: row[PortfolioColumns.END_MV],
-                    "net_cash_flow": row[PortfolioColumns.BOD_CF] + row[PortfolioColumns.EOD_CF],
-                    "period_return_pct": row[PortfolioColumns.DAILY_ROR],
+                    PortfolioColumns.BEGIN_MV.value: row[PortfolioColumns.BEGIN_MV.value],
+                    PortfolioColumns.END_MV.value: row[PortfolioColumns.END_MV.value],
+                    "net_cash_flow": row[PortfolioColumns.BOD_CF.value] + row[PortfolioColumns.EOD_CF.value],
+                    "period_return_pct": row[PortfolioColumns.DAILY_ROR.value],
                 }
                 if include_cumulative:
-                    summary["cumulative_return_pct_to_date"] = row[PortfolioColumns.FINAL_CUM_ROR]
-                results.append({"period": row[PortfolioColumns.PERF_DATE].strftime("%Y-%m-%d"), "summary": summary})
+                    summary["cumulative_return_pct_to_date"] = row[PortfolioColumns.FINAL_CUM_ROR.value]
+                results.append({"period": row[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"), "summary": summary})
         else:
             freq_map = {Frequency.MONTHLY: "ME", Frequency.QUARTERLY: "QE", Frequency.YEARLY: "YE", Frequency.WEEKLY: "W-FRI"}
             resampler = daily_df_indexed.resample(freq_map[freq])

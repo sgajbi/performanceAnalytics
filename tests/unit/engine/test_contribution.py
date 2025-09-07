@@ -1,10 +1,14 @@
 # tests/unit/engine/test_contribution.py
+from datetime import date
 import pandas as pd
 import pytest
-from app.models.contribution_requests import Emit, Smoothing
+from app.models.contribution_requests import ContributionRequest, Emit, Smoothing
+from common.enums import WeightingScheme
 from engine.contribution import (
     _calculate_carino_factors,
     _calculate_single_period_weights,
+    _calculate_daily_instrument_contributions,
+    _prepare_hierarchical_data,
     calculate_position_contribution,
 )
 from engine.schema import PortfolioColumns
@@ -17,14 +21,15 @@ from common.enums import PeriodType
 def sample_contribution_inputs():
     """Provides sample raw portfolio and position data for a single day."""
     portfolio_df = pd.DataFrame({
-        PortfolioColumns.BEGIN_MV: [1000.0],
-        PortfolioColumns.BOD_CF: [100.0],
+        PortfolioColumns.BEGIN_MV.value: [1000.0],
+        PortfolioColumns.BOD_CF.value: [100.0],
     })
     positions_df_map = {
-        "Stock_A": pd.DataFrame({PortfolioColumns.BEGIN_MV: [600.0], PortfolioColumns.BOD_CF: [60.0]}),
-        "Stock_B": pd.DataFrame({PortfolioColumns.BEGIN_MV: [400.0], PortfolioColumns.BOD_CF: [40.0]}),
+        "Stock_A": pd.DataFrame({PortfolioColumns.BEGIN_MV.value: [600.0], PortfolioColumns.BOD_CF.value: [60.0]}),
+        "Stock_B": pd.DataFrame({PortfolioColumns.BEGIN_MV.value: [400.0], PortfolioColumns.BOD_CF.value: [40.0]}),
     }
     return portfolio_df, positions_df_map
+
 
 @pytest.fixture
 def portfolio_results_fixture() -> pd.DataFrame:
@@ -37,14 +42,17 @@ def portfolio_results_fixture() -> pd.DataFrame:
         period_type=PeriodType.ITD,
     )
     portfolio_df = pd.DataFrame({
-        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
-        PortfolioColumns.BEGIN_MV: [1000.0, 1020.0],
-        PortfolioColumns.BOD_CF: [0.0, 50.0],
-        PortfolioColumns.EOD_CF: [0.0, 0.0],
-        PortfolioColumns.MGMT_FEES: [0.0, 0.0],
-        PortfolioColumns.END_MV: [1020.0, 1080.0],
+        PortfolioColumns.PERF_DATE.value: pd.to_datetime(["2025-01-01", "2025-01-02"]),
+        PortfolioColumns.BEGIN_MV.value: [1000.0, 1020.0],
+        PortfolioColumns.BOD_CF.value: [0.0, 50.0],
+        PortfolioColumns.EOD_CF.value: [0.0, 0.0],
+        PortfolioColumns.MGMT_FEES.value: [0.0, 0.0],
+        PortfolioColumns.END_MV.value: [1020.0, 1080.0],
+        PortfolioColumns.NIP.value: [0, 0],
+        PortfolioColumns.PERF_RESET.value: [0, 0],
     })
     portfolio_results, _ = run_calculations(portfolio_df, twr_config)
+    portfolio_results[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(portfolio_results[PortfolioColumns.PERF_DATE.value])
     return portfolio_results
 
 
@@ -60,26 +68,27 @@ def position_results_map_fixture() -> dict:
     )
     position_data_map = {
         "Stock_A": pd.DataFrame({
-            PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
-            PortfolioColumns.BEGIN_MV: [600.0, 612.0],
-            PortfolioColumns.BOD_CF: [0.0, 50.0],
-            PortfolioColumns.EOD_CF: [0.0, 0.0],
-            PortfolioColumns.MGMT_FEES: [0.0, 0.0],
-            PortfolioColumns.END_MV: [612.0, 670.0],
+            PortfolioColumns.PERF_DATE.value: pd.to_datetime(["2025-01-01", "2025-01-02"]),
+            PortfolioColumns.BEGIN_MV.value: [600.0, 612.0],
+            PortfolioColumns.BOD_CF.value: [0.0, 50.0],
+            PortfolioColumns.EOD_CF.value: [0.0, 0.0],
+            PortfolioColumns.MGMT_FEES.value: [0.0, 0.0],
+            PortfolioColumns.END_MV.value: [612.0, 670.0],
         }),
         "Stock_B": pd.DataFrame({
-            PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
-            PortfolioColumns.BEGIN_MV: [400.0, 408.0],
-            PortfolioColumns.BOD_CF: [0.0, 0.0],
-            PortfolioColumns.EOD_CF: [0.0, 0.0],
-            PortfolioColumns.MGMT_FEES: [0.0, 0.0],
-            PortfolioColumns.END_MV: [408.0, 410.0],
+            PortfolioColumns.PERF_DATE.value: pd.to_datetime(["2025-01-01", "2025-01-02"]),
+            PortfolioColumns.BEGIN_MV.value: [400.0, 408.0],
+            PortfolioColumns.BOD_CF.value: [0.0, 0.0],
+            PortfolioColumns.EOD_CF.value: [0.0, 0.0],
+            PortfolioColumns.MGMT_FEES.value: [0.0, 0.0],
+            PortfolioColumns.END_MV.value: [408.0, 410.0],
         })
     }
     return {
         pos_id: run_calculations(df, twr_config)[0]
         for pos_id, df in position_data_map.items()
     }
+
 
 @pytest.fixture
 def robust_nip_day_scenario():
@@ -96,20 +105,20 @@ def robust_nip_day_scenario():
         feature_flags=FeatureFlags(use_nip_v2_rule=True)
     )
     portfolio_data = pd.DataFrame({
-        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
-        PortfolioColumns.BEGIN_MV: [1000.0, 1000.0, 0.0],
-        PortfolioColumns.BOD_CF: [0.0, 1000.0, 0.0],
-        PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
-        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0],
-        PortfolioColumns.END_MV: [1000.0, 2000.0, 0.0],
+        PortfolioColumns.PERF_DATE.value: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
+        PortfolioColumns.BEGIN_MV.value: [1000.0, 1000.0, 0.0],
+        PortfolioColumns.BOD_CF.value: [0.0, 1000.0, 0.0],
+        PortfolioColumns.EOD_CF.value: [0.0, 0.0, 0.0],
+        PortfolioColumns.MGMT_FEES.value: [0.0, 0.0, 0.0],
+        PortfolioColumns.END_MV.value: [1000.0, 2000.0, 0.0],
     })
     pos_a_data = pd.DataFrame({
-        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
-        PortfolioColumns.BEGIN_MV: [500.0, 500.0, 0.0],
-        PortfolioColumns.BOD_CF: [0.0, 750.0, 0.0],
-        PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
-        PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0],
-        PortfolioColumns.END_MV: [500.0, 1250.0, 0.0],
+        PortfolioColumns.PERF_DATE.value: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
+        PortfolioColumns.BEGIN_MV.value: [500.0, 500.0, 0.0],
+        PortfolioColumns.BOD_CF.value: [0.0, 750.0, 0.0],
+        PortfolioColumns.EOD_CF.value: [0.0, 0.0, 0.0],
+        PortfolioColumns.MGMT_FEES.value: [0.0, 0.0, 0.0],
+        PortfolioColumns.END_MV.value: [500.0, 1250.0, 0.0],
     })
 
     portfolio_results, _ = run_calculations(portfolio_data, config)
@@ -117,6 +126,95 @@ def robust_nip_day_scenario():
     position_results_map = {"Stock_A": pos_a_results}
 
     return portfolio_results, position_results_map
+
+
+@pytest.fixture
+def hierarchical_request_fixture(happy_path_payload):
+    """Provides a valid hierarchical request object for testing."""
+    payload = happy_path_payload.copy()
+    payload["hierarchy"] = ["sector", "region"]
+    payload["positions_data"].append({
+        "position_id": "Stock_B",
+        "meta": {"sector": "Healthcare", "region": "US"},
+        "daily_data": [
+            {"Perf. Date": "2025-01-01", "Begin Market Value": 400, "End Market Value": 408, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
+            {"Perf. Date": "2025-01-02", "Begin Market Value": 408, "End Market Value": 410, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+        ]
+    })
+    payload["positions_data"][0]["meta"]["region"] = "US"
+    return ContributionRequest.model_validate(payload)
+
+
+@pytest.fixture
+def prepared_data_fixture(hierarchical_request_fixture):
+    """Provides the output of the data preparation step for use in other tests."""
+    return _prepare_hierarchical_data(hierarchical_request_fixture)
+
+
+def test_prepare_hierarchical_data(hierarchical_request_fixture):
+    """
+    Tests that the data preparation function correctly runs TWR and combines
+    position results with metadata into a single DataFrame.
+    """
+    instruments_df, portfolio_df = _prepare_hierarchical_data(hierarchical_request_fixture)
+
+    assert not instruments_df.empty
+    assert not portfolio_df.empty
+
+    # 2 positions * 2 days = 4 rows
+    assert len(instruments_df) == 4
+    assert len(portfolio_df) == 2
+
+    # Check for essential engine and metadata columns
+    expected_cols = {
+        PortfolioColumns.DAILY_ROR.value,
+        "position_id",
+        "sector",
+        "region",
+    }
+    assert expected_cols.issubset(instruments_df.columns)
+
+    # Check that metadata was merged correctly
+    assert instruments_df[instruments_df["position_id"] == "Stock_A"]["sector"].iloc[0] == "Technology"
+    assert instruments_df[instruments_df["position_id"] == "Stock_B"]["sector"].iloc[0] == "Healthcare"
+    assert instruments_df[instruments_df["position_id"] == "Stock_A"]["region"].iloc[0] == "US"
+
+
+def test_calculate_daily_contributions_bod_weighting(prepared_data_fixture):
+    """
+    Tests that the daily contributions are calculated correctly using BOD weighting.
+    """
+    instruments_df, portfolio_df = prepared_data_fixture
+    result_df = _calculate_daily_instrument_contributions(
+        instruments_df, portfolio_df, WeightingScheme.BOD, Smoothing(method="NONE")
+    )
+
+    # Day 1: Stock A Weight = 600 / 1000 = 0.6. RoR = 2.0%. Raw Contrib = 0.6 * 0.02 = 0.012
+    stock_a_day_1 = result_df[result_df["position_id"] == "Stock_A"].iloc[0]
+    assert stock_a_day_1["daily_weight"] == pytest.approx(0.6)
+    assert stock_a_day_1["raw_contribution"] == pytest.approx(0.012)
+
+    # Day 2: Stock B Weight = 408 / (1020 + 50) = 0.381308. RoR = 0.490196%. Raw Contrib = 0.381308 * 0.00490196
+    stock_b_day_2 = result_df[result_df["position_id"] == "Stock_B"].iloc[1]
+    assert stock_b_day_2["daily_weight"] == pytest.approx(408 / 1070)
+    assert stock_b_day_2["raw_contribution"] == pytest.approx(0.001869, abs=1e-6)
+
+
+def test_calculate_daily_contributions_smoothing(prepared_data_fixture):
+    """
+    Tests that Carino smoothing correctly adjusts the raw contribution.
+    """
+    instruments_df, portfolio_df = prepared_data_fixture
+    result_df = _calculate_daily_instrument_contributions(
+        instruments_df, portfolio_df, WeightingScheme.BOD, Smoothing(method="CARINO")
+    )
+
+    # Raw contribution for Stock A on Day 1 was 0.012
+    stock_a_day_1 = result_df[result_df["position_id"] == "Stock_A"].iloc[0]
+    assert stock_a_day_1["raw_contribution"] == pytest.approx(0.012)
+    # Smoothed contribution should be different due to the adjustment factor
+    assert stock_a_day_1["smoothed_contribution"] != pytest.approx(0.012)
+    assert stock_a_day_1["smoothed_contribution"] == pytest.approx(0.01194, abs=1e-5)
 
 
 def test_calculate_single_period_weights(sample_contribution_inputs):
@@ -149,7 +247,7 @@ def test_calculate_position_contribution_orchestrator(portfolio_results_fixture,
     result = calculate_position_contribution(
         portfolio_results_fixture, position_results_map_fixture, Smoothing(method="CARINO"), Emit()
     )
-    port_total_return = ((1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
+    port_total_return = ((1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1) * 100
 
     total_contribution_sum = sum(data["total_contribution"] for data in result.values() if isinstance(data, dict))
     assert total_contribution_sum == pytest.approx(port_total_return)
@@ -166,7 +264,7 @@ def test_calculate_position_contribution_no_smoothing(portfolio_results_fixture,
     result = calculate_position_contribution(
         portfolio_results_fixture, position_results_map_fixture, Smoothing(method="NONE"), Emit()
     )
-    port_total_return = ((1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
+    port_total_return = ((1 + portfolio_results_fixture[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1) * 100
     total_contribution_sum = sum(data["total_contribution"] for data in result.values() if isinstance(data, dict))
 
     assert total_contribution_sum != pytest.approx(port_total_return)
@@ -178,8 +276,8 @@ def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs
     """Tests weight calculation when the portfolio has zero average capital."""
     portfolio_df, positions_df_map = sample_contribution_inputs
     portfolio_df_copy = portfolio_df.copy()
-    portfolio_df_copy.iloc[0, portfolio_df_copy.columns.get_loc(PortfolioColumns.BEGIN_MV)] = 0.0
-    portfolio_df_copy.iloc[0, portfolio_df_copy.columns.get_loc(PortfolioColumns.BOD_CF)] = 0.0
+    portfolio_df_copy.iloc[0, portfolio_df_copy.columns.get_loc(PortfolioColumns.BEGIN_MV.value)] = 0.0
+    portfolio_df_copy.iloc[0, portfolio_df_copy.columns.get_loc(PortfolioColumns.BOD_CF.value)] = 0.0
     weights = _calculate_single_period_weights(portfolio_df_copy.iloc[0], positions_df_map, day_index=0)
     assert weights["Stock_A"] == 0.0
     assert weights["Stock_B"] == 0.0
