@@ -78,6 +78,34 @@ def test_calculate_twr_endpoint_decimal_strict_mode(client):
     assert Decimal(str(daily_ror)) == pytest.approx(Decimal("0.4558139535"))
 
 
+def test_calculate_twr_endpoint_quarterly_weekly_annualized(client):
+    """
+    Tests quarterly and weekly breakdowns with annualization enabled to ensure
+    all paths in the breakdown module are covered.
+    """
+    base_path = Path(__file__).parent
+    input_data = load_json_from_file(base_path / "../../sampleInputlong.json")
+
+    input_data["calculation_id"] = str(uuid4())
+    input_data["frequencies"] = ["quarterly", "weekly"]
+    input_data["annualization"] = {"enabled": True, "basis": "BUS/252"}
+
+    response = client.post("/performance/twr", json=input_data)
+    assert response.status_code == 200
+    response_data = response.json()
+
+    assert "quarterly" in response_data["breakdowns"]
+    assert "weekly" in response_data["breakdowns"]
+
+    quarter_1 = response_data["breakdowns"]["quarterly"][0]
+    assert quarter_1["period"] == "2024-Q1"
+    assert "annualized_return_pct" in quarter_1["summary"]
+    assert quarter_1["summary"]["annualized_return_pct"] is not None
+
+    week_1 = response_data["breakdowns"]["weekly"][0]
+    assert "annualized_return_pct" in week_1["summary"]
+
+
 @pytest.mark.parametrize(
     "error_class, expected_status",
     [
