@@ -77,3 +77,35 @@ def test_calculate_mwr_xirr_fallback_to_dietz():
     # Avg Capital = 1000 + 100/2 = 1050
     # MWR = -1300 / 1050 = -1.238095
     assert result.mwr == pytest.approx(-123.8095, abs=1e-4)
+
+
+def test_calculate_mwr_dietz_annualization():
+    """
+    Tests that the Dietz MWR is correctly annualized for a period
+    shorter than a year.
+    """
+    # This test covers a ~6 month period (180 days)
+    start_date = date(2025, 1, 1)
+    end_date = date(2025, 6, 30)
+
+    result = calculate_money_weighted_return(
+        beginning_mv=1000.0,
+        ending_mv=1060.0,
+        cash_flows=[CashFlow(amount=50.0, date=start_date)],
+        calculation_method="DIETZ",
+        annualization=Annualization(enabled=True, basis="ACT/365"),
+        as_of=end_date,
+    )
+
+    assert result.method == "DIETZ"
+
+    # Manual calculation:
+    # Net CF = 50
+    # Gain = 1060 - 1000 - 50 = 10
+    # Avg Capital = 1000 + 50/2 = 1025
+    # Periodic Rate = 10 / 1025 = ~0.009756
+    assert result.mwr == pytest.approx(0.9756, abs=1e-4)
+
+    # Days in period = 180
+    # Annualized = (1 + 0.009756)^(365/180) - 1 = ~0.0198
+    assert result.mwr_annualized == pytest.approx(1.980, abs=1e-3)
