@@ -1,4 +1,3 @@
-
 # API Reference
 
 This document provides a detailed reference for all public endpoints in the Portfolio Performance Analytics API.
@@ -92,17 +91,17 @@ Decomposes the portfolio's total TWR into the individual contributions from its 
 
 ## `POST /performance/attribution`
 
-Decomposes the portfolio's active return against a benchmark into Allocation, Selection, and Interaction effects.
+Decomposes the portfolio's active return against a benchmark into Allocation, Selection, and Interaction effects, with support for multi-level hierarchical analysis.
 
 ### Request Body
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `mode` | string | The input mode. Options: `"by_instrument"` (provide instrument-level data to be aggregated) or `"by_group"` (provide pre-aggregated group-level data). |
-| `groupBy` | array | A list of metadata keys to group by (e.g., `["sector"]`). Currently, only single-level grouping is supported. |
+| `groupBy` | array | An ordered list of metadata keys to group by (e.g., `["assetClass", "sector"]`). This defines the hierarchy for the analysis, from top to bottom. |
 | `frequency` | string | The frequency to resample the data to before calculation. Options: `"daily"`, `"monthly"`, `"quarterly"`, `"yearly"`. |
 | `model` | string | The attribution model to use. Options: `"BF"` (Brinson-Fachler) or `"BHB"` (Brinson-Hood-Beebower). |
-| `linking` | string | The method for linking multi-period effects. Options: `"carino"` or `"log"` (both implemented as Menchero geometric linking) or `"none"` (simple arithmetic sum). |
+| `linking` | string | The method for linking multi-period effects. Options: `"carino"` (geometric linking) or `"none"` (simple arithmetic sum). |
 | `portfolio_data` | object | **Required for `by_instrument` mode**. The full time series for the total portfolio, using the `/performance/twr` request structure. |
 | `instruments_data`| array | **Required for `by_instrument` mode**. An array of objects, each representing an instrument. Contains `instrument_id`, `meta` (a dict for grouping keys, e.g., `{"sector": "Tech"}`), and `daily_data`. |
 | `portfolio_groups_data`| array | **Required for `by_group` mode**. Pre-aggregated data for portfolio groups. |
@@ -257,5 +256,3 @@ Here are three request files for a consistent two-month portfolio containing two
   ]
 }
 ```
-
- 
