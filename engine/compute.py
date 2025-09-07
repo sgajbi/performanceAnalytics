@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFrame, Dict]:
     """
     Orchestrates the full portfolio performance calculation pipeline using
-    a fully vectorized approach. Returns a DataFrame and a diagnostics dictionary.
+    a fully vectorized approach.
+    Returns a DataFrame and a diagnostics dictionary.
     """
     try:
         if not isinstance(df, pd.DataFrame):
@@ -29,30 +30,30 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 
         _prepare_dataframe(df, config)
 
-        df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE] = get_effective_period_start_dates(
-            df[PortfolioColumns.PERF_DATE], config
+        df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value] = get_effective_period_start_dates(
+            df[PortfolioColumns.PERF_DATE.value], config
         )
-        df[PortfolioColumns.DAILY_ROR] = calculate_daily_ror(df, config.metric_basis)
+        df[PortfolioColumns.DAILY_ROR.value] = calculate_daily_ror(df, config.metric_basis)
 
-        df[PortfolioColumns.PERF_RESET] = 0
-        df[PortfolioColumns.SIGN] = calculate_sign(df)
-        df[PortfolioColumns.NIP] = calculate_nip(df, config)
+        df[PortfolioColumns.PERF_RESET.value] = 0
+        df[PortfolioColumns.SIGN.value] = calculate_sign(df)
+        df[PortfolioColumns.NIP.value] = calculate_nip(df, config)
 
         calculate_cumulative_ror(df, config)
 
-        df[PortfolioColumns.LONG_SHORT] = np.where(df[PortfolioColumns.SIGN] == -1, "S", "L")
+        df[PortfolioColumns.LONG_SHORT.value] = np.where(df[PortfolioColumns.SIGN.value] == -1, "S", "L")
 
         # Capture reset events before filtering
         reset_events = []
-        reset_rows = df[df[PortfolioColumns.PERF_RESET] == 1]
+        reset_rows = df[df[PortfolioColumns.PERF_RESET.value] == 1]
         for _, row in reset_rows.iterrows():
             reason_codes = []
-            if row[PortfolioColumns.NCTRL_1]: reason_codes.append("NCTRL_1")
-            if row[PortfolioColumns.NCTRL_2]: reason_codes.append("NCTRL_2")
-            if row[PortfolioColumns.NCTRL_3]: reason_codes.append("NCTRL_3")
-            if row[PortfolioColumns.NCTRL_4]: reason_codes.append("NCTRL_4")
+            if row[PortfolioColumns.NCTRL_1.value]: reason_codes.append("NCTRL_1")
+            if row[PortfolioColumns.NCTRL_2.value]: reason_codes.append("NCTRL_2")
+            if row[PortfolioColumns.NCTRL_3.value]: reason_codes.append("NCTRL_3")
+            if row[PortfolioColumns.NCTRL_4.value]: reason_codes.append("NCTRL_4")
             reset_events.append({
-                "date": row[PortfolioColumns.PERF_DATE].date(),
+                "date": row[PortfolioColumns.PERF_DATE.value].date(),
                 "reason": ",".join(reason_codes) or "UNKNOWN",
                 "impacted_rows": 1
             })
@@ -63,9 +64,9 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
             _round_float_columns(final_df, config.rounding_precision)
 
         diagnostics = {
-            "nip_days": int(final_df[PortfolioColumns.NIP].sum()),
-            "reset_days": int(final_df[PortfolioColumns.PERF_RESET].sum()),
-            "effective_period_start": df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE].min().date(),
+            "nip_days": int(final_df[PortfolioColumns.NIP.value].sum()),
+            "reset_days": int(final_df[PortfolioColumns.PERF_RESET.value].sum()),
+            "effective_period_start": df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value].min().date(),
             "notes": [],
             "resets": reset_events
         }
@@ -83,12 +84,12 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 def _prepare_dataframe(df: pd.DataFrame, config: EngineConfig):
     """Initializes and prepares the DataFrame for calculation, handling precision mode."""
     numeric_cols = [
-        PortfolioColumns.DAY,
-        PortfolioColumns.BEGIN_MV,
-        PortfolioColumns.BOD_CF,
-        PortfolioColumns.EOD_CF,
-        PortfolioColumns.MGMT_FEES,
-        PortfolioColumns.END_MV,
+        PortfolioColumns.DAY.value,
+        PortfolioColumns.BEGIN_MV.value,
+        PortfolioColumns.BOD_CF.value,
+        PortfolioColumns.EOD_CF.value,
+        PortfolioColumns.MGMT_FEES.value,
+        PortfolioColumns.END_MV.value,
     ]
 
     if config.precision_mode == PrecisionMode.DECIMAL_STRICT:
@@ -100,14 +101,14 @@ def _prepare_dataframe(df: pd.DataFrame, config: EngineConfig):
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
 
-    df[PortfolioColumns.PERF_DATE] = pd.to_datetime(df[PortfolioColumns.PERF_DATE], errors="coerce")
-    if df[PortfolioColumns.PERF_DATE].isnull().any():
+    df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(df[PortfolioColumns.PERF_DATE.value], errors="coerce")
+    if df[PortfolioColumns.PERF_DATE.value].isnull().any():
         raise InvalidEngineInputError("One or more 'perf_date' values are invalid or missing.")
 
     for col in PortfolioColumns:
-        if col not in df.columns and col not in [PortfolioColumns.LONG_SHORT, PortfolioColumns.EFFECTIVE_PERIOD_START_DATE]:
-            df[col] = Decimal(0) if config.precision_mode == PrecisionMode.DECIMAL_STRICT else 0.0
-    df[PortfolioColumns.LONG_SHORT] = ""
+        if col.value not in df.columns and col.value not in [PortfolioColumns.LONG_SHORT.value, PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]:
+            df[col.value] = Decimal(0) if config.precision_mode == PrecisionMode.DECIMAL_STRICT else 0.0
+    df[PortfolioColumns.LONG_SHORT.value] = ""
 
 
 def _filter_results_to_reporting_period(df: pd.DataFrame, config: EngineConfig) -> pd.DataFrame:
@@ -115,10 +116,10 @@ def _filter_results_to_reporting_period(df: pd.DataFrame, config: EngineConfig) 
     effective_report_start = pd.to_datetime(config.report_start_date or config.performance_start_date)
     report_end_date = pd.to_datetime(config.report_end_date)
 
-    mask = (df[PortfolioColumns.PERF_DATE] >= effective_report_start) & (df[PortfolioColumns.PERF_DATE] <= report_end_date)
+    mask = (df[PortfolioColumns.PERF_DATE.value] >= effective_report_start) & (df[PortfolioColumns.PERF_DATE.value] <= report_end_date)
 
     final_df = df[mask].copy()
-    final_df[PortfolioColumns.PERF_DATE] = final_df[PortfolioColumns.PERF_DATE].dt.date
+    final_df[PortfolioColumns.PERF_DATE.value] = final_df[PortfolioColumns.PERF_DATE.value].dt.date
 
     return final_df
 

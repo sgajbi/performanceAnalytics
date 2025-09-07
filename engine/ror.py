@@ -10,20 +10,20 @@ from engine.schema import PortfolioColumns
 
 def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
     """Calculates the daily rate of return, supporting both float and Decimal."""
-    is_decimal_mode = df[PortfolioColumns.BEGIN_MV].dtype == "object"
+    is_decimal_mode = df[PortfolioColumns.BEGIN_MV.value].dtype == "object"
 
     if is_decimal_mode:
         numerator = (
-            df[PortfolioColumns.END_MV] - df[PortfolioColumns.BOD_CF] -
-            df[PortfolioColumns.BEGIN_MV] - df[PortfolioColumns.EOD_CF]
+            df[PortfolioColumns.END_MV.value] - df[PortfolioColumns.BOD_CF.value] -
+            df[PortfolioColumns.BEGIN_MV.value] - df[PortfolioColumns.EOD_CF.value]
         )
         if metric_basis == "NET":
-            numerator += df[PortfolioColumns.MGMT_FEES]
+            numerator += df[PortfolioColumns.MGMT_FEES.value]
 
-        denominator = (df[PortfolioColumns.BEGIN_MV] + df[PortfolioColumns.BOD_CF]).abs()
+        denominator = (df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).abs()
         daily_ror = pd.Series([Decimal(0)] * len(df), index=df.index)
 
-        is_after_start = df[PortfolioColumns.PERF_DATE] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE]
+        is_after_start = df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
         safe_division_mask = (denominator != Decimal(0)) & is_after_start
 
         if safe_division_mask.any():
@@ -32,18 +32,17 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
             ) * Decimal(100)
         return daily_ror
     else:
-        
-        begin_mv = df[PortfolioColumns.BEGIN_MV].to_numpy()
-        bod_cf = df[PortfolioColumns.BOD_CF].to_numpy()
-        eod_cf = df[PortfolioColumns.EOD_CF].to_numpy()
-        mgmt_fees = df[PortfolioColumns.MGMT_FEES].to_numpy()
-        end_mv = df[PortfolioColumns.END_MV].to_numpy()
+        begin_mv = df[PortfolioColumns.BEGIN_MV.value].to_numpy()
+        bod_cf = df[PortfolioColumns.BOD_CF.value].to_numpy()
+        eod_cf = df[PortfolioColumns.EOD_CF.value].to_numpy()
+        mgmt_fees = df[PortfolioColumns.MGMT_FEES.value].to_numpy()
+        end_mv = df[PortfolioColumns.END_MV.value].to_numpy()
         numerator = end_mv - begin_mv - bod_cf - eod_cf
         if metric_basis == "NET":
             numerator += mgmt_fees
         denominator = np.abs(begin_mv + bod_cf)
         daily_ror = np.full(denominator.shape, 0.0, dtype=np.float64)
-        is_after_start = (df[PortfolioColumns.PERF_DATE] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE]).to_numpy()
+        is_after_start = (df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]).to_numpy()
         safe_division_mask = (denominator != 0) & is_after_start
         np.divide(numerator, denominator, out=daily_ror, where=safe_division_mask)
         daily_ror[safe_division_mask] *= 100
@@ -52,43 +51,43 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
 
 def calculate_cumulative_ror(df: pd.DataFrame, config):
     """Orchestrates all cumulative return calculations, supporting both float and Decimal."""
-    is_decimal_mode = df[PortfolioColumns.DAILY_ROR].dtype == "object"
+    is_decimal_mode = df[PortfolioColumns.DAILY_ROR.value].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
     hundred = Decimal(100) if is_decimal_mode else 100.0
     one = Decimal(1) if is_decimal_mode else 1.0
 
-    df[PortfolioColumns.TEMP_LONG_CUM_ROR] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], "long", use_resets=False)
-    df[PortfolioColumns.TEMP_SHORT_CUM_ROR] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], "short", use_resets=False)
+    df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "long", use_resets=False)
+    df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "short", use_resets=False)
 
     report_end_ts = pd.to_datetime(config.report_end_date)
     initial_resets = calculate_initial_resets(df, report_end_ts)
-    df[PortfolioColumns.PERF_RESET] = initial_resets.astype(int)
+    df[PortfolioColumns.PERF_RESET.value] = initial_resets.astype(int)
 
-    final_long_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], "long", use_resets=True)
-    final_short_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], "short", use_resets=True)
+    final_long_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "long", use_resets=True)
+    final_short_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "short", use_resets=True)
 
-    df[PortfolioColumns.LONG_CUM_ROR] = final_long_ror
-    df[PortfolioColumns.SHORT_CUM_ROR] = final_short_ror
-    is_initial_reset_day = df[PortfolioColumns.PERF_RESET] == 1
-    df.loc[is_initial_reset_day, [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = zero
+    df[PortfolioColumns.LONG_CUM_ROR.value] = final_long_ror
+    df[PortfolioColumns.SHORT_CUM_ROR.value] = final_short_ror
+    is_initial_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
+    df.loc[is_initial_reset_day, [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = zero
 
     nctrl4_resets = calculate_nctrl4_reset(df)
-    df[PortfolioColumns.PERF_RESET] |= nctrl4_resets
-    is_final_reset_day = df[PortfolioColumns.PERF_RESET] == 1
-    df.loc[is_final_reset_day, [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = zero
+    df[PortfolioColumns.PERF_RESET.value] |= nctrl4_resets
+    is_final_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
+    df.loc[is_final_reset_day, [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = zero
 
-    df[PortfolioColumns.TEMP_LONG_CUM_ROR] = final_long_ror
-    df[PortfolioColumns.TEMP_SHORT_CUM_ROR] = final_short_ror
+    df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] = final_long_ror
+    df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] = final_short_ror
 
-    is_nip = df[PortfolioColumns.NIP] == 1
-    df.loc[is_nip, [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = np.nan
-    df[[PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]] = df[
-        [PortfolioColumns.LONG_CUM_ROR, PortfolioColumns.SHORT_CUM_ROR]
+    is_nip = df[PortfolioColumns.NIP.value] == 1
+    df.loc[is_nip, [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = np.nan
+    df[[PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = df[
+        [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]
     ].ffill().fillna(zero)
 
-    df[PortfolioColumns.FINAL_CUM_ROR] = (
-        (one + df[PortfolioColumns.LONG_CUM_ROR] / hundred)
-        * (one + df[PortfolioColumns.SHORT_CUM_ROR] / hundred)
+    df[PortfolioColumns.FINAL_CUM_ROR.value] = (
+        (one + df[PortfolioColumns.LONG_CUM_ROR.value] / hundred)
+        * (one + df[PortfolioColumns.SHORT_CUM_ROR.value] / hundred)
         - one
     ) * hundred
 
@@ -100,7 +99,7 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
     hundred = Decimal(100) if is_decimal_mode else 100.0
     zero = Decimal(0) if is_decimal_mode else 0.0
 
-    sign = df[PortfolioColumns.SIGN]
+    sign = df[PortfolioColumns.SIGN.value]
     if leg == "long":
         is_leg_day = sign == 1
         growth_factor = one + (daily_ror / hundred)
@@ -109,10 +108,10 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
         growth_factor = one - (daily_ror / hundred)
     growth_factor = growth_factor.where(is_leg_day, one)
 
-    is_period_start = df[PortfolioColumns.PERF_DATE] == df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE]
+    is_period_start = df[PortfolioColumns.PERF_DATE.value] == df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
     block_starts = is_period_start
     if use_resets:
-        prev_day_was_reset = df[PortfolioColumns.PERF_RESET].shift(1, fill_value=0) == 1
+        prev_day_was_reset = df[PortfolioColumns.PERF_RESET.value].shift(1, fill_value=0) == 1
         block_starts |= prev_day_was_reset
     block_ids = block_starts.cumsum()
 
