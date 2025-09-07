@@ -29,8 +29,8 @@ def _xirr(values: np.ndarray, dates: np.ndarray) -> dict:
 
 
 def calculate_money_weighted_return(
-    beginning_mv: float,
-    ending_mv: float,
+    begin_mv: float,
+    end_mv: float,
     cash_flows: List[CashFlow],
     calculation_method: Literal["XIRR", "MODIFIED_DIETZ", "DIETZ"],
     annualization: Annualization,
@@ -41,22 +41,17 @@ def calculate_money_weighted_return(
     Returns a simple MWRResult data object.
     """
     notes = []
-    # FIX: The start date for the period should be the earliest of all dates involved.
     all_dates = [cf.date for cf in cash_flows]
     if not all_dates:
-        # If no cashflows, the period is defined by as_of, but start_date needs a value.
-        # This case is ambiguous without a true period start; assume as_of for a zero-day period.
         start_date = as_of
     else:
         start_date = min(all_dates)
     end_date = as_of
 
     if calculation_method == "XIRR":
-        # The period for XIRR starts with the first event (BMV).
         xirr_start_date = min([cf.date for cf in cash_flows] + [end_date]) if cash_flows else end_date
-        
         dates = [xirr_start_date] + [cf.date for cf in cash_flows] + [end_date]
-        values = [-beginning_mv] + [-cf.amount for cf in cash_flows] + [ending_mv]
+        values = [-begin_mv] + [-cf.amount for cf in cash_flows] + [end_mv]
 
         xirr_result = _xirr(np.array(values), np.array(dates))
         if xirr_result["converged"]:
@@ -64,7 +59,7 @@ def calculate_money_weighted_return(
             notes.append(xirr_result["notes"])
             return MWRResult(
                 mwr=rate * 100,
-                mwr_annualized=rate * 100,  # XIRR is already an annualized rate
+                mwr_annualized=rate * 100,
                 method="XIRR",
                 start_date=xirr_start_date,
                 end_date=end_date,
@@ -74,17 +69,15 @@ def calculate_money_weighted_return(
         notes.append(xirr_result["notes"])
         notes.append("XIRR failed, falling back to Simple Dietz.")
 
-    # --- Simple Dietz / Fallback Path ---
     net_cash_flow = sum(cf.amount for cf in cash_flows)
-    # FIX: Simple Dietz formula uses half the net cash flow in the denominator.
-    denominator = beginning_mv + (net_cash_flow / 2)
+    denominator = begin_mv + (net_cash_flow / 2)
     if denominator == 0:
         notes.append("Calculation resulted in a zero denominator.")
         return MWRResult(
             mwr=0.0, method="DIETZ", start_date=start_date, end_date=end_date, notes=notes
         )
 
-    numerator = ending_mv - beginning_mv - net_cash_flow
+    numerator = end_mv - begin_mv - net_cash_flow
     periodic_rate = numerator / denominator
 
     mwr_annualized = None

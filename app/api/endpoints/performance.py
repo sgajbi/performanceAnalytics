@@ -27,7 +27,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
     """
     try:
         engine_config = create_engine_config(request)
-        engine_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.daily_data])
+        engine_df = create_engine_dataframe([item.model_dump() for item in request.daily_data])
 
         daily_results_df, diagnostics_data = run_calculations(engine_df, engine_config)
 
@@ -38,7 +38,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
             request.output.include_cumulative,
         )
         formatted_breakdowns = format_breakdowns_for_response(
-            breakdowns_data, daily_results_df, request.flags.compat_legacy_names
+            breakdowns_data, daily_results_df
         )
 
     except InvalidEngineInputError as e:
@@ -84,13 +84,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
 
 @router.post("/mwr", response_model=MoneyWeightedReturnResponse, summary="Calculate Money-Weighted Return")
 async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
-    """
-    Calculates the money-weighted return (MWR) for a portfolio over a given period.
-    """
+    """Calculates the money-weighted return (MWR) for a portfolio over a given period."""
     try:
         mwr_result = calculate_money_weighted_return(
-            beginning_mv=request.beginning_mv,
-            ending_mv=request.ending_mv,
+            begin_mv=request.begin_mv,
+            end_mv=request.end_mv,
             cash_flows=request.cash_flows,
             calculation_method=request.mwr_method,
             annualization=request.annualization,
@@ -121,7 +119,13 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
     response_payload = {
         "calculation_id": request.calculation_id,
         "portfolio_number": request.portfolio_number,
-        **mwr_result.model_dump(),
+        "money_weighted_return": mwr_result.mwr,
+        "mwr_annualized": mwr_result.mwr_annualized,
+        "method": mwr_result.method,
+        "start_date": mwr_result.start_date,
+        "end_date": mwr_result.end_date,
+        "notes": mwr_result.notes,
+        "convergence": mwr_result.convergence,
         "meta": meta,
         "diagnostics": diagnostics,
         "audit": audit,

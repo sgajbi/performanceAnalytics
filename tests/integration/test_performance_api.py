@@ -57,13 +57,15 @@ def test_calculate_twr_endpoint_decimal_strict_mode(client):
         "performance_start_date": "2023-12-31",
         "metric_basis": "NET",
         "report_start_date": "2024-01-01",
-        "report_end_date": "2024-01-05",
+        "report_end_date": "2024-01-03",
         "period_type": "YTD",
         "calculation_id": str(uuid4()),
         "frequencies": ["daily"],
         "precision_mode": "DECIMAL_STRICT",
         "daily_data": [
-            {"day": 3, "perf_date": "2024-01-03", "begin_mv": 102500.0, "bod_cf": 5000.0, "mgmt_fees": -10.0, "end_mv": 108000.0}
+            {"day": 1, "perf_date": "2024-01-01", "begin_mv": 100000.0, "end_mv": 101000.0},
+            {"day": 2, "perf_date": "2024-01-02", "begin_mv": 101000.0, "end_mv": 102500.0},
+            {"day": 3, "perf_date": "2024-01-03", "begin_mv": 102500.0, "bod_cf": 5000.0, "mgmt_fees": -10.0, "end_mv": 108000.0},
         ],
     }
 
@@ -72,7 +74,7 @@ def test_calculate_twr_endpoint_decimal_strict_mode(client):
     response_data = response.json()
 
     assert response_data["meta"]["precision_mode"] == "DECIMAL_STRICT"
-    daily_ror = response_data["breakdowns"]["daily"][0]["summary"]["period_return_pct"]
+    daily_ror = response_data["breakdowns"]["daily"][2]["summary"]["period_return_pct"]
     assert Decimal(str(daily_ror)) == pytest.approx(Decimal("0.4558139535"))
 
 
