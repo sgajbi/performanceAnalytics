@@ -74,7 +74,6 @@ def test_create_engine_config():
     assert isinstance(engine_config, EngineConfig)
     assert engine_config.performance_start_date == date(2024, 12, 31)
     assert engine_config.metric_basis == "NET"
-    # FIX: The default rounding precision from the shared envelope is 6.
     assert engine_config.rounding_precision == 6
 
 
@@ -106,13 +105,25 @@ def test_create_engine_dataframe_empty_input():
     assert engine_df.empty
 
 
+def test_create_engine_dataframe_raises_error():
+    """
+    Tests that the adapter function correctly raises a ValueError for malformed input,
+    ensuring the exception path is covered.
+    """
+    malformed_api_data = [
+        {PERF_DATE_FIELD: "2025-01-01", BEGIN_MARKET_VALUE_FIELD: 1000},
+        "not_a_dictionary"
+    ]
+    with pytest.raises(ValueError, match="Failed to process daily data"):
+        create_engine_dataframe(malformed_api_data)
+
+
 def test_format_breakdowns_for_response_daily(sample_engine_outputs):
     """
     Tests that the daily breakdown is formatted correctly, including
     the nested daily_data field with API-aliased keys.
     """
     breakdowns_data, daily_results_df = sample_engine_outputs
-    # FIX: Pass the new required argument.
     formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, compat_legacy_names=False)
 
     assert Frequency.DAILY in formatted_response
@@ -132,7 +143,6 @@ def test_format_breakdowns_for_response_monthly(sample_engine_outputs):
     correctly, with the daily_data field being None.
     """
     breakdowns_data, daily_results_df = sample_engine_outputs
-    # FIX: Pass the new required argument.
     formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, compat_legacy_names=False)
 
     assert Frequency.MONTHLY in formatted_response
@@ -149,6 +159,5 @@ def test_format_breakdowns_for_response_empty_input():
     """
     empty_breakdowns = {}
     empty_df = pd.DataFrame()
-    # FIX: Pass the new required argument.
     formatted_response = format_breakdowns_for_response(empty_breakdowns, empty_df, compat_legacy_names=False)
     assert formatted_response == {}
