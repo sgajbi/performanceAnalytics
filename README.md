@@ -1,3 +1,4 @@
+
 # Portfolio Performance Analytics API (V3 Engine)
 
 An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`. It provides three primary services:
@@ -53,51 +54,75 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 
 ## Testing & Validation
 
-1.  **Run all tests (Unit & Integration):**
-    ```bash
-    pytest -q
-    ```
+### 1. Run All Tests
 
-2.  **Run Performance Benchmarks:**
-    ```bash
-    pytest --benchmark-only "tests/benchmarks/"
-    ```
+To run the full suite of unit and integration tests, use the following command:
+```bash
+pytest -q
+````
 
----
+### 2\. Run Performance Benchmarks
+
+To run only the performance benchmarks, which test the engine's speed on large datasets:
+
+```bash
+pytest --benchmark-only "tests/benchmarks/"
+```
+
+### 3\. Check Test Coverage
+
+This project enforces high standards for test coverage to ensure correctness and maintainability. The goals are **100% coverage for the `engine` module** and **\>95% for the overall project**.
+
+To run the tests and generate a detailed coverage report, use the `pytest-cov` plugin:
+
+```bash
+pytest --cov=engine --cov=app --cov-report term-missing
+```
+
+  - `--cov=engine --cov=app`: Specifies the directories to measure coverage against.
+  - `--cov-report term-missing`: Prints a summary to the terminal, including which lines are not covered by tests.
+
+-----
 
 ## API Usage Examples
 
-### 1. Time-Weighted Return (TWR)
+### 1\. Time-Weighted Return (TWR)
 
--   **Endpoint:** `POST /performance/twr`
--   **Example `curl` command:**
+  - **Endpoint:** `POST /performance/twr`
+  - **Example `curl` command:**
     ```bash
     curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
     -H "Content-Type: application/json" \
     -d @sampleInput.json
     ```
 
-### 2. Money-Weighted Return (MWR)
+### 2\. Money-Weighted Return (MWR)
 
--   **Endpoint:** `POST /performance/mwr`
--   **Example Payload:** See `tests/integration/test_mwr_api.py`.
+  - **Endpoint:** `POST /performance/mwr`
+  - **Example Payload:** See `tests/integration/test_mwr_api.py`.
 
-### 3. Position Contribution
+### 3\. Position Contribution
 
--   **Endpoint:** `POST /performance/contribution`
--   **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions. Can be run at a single level or as a multi-level hierarchy (e.g., by sector).
--   **Example Payload:** See `tests/integration/test_contribution_api.py`.
+  - **Endpoint:** `POST /performance/contribution`
+  - **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions. Can be run at a single level or as a multi-level hierarchy (e.g., by sector).
+  - **Example Payload:** See `tests/integration/test_contribution_api.py`.
 
-### 4. Performance Attribution
+### 4\. Performance Attribution
 
--   **Endpoint:** `POST /performance/attribution`
--   **Description:** Decomposes the portfolio's active return against a benchmark into allocation, selection, and interaction effects.
--   **Example Payload:** See `tests/integration/test_attribution_api.py`.
+  - **Endpoint:** `POST /performance/attribution`
+  - **Description:** Decomposes the portfolio's active return against a benchmark into allocation, selection, and interaction effects.
+  - **Example Payload:** See `tests/integration/test_attribution_api.py`.
 
----
+-----
 
 ## Advanced Usage
 
 The core calculation logic is a standalone library. For instructions on how to use it directly in your own Python scripts for batch processing or analysis, see the guide:
 
--   **[Using the Performance Engine as a Standalone Library](./docs/guides/standalone_engine_usage.md)**
+  - **[Using the Performance Engine as a Standalone Library](https://www.google.com/search?q=./docs/guides/standalone_engine_usage.md)**
+
+<!-- end list -->
+
+````
+
+ 
