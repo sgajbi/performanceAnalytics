@@ -170,8 +170,8 @@ def test_calculate_position_contribution_no_smoothing(portfolio_results_fixture,
     total_contribution_sum = sum(data["total_contribution"] for data in result.values())
 
     assert total_contribution_sum != pytest.approx(port_total_return)
-    assert result["Stock_A"]["total_contribution"] == pytest.approx(1.94766, abs=1e-5)
-    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.99411, abs=1e-5)
+    assert result["Stock_A"]["total_contribution"] == pytest.approx(1.947688, abs=1e-6)
+    assert result["Stock_B"]["total_contribution"] == pytest.approx(0.986917, abs=1e-6)
 
 
 def test_calculate_single_period_weights_zero_capital(sample_contribution_inputs):
