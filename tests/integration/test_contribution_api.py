@@ -11,12 +11,10 @@ def client():
     with TestClient(app) as c:
         yield c
 
-def test_contribution_endpoint_happy_path_and_envelope(client):
-    """
-    Tests the /performance/contribution endpoint with a valid payload
-    and verifies the shared response envelope is present and correct.
-    """
-    payload = {
+@pytest.fixture(scope="module")
+def happy_path_payload():
+    """Provides a standard, valid payload for contribution tests."""
+    return {
         "portfolio_number": "CONTRIB_TEST_01",
         "portfolio_data": {
             "report_start_date": "2025-01-01",
@@ -39,7 +37,13 @@ def test_contribution_endpoint_happy_path_and_envelope(client):
         ]
     }
 
-    response = client.post("/performance/contribution", json=payload)
+
+def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payload):
+    """
+    Tests the /performance/contribution endpoint with a valid payload
+    and verifies the shared response envelope is present and correct.
+    """
+    response = client.post("/performance/contribution", json=happy_path_payload)
 
     assert response.status_code == 200
     response_data = response.json()
@@ -58,6 +62,23 @@ def test_contribution_endpoint_happy_path_and_envelope(client):
     assert "audit" in response_data
     assert response_data["audit"]["counts"]["input_positions"] == 1
     assert response_data["audit"]["counts"]["calculation_days"] == 2
+
+
+def test_contribution_endpoint_no_smoothing(client, happy_path_payload):
+    """
+    Tests that the endpoint correctly processes a request with smoothing disabled
+    and the results do not reconcile with the geometric portfolio return.
+    """
+    payload = happy_path_payload.copy()
+    payload["smoothing"] = {"method": "NONE"}
+
+    response = client.post("/performance/contribution", json=payload)
+
+    assert response.status_code == 200
+    response_data = response.json()
+
+    assert response_data["total_contribution"] != pytest.approx(response_data["total_portfolio_return"])
+    assert response_data["position_contributions"][0]["total_contribution"] == pytest.approx(1.94766, abs=1e-5)
 
 
 def test_contribution_endpoint_error_handling(client, mocker):

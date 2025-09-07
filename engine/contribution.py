@@ -3,6 +3,7 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
+from app.models.contribution_requests import Smoothing
 from engine.schema import PortfolioColumns
 
 
@@ -40,10 +41,11 @@ def _calculate_carino_factors(ror_series: pd.Series) -> pd.Series:
 
 def calculate_position_contribution(
     portfolio_results: pd.DataFrame,
-    position_results_map: Dict[str, pd.DataFrame]
+    position_results_map: Dict[str, pd.DataFrame],
+    smoothing: Smoothing, # New parameter
 ) -> Dict[str, Dict]:
     """
-    Orchestrates the full position contribution calculation using Carino smoothing.
+    Orchestrates the full position contribution calculation with configurable smoothing.
     """
     portfolio_date_index = pd.to_datetime(portfolio_results[PortfolioColumns.PERF_DATE])
     aligned_position_results = {}
@@ -54,12 +56,12 @@ def calculate_position_contribution(
         aligned_position_results[pos_id] = aligned_df.reset_index(drop=True)
 
     position_results_map = aligned_position_results
-    
+
     port_daily_ror = portfolio_results[PortfolioColumns.DAILY_ROR] / 100
     port_total_ror = (1 + port_daily_ror).prod() - 1
 
-    k_daily = _calculate_carino_factors(port_daily_ror)
-    K_total = np.log(1 + port_total_ror) / port_total_ror if port_total_ror != 0 else 1.0
+    k_daily = _calculate_carino_factors(port_daily_ror) if smoothing.method == "CARINO" else pd.Series(1.0, index=port_daily_ror.index)
+    K_total = (np.log(1 + port_total_ror) / port_total_ror if port_total_ror != 0 else 1.0) if smoothing.method == "CARINO" else 1.0
 
     daily_contributions = []
     daily_weights_list = []
@@ -68,23 +70,24 @@ def calculate_position_contribution(
     for i, port_row in portfolio_results.iterrows():
         daily_weights = _calculate_single_period_weights(port_row, position_results_map, i)
         daily_weights_list.append(daily_weights)
-        
+
         row_contribs = {"date": port_row[PortfolioColumns.PERF_DATE]}
         for pos_id in position_ids:
             pos_ror_t = position_results_map[pos_id].iloc[i][PortfolioColumns.DAILY_ROR] / 100
             weight_t = daily_weights.get(pos_id, 0.0)
-            
+
             c_p_t = weight_t * pos_ror_t
-            
-            ror_port_t = port_daily_ror.iloc[i]
-            k_t = k_daily.iloc[i]
-        
-            adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
-            smoothed_c = c_p_t + adjustment
-            
+            smoothed_c = c_p_t
+
+            if smoothing.method == "CARINO":
+                ror_port_t = port_daily_ror.iloc[i]
+                k_t = k_daily.iloc[i]
+                adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
+                smoothed_c += adjustment
+
             if port_row[PortfolioColumns.NIP] == 1 or port_row[PortfolioColumns.PERF_RESET] == 1:
                 smoothed_c = 0.0
-            
+
             row_contribs[pos_id] = smoothed_c
         daily_contributions.append(row_contribs)
 
@@ -109,7 +112,7 @@ def calculate_position_contribution(
     final_results = {}
     for pos_id in position_ids:
         pos_total_return = (1 + (position_results_map[pos_id][PortfolioColumns.DAILY_ROR] / 100)).prod() - 1
-        
+
         final_results[pos_id] = {
             "total_contribution": total_smoothed_contributions[pos_id] * 100,
             "average_weight": average_weights.get(pos_id, 0.0) * 100,
@@ -118,9 +121,9 @@ def calculate_position_contribution(
 
     sum_of_contributions = sum(data["total_contribution"] / 100 for data in final_results.values())
     residual = port_total_ror - sum_of_contributions
-    
+
     sum_of_weights = sum(data["average_weight"] for data in final_results.values())
-    if sum_of_weights != 0:
+    if sum_of_weights != 0 and smoothing.method == "CARINO":
         for pos_id in position_ids:
             weight_proportion = final_results[pos_id]["average_weight"] / sum_of_weights
             final_results[pos_id]["total_contribution"] += residual * weight_proportion * 100

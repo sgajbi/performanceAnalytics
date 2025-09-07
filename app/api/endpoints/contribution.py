@@ -51,7 +51,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
             position_results_map[position.position_id] = position_results
 
         # 4. Calculate the final contribution
-        contribution_results = calculate_position_contribution(portfolio_results, position_results_map)
+        contribution_results = calculate_position_contribution(
+            portfolio_results, position_results_map, request.smoothing
+        )
 
         # 5. Format the response
         total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
