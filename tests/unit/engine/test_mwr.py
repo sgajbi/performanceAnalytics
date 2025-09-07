@@ -107,5 +107,5 @@ def test_calculate_mwr_dietz_annualization():
     assert result.mwr == pytest.approx(0.9756, abs=1e-4)
 
     # Days in period = 180
-    # Annualized = (1 + 0.009756)^(365/180) - 1 = ~0.0198
-    assert result.mwr_annualized == pytest.approx(1.980, abs=1e-3)
+    # Annualized = (1 + 0.00975609756)^(365/180) - 1 = ~0.01988
+    assert result.mwr_annualized == pytest.approx(1.9882, abs=1e-4)
