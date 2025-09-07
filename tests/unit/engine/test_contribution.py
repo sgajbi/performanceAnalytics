@@ -1,10 +1,11 @@
 # tests/unit/engine/test_contribution.py
 import pandas as pd
 import pytest
-from app.models.contribution_requests import Emit, Smoothing
+from app.models.contribution_requests import ContributionRequest, Emit, Smoothing
 from engine.contribution import (
     _calculate_carino_factors,
     _calculate_single_period_weights,
+    _prepare_hierarchical_data,
     calculate_position_contribution,
 )
 from engine.schema import PortfolioColumns
@@ -25,6 +26,7 @@ def sample_contribution_inputs():
         "Stock_B": pd.DataFrame({PortfolioColumns.BEGIN_MV: [400.0], PortfolioColumns.BOD_CF: [40.0]}),
     }
     return portfolio_df, positions_df_map
+
 
 @pytest.fixture
 def portfolio_results_fixture() -> pd.DataFrame:
@@ -81,6 +83,7 @@ def position_results_map_fixture() -> dict:
         for pos_id, df in position_data_map.items()
     }
 
+
 @pytest.fixture
 def robust_nip_day_scenario():
     """
@@ -117,6 +120,52 @@ def robust_nip_day_scenario():
     position_results_map = {"Stock_A": pos_a_results}
 
     return portfolio_results, position_results_map
+
+
+@pytest.fixture
+def hierarchical_request_fixture(happy_path_payload):
+    """Provides a valid hierarchical request object for testing."""
+    payload = happy_path_payload.copy()
+    payload["hierarchy"] = ["sector", "region"]
+    payload["positions_data"].append({
+        "position_id": "Stock_B",
+        "meta": {"sector": "Healthcare", "region": "US"},
+        "daily_data": [
+            {"Perf. Date": "2025-01-01", "Begin Market Value": 400, "End Market Value": 408, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
+            {"Perf. Date": "2025-01-02", "Begin Market Value": 408, "End Market Value": 410, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+        ]
+    })
+    payload["positions_data"][0]["meta"]["region"] = "US"
+    return ContributionRequest.model_validate(payload)
+
+
+def test_prepare_hierarchical_data(hierarchical_request_fixture):
+    """
+    Tests that the data preparation function correctly runs TWR and combines
+    position results with metadata into a single DataFrame.
+    """
+    instruments_df, portfolio_df = _prepare_hierarchical_data(hierarchical_request_fixture)
+
+    assert not instruments_df.empty
+    assert not portfolio_df.empty
+
+    # 2 positions * 2 days = 4 rows
+    assert len(instruments_df) == 4
+    assert len(portfolio_df) == 2
+
+    # Check for essential engine and metadata columns
+    expected_cols = {
+        PortfolioColumns.DAILY_ROR,
+        "position_id",
+        "sector",
+        "region",
+    }
+    assert expected_cols.issubset(instruments_df.columns)
+
+    # Check that metadata was merged correctly
+    assert instruments_df[instruments_df["position_id"] == "Stock_A"]["sector"].iloc[0] == "Technology"
+    assert instruments_df[instruments_df["position_id"] == "Stock_B"]["sector"].iloc[0] == "Healthcare"
+    assert instruments_df[instruments_df["position_id"] == "Stock_A"]["region"].iloc[0] == "US"
 
 
 def test_calculate_single_period_weights(sample_contribution_inputs):

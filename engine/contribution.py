@@ -1,19 +1,64 @@
 # engine/contribution.py
-from typing import Dict
+from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 
 from app.models.contribution_requests import ContributionRequest, Emit, Smoothing
 from engine.schema import PortfolioColumns
+from engine.compute import run_calculations
+from engine.config import EngineConfig
+from adapters.api_adapter import create_engine_dataframe
+
+
+def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Runs TWR calculations and combines all position data and metadata into a single DataFrame.
+    """
+    # 1. Create a shared TWR config
+    perf_start_date = request.portfolio_data.daily_data[0].perf_date
+    twr_config = EngineConfig(
+        performance_start_date=perf_start_date,
+        report_start_date=request.portfolio_data.report_start_date,
+        report_end_date=request.portfolio_data.report_end_date,
+        metric_basis=request.portfolio_data.metric_basis,
+        period_type=request.portfolio_data.period_type,
+        precision_mode=request.precision_mode,
+        rounding_precision=request.rounding_precision,
+    )
+
+    # 2. Calculate portfolio-level performance
+    portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
+    portfolio_results_df, portfolio_diags = run_calculations(portfolio_df, twr_config)
+
+    # 3. Calculate performance for each position and combine with metadata
+    all_positions_data = []
+    for position in request.positions_data:
+        position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.daily_data])
+        if position_df.empty:
+            continue
+
+        position_results_df, _ = run_calculations(position_df, twr_config)
+        position_results_df["position_id"] = position.position_id
+        for key, value in position.meta.items():
+            position_results_df[key] = value
+
+        all_positions_data.append(position_results_df)
+
+    if not all_positions_data:
+        return pd.DataFrame(), portfolio_results_df
+
+    instruments_df = pd.concat(all_positions_data, ignore_index=True)
+    return instruments_df, portfolio_results_df
 
 
 def calculate_hierarchical_contribution(request: ContributionRequest) -> Dict:
     """
     Orchestrates the full multi-level, hierarchical position contribution calculation.
-    (Placeholder implementation)
     """
+    instruments_df, portfolio_results_df = _prepare_hierarchical_data(request)
+
     # This is a placeholder implementation. The full logic will be built here
-    # in subsequent steps.
+    # in subsequent steps using the prepared DataFrames.
     return {
         "summary": {
             "portfolio_contribution": 0.0,
