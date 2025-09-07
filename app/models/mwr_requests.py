@@ -3,7 +3,7 @@ from datetime import date
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from core.envelope import Annualization, Calendar, Flags, Output, Periods
 
 
@@ -21,18 +21,16 @@ class Solver(BaseModel):
 
 class MoneyWeightedReturnRequest(BaseModel):
     """Request model for calculating Money-Weighted Return."""
+    model_config = ConfigDict(extra="forbid")
+
     calculation_id: UUID = Field(default_factory=uuid4)
     portfolio_number: str
-    beginning_mv: float
-    ending_mv: float
+    begin_mv: float
+    end_mv: float
     cash_flows: List[CashFlow]
-
-    # --- RFC-016 Enhancements ---
     mwr_method: Literal["XIRR", "MODIFIED_DIETZ", "DIETZ"] = "XIRR"
     solver: Solver = Field(default_factory=Solver)
     emit_cashflows_used: bool = True
-
-    # --- RFC-014 Shared Envelope Fields (Optional) ---
     as_of: date
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"

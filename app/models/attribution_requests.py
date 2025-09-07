@@ -3,7 +3,7 @@ from datetime import date
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from common.enums import (
     AttributionMode,
@@ -46,23 +46,19 @@ class PortfolioGroup(BaseModel):
 
 class AttributionRequest(BaseModel):
     """Request model for the Attribution engine."""
+    model_config = ConfigDict(extra="forbid")
+
     calculation_id: UUID = Field(default_factory=uuid4)
     portfolio_number: str
     mode: AttributionMode
     frequency: Frequency = Frequency.MONTHLY
-    group_by: List[str] = Field(..., min_length=1, alias="groupBy")
+    group_by: List[str] = Field(..., min_length=1)
     model: AttributionModel = AttributionModel.BRINSON_FACHLER
     linking: LinkingMethod = LinkingMethod.CARINO
-
-    # Mode-dependent fields
     portfolio_data: Optional[AttributionPortfolioData] = None
     instruments_data: Optional[List[InstrumentData]] = None
     portfolio_groups_data: Optional[List[PortfolioGroup]] = None
-
-    # Benchmark is always by group
     benchmark_groups_data: List[BenchmarkGroup]
-
-    # --- Shared Envelope Fields (Optional) ---
     as_of: Optional[date] = None
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"

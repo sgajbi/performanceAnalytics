@@ -32,7 +32,7 @@ class MoneyWeightedReturnResponse(BaseModel):
     calculation_id: UUID
     portfolio_number: str
 
-    mwr: float = Field(alias="money_weighted_return")
+    money_weighted_return: float
     mwr_annualized: Optional[float] = None
     method: Literal["XIRR", "MODIFIED_DIETZ", "DIETZ"]
     convergence: Optional[Convergence] = None
