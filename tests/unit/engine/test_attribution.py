@@ -44,7 +44,7 @@ def test_align_and_prepare_data_by_group(by_group_request_data):
     request = AttributionRequest.model_validate(by_group_request_data)
     aligned_df = _align_and_prepare_data(request, request.portfolio_groups_data)
     assert not aligned_df.empty
-    assert aligned_df.index.names == ['date', 'group_0']
+    assert aligned_df.index.names == ['date', 'sector']
 
 
 def test_calculate_single_period_brinson_fachler(single_period_data):
