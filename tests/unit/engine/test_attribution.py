@@ -27,7 +27,7 @@ def single_period_data():
 def by_group_request_data():
     """Provides a sample AttributionRequest for by_group mode where weights sum to 1."""
     return {
-        "portfolio_number": "ATTRIB_UNIT_TEST_01", "mode": "by_group", "groupBy": ["sector"], "model": "BF", "linking": "carino", "frequency": "monthly",
+        "portfolio_number": "ATTRIB_UNIT_TEST_01", "mode": "by_group", "group_by": ["sector"], "model": "BF", "linking": "carino", "frequency": "monthly",
         "portfolio_groups_data": [
             {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-15", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.01, "weight_bop": 0.6}]},
             {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-15", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.005, "weight_bop": 0.4}]}
@@ -78,15 +78,13 @@ def test_run_attribution_calculations_geometric_linking(by_group_request_data):
 
 
 def test_prepare_data_from_instruments():
-    """
-    Tests the aggregation of instrument data into portfolio groups.
-    """
-    daily_data_p = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1025}]
-    daily_data_aapl = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 600, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 624}]
-    daily_data_msft = [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 400, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 401}]
-    
+    """Tests the aggregation of instrument data into portfolio groups."""
+    daily_data_p = [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1025}]
+    daily_data_aapl = [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 600, "end_mv": 624}]
+    daily_data_msft = [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 401}]
+
     request_data = {
-        "portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "linking": "none", "frequency": "daily",
+        "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
         "portfolio_data": {"report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "NET", "period_type": "YTD", "daily_data": daily_data_p},
         "instruments_data": [
             {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "daily_data": daily_data_aapl},
@@ -97,20 +95,18 @@ def test_prepare_data_from_instruments():
     request = AttributionRequest.model_validate(request_data)
 
     result_groups = _prepare_data_from_instruments(request)
-    
+
     assert len(result_groups) == 1
     tech_group = result_groups[0]
     obs = tech_group.observations[0]
-    
+
     assert obs['weight_bop'] == pytest.approx(1.0)
     assert obs['return'] == pytest.approx(0.025)
 
 
 def test_prepare_data_from_instruments_missing_portfolio_data():
-    """
-    Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode.
-    """
-    request_data = {"portfolio_number": "TEST", "mode": "by_instrument", "groupBy": ["sector"], "instruments_data": [], "benchmark_groups_data": [], "linking": "none"}
+    """Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode."""
+    request_data = {"portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "instruments_data": [], "benchmark_groups_data": [], "linking": "none"}
     request = AttributionRequest.model_validate(request_data)
     with pytest.raises(ValueError, match="'portfolio_data' and 'instruments_data' are required"):
         _prepare_data_from_instruments(request)
