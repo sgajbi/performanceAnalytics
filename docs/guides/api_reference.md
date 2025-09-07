@@ -37,13 +37,13 @@ Calculates the Time-Weighted Return (TWR) for a portfolio, with options for brea
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `Day` | integer | A sequential day number. |
-| `Perf. Date` | date | The date of the observation (YYYY-MM-DD). |
-| `Begin Market Value`| float | The market value at the start of the day. |
-| `BOD Cashflow` | float | Cash flow occurring at the beginning of the day (before market open). |
-| `Eod Cashflow` | float | Cash flow occurring at the end of the day (after market close). |
-| `Mgmt fees` | float | Management fees for the day (typically negative). |
-| `End Market Value` | float | The market value at the end of the day. |
+| `day` | integer | A sequential day number. |
+| `perf_date` | date | The date of the observation (YYYY-MM-DD). |
+| `begin_mv`| float | The market value at the start of the day. |
+| `bod_cf` | float | Cash flow occurring at the beginning of the day (before market open). |
+| `eod_cf` | float | Cash flow occurring at the end of the day (after market close). |
+| `mgmt_fees` | float | Management fees for the day (typically negative). |
+| `end_mv` | float | The market value at the end of the day. |
 ---
 
 ## `POST /performance/mwr`
@@ -54,8 +54,8 @@ Calculates the Money-Weighted Return (MWR) for a portfolio, which measures the p
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `portfolio_number` | string | A unique identifier for the portfolio. |
-| `beginning_mv` | float | The market value at the start of the entire period. |
-| `ending_mv` | float | The market value at the end of the entire period. |
+| `begin_mv` | float | The market value at the start of the entire period. |
+| `end_mv` | float | The market value at the end of the entire period. |
 | `cash_flows` | array | An array of all cash flows that occurred during the period. |
 
 ### `cash_flows` Object Structure
@@ -99,7 +99,7 @@ Decomposes the portfolio's active return against a benchmark into Allocation, Se
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `mode` | string | The input mode. Options: `"by_instrument"` (provide instrument-level data to be aggregated) or `"by_group"` (provide pre-aggregated group-level data). |
-| `groupBy` | array | An ordered list of metadata keys to group by (e.g., `["assetClass", "sector"]`). This defines the hierarchy for the analysis, from top to bottom. |
+| `group_by` | array | An ordered list of metadata keys to group by (e.g., `["assetClass", "sector"]`). This defines the hierarchy for the analysis, from top to bottom. |
 | `frequency` | string | The frequency to resample the data to before calculation. Options: `"daily"`, `"monthly"`, `"quarterly"`, `"yearly"`. |
 | `model` | string | The attribution model to use. Options: `"BF"` (Brinson-Fachler) or `"BHB"` (Brinson-Hood-Beebower). |
 | `linking` | string | The method for linking multi-period effects. Options: `"carino"` (geometric linking) or `"none"` (simple arithmetic sum). |
@@ -107,3 +107,4 @@ Decomposes the portfolio's active return against a benchmark into Allocation, Se
 | `instruments_data`| array | **Required for `by_instrument` mode**. An array of objects, each representing an instrument. Contains `instrument_id`, `meta` (a dict for grouping keys, e.g., `{"sector": "Tech"}`), and `daily_data`. |
 | `portfolio_groups_data`| array | **Required for `by_group` mode**. Pre-aggregated data for portfolio groups. |
 | `benchmark_groups_data`| array | Pre-aggregated data for benchmark groups. |
+````
