@@ -156,8 +156,8 @@ def _link_effects_top_down(effects_df: pd.DataFrame, geometric_total_ar: float, 
     
     scaling_factor = geometric_total_ar / arithmetic_total_ar
     
-    linked_effects = effects_df[['allocation', 'selection', 'interaction']].copy()
-    for col in linked_effects.columns:
+    linked_effects = effects_df.copy()
+    for col in ['allocation', 'selection', 'interaction']:
         linked_effects[col] *= scaling_factor
         
     return linked_effects
@@ -186,16 +186,18 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         geometric_active_return = (1 + per_period_p_return).prod() - 1 - ((1 + per_period_b_return).prod() - 1)
         arithmetic_active_return = per_period_active_return.sum()
         scaled_effects = _link_effects_top_down(effects_df, geometric_active_return, arithmetic_active_return)
-        granular_totals = scaled_effects.groupby(request.group_by).sum()
+        granular_totals = scaled_effects.groupby(request.group_by)[['allocation', 'selection', 'interaction']].sum()
         active_return = geometric_active_return
     else:
         granular_totals = effects_df.groupby(request.group_by)[['allocation', 'selection', 'interaction']].sum()
         active_return = per_period_active_return.sum()
 
     levels = []
+    granular_totals_df = granular_totals.reset_index()
+    
     for i in range(len(request.group_by), 0, -1):
         level_group_by = request.group_by[:i]
-        level_totals = granular_totals.groupby(level=level_group_by).sum()
+        level_totals = granular_totals_df.groupby(level_group_by).sum(numeric_only=True)
         level_totals['total_effect'] = level_totals.sum(axis=1)
 
         group_results = []
