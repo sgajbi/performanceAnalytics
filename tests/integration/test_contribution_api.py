@@ -76,22 +76,50 @@ def test_contribution_endpoint_with_timeseries(client, happy_path_payload):
     assert len(response_data["by_position_timeseries"][0]["series"]) == 2
 
 
-def test_contribution_endpoint_hierarchy_returns_placeholder(client, happy_path_payload):
+def test_contribution_endpoint_hierarchy_happy_path(client, happy_path_payload):
     """
     Tests that a request with the 'hierarchy' field returns a 200 OK
-    with a valid but empty placeholder structure.
+    with a correctly aggregated hierarchical result.
     """
     payload = happy_path_payload.copy()
-    payload["hierarchy"] = ["assetClass", "sector"]
+    payload["hierarchy"] = ["sector", "position_id"]
+    payload["positions_data"].append(
+        {
+            "position_id": "Stock_B",
+            "meta": {"sector": "Technology"},
+            "daily_data": [
+                {"Perf. Date": "2025-01-01", "Begin Market Value": 400, "End Market Value": 408, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
+                {"Perf. Date": "2025-01-02", "Begin Market Value": 408, "End Market Value": 410, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+            ],
+        }
+    )
 
     response = client.post("/performance/contribution", json=payload)
-
     assert response.status_code == 200
     data = response.json()
-    assert data["summary"] is not None
-    assert data["summary"]["portfolio_contribution"] == 0.0
-    assert data["levels"] == []
-    assert data["position_contributions"] is None # Should not be populated for hierarchical
+
+    # Summary checks
+    assert "summary" in data
+    assert data["summary"]["portfolio_contribution"] == pytest.approx(2.95327, abs=1e-5)
+
+    # Level checks
+    assert len(data["levels"]) == 2
+    sector_level = data["levels"][0]
+    position_level = data["levels"][1]
+
+    assert sector_level["name"] == "sector"
+    assert len(sector_level["rows"]) == 1
+    tech_sector = sector_level["rows"][0]
+    assert tech_sector["key"] == {"sector": "Technology"}
+    assert tech_sector["contribution"] == pytest.approx(data["summary"]["portfolio_contribution"])
+
+    assert position_level["name"] == "position_id"
+    assert len(position_level["rows"]) == 2
+    stock_a_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_A")
+    stock_b_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_B")
+
+    # Check that children sum to parent
+    assert stock_a_row["contribution"] + stock_b_row["contribution"] == pytest.approx(tech_sector["contribution"])
 
 
 def test_contribution_endpoint_error_handling(client, mocker):

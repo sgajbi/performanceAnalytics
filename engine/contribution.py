@@ -121,16 +121,64 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Dict:
         instruments_df, portfolio_results_df, request.weighting_scheme, request.smoothing
     )
 
-    # This is a placeholder implementation. The full logic will be built here
-    # in subsequent steps using the prepared DataFrames.
-    return {
-        "summary": {
-            "portfolio_contribution": 0.0,
-            "coverage_mv_pct": 100.0,
-            "weighting_scheme": request.weighting_scheme.value,
-        },
-        "levels": [],
+    # --- Aggregation Logic ---
+    # 1. Calculate total contribution and average weight for each instrument
+    totals = daily_contributions_df.groupby("position_id").agg(
+        contribution=("smoothed_contribution", "sum"),
+        weight_avg=("daily_weight", "mean")
+    ).reset_index()
+
+    # --- Residual Allocation ---
+    port_ror_series = portfolio_results_df[PortfolioColumns.DAILY_ROR.value] / 100
+    total_portfolio_return = (1 + port_ror_series).prod() - 1
+    sum_of_contributions = totals["contribution"].sum()
+    residual = total_portfolio_return - sum_of_contributions
+    total_avg_weight = totals["weight_avg"].sum()
+
+    if total_avg_weight != 0 and request.smoothing.method == "CARINO":
+        totals["weight_proportion"] = totals["weight_avg"] / total_avg_weight
+        totals["contribution"] += residual * totals["weight_proportion"]
+
+    # Merge metadata back in for grouping, ensuring columns are unique
+    temp_meta_cols = ["position_id"] + request.hierarchy
+    metadata_cols = list(dict.fromkeys(temp_meta_cols))
+    unique_meta = daily_contributions_df[metadata_cols].drop_duplicates()
+    aggregated_df = pd.merge(totals, unique_meta, on="position_id")
+
+    # 2. Perform bottom-up aggregation for each level
+    response_levels = []
+    for i, level_name in enumerate(request.hierarchy):
+        level_keys = request.hierarchy[:i+1]
+        level_agg = aggregated_df.groupby(level_keys).agg(
+            contribution=("contribution", "sum"),
+            weight_avg=("weight_avg", "sum")
+        ).reset_index()
+
+        rows = []
+        for _, row in level_agg.iterrows():
+            key_dict = {key: row[key] for key in level_keys}
+            rows.append({
+                "key": key_dict,
+                "contribution": row["contribution"] * 100,
+                "weight_avg": row["weight_avg"] * 100,
+            })
+
+        response_levels.append({
+            "level": i + 1,
+            "name": level_name,
+            "parent": request.hierarchy[i-1] if i > 0 else None,
+            "rows": rows
+        })
+
+    # 3. Populate final summary
+    portfolio_contribution = aggregated_df["contribution"].sum()
+    summary = {
+        "portfolio_contribution": portfolio_contribution * 100,
+        "coverage_mv_pct": 100.0,  # Placeholder
+        "weighting_scheme": request.weighting_scheme.value,
     }
+
+    return {"summary": summary, "levels": response_levels}
 
 
 def _calculate_single_period_weights(
