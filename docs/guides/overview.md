@@ -1,100 +1,42 @@
-# Performance Analytics — Overview
+# Performance Analytics — Overview (Implementation-Aligned)
 
-## Purpose
-This service provides portfolio performance analytics with four primary capabilities:
-- **TWR** (Time-Weighted Return)
-- **MWR** (Money-Weighted Return / IRR)
-- **Contribution** (security/group return contribution with optional smoothing)
-- **Attribution** (Brinson-style active return decomposition)
+This service exposes portfolio analytics via FastAPI endpoints backed by an internal engine. The implementation is aligned with the files in your snapshot:
 
-It exposes HTTP APIs, enforces consistent snake_case payloads, and returns results with diagnostics suitable for audit, QA, and client reporting.
+- API: `app/api/endpoints/performance.py`
+- Requests/Responses: `app/models/*.py`
+- Engine: `engine/*.py` (ror, mwr, contribution, attribution, breakdown, compute, rules, schema)
+- Core/Envelope: `core/envelope.py`, `core/periods.py`
+- Common Enums: `common/enums.py`
+- Adapters: `adapters/api_adapter.py`
 
-## Audience
-- **Developers**: integrate APIs, extend engines, ensure reliability and tests.
-- **Business/Quants**: understand methodology and configuration options.
-- **Product/Support/Ops**: operate, troubleshoot, and validate results end‑to‑end.
+## Capabilities
+- **TWR**: geometric time‑weighted returns with sign‑aware long/short compounding, resets (NCTRL_1..4), and NIP handling.
+- **MWR**: XIRR with convergence reporting and automatic fallback to (Modified) Dietz.
+- **Contribution**: per‑position/group contributions with BOP‑style weights, Carino smoothing, and residual distribution.
+- **Attribution**: Brinson‑Fachler / Brinson‑Hood‑Beebower with top‑down linking to geometric active return.
 
-## Design Principles
-- **Deterministic & auditable**: inputs → outputs with reproducible settings.
-- **Booking/location agnostic**: consistent schema across portfolios, instruments, and books.
-- **Configurable**: explicit engine flags (precision, rounding, periodization, linking).
-- **Separation of concerns**: API adapter ↔ engine calculators ↔ common utilities.
-- **Observability-first**: diagnostics and notes shipped with every response.
+## Response Envelope (as implemented)
+All response models inherit from `core.envelope.BaseResponse` and include:
+- `meta: Meta` → `calculation_id`, `engine_version`, `precision_mode`, `annualization`, `calendar`, `periods`
+- `diagnostics: Diagnostics` → `nip_days`, `reset_days`, `effective_period_start`, `notes[]`
+- `audit: Audit` → `sum_of_parts_vs_total_bp`, `residual_applied_bp`, `counts{}`
 
-## Surface Area
-- REST endpoints under `/performance/*`.
-- Request/response models in `app/models` (snake_case only).
-- Engines in `engine/*` for reusable calculations.
-- Common core in `core/*` for periods, annualization, envelopes, errors.
-
-## Quickstart
-```bash
-# 1) Create and activate virtualenv (example)
-python -m venv .venv && . .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 2) Install
-pip install -U pip
-pip install -e .
-
-# 3) Run (adjust if using uvicorn/gunicorn wrapper)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# 4) Health check
-curl -s http://localhost:8000/health
-```
-
-## Choose the Right API
-- **TWR** → manager skill/time-series comparability; insensitive to cash flow timing.
-- **MWR** → investor experience; sensitive to cash flow amounts and timing.
-- **Contribution** → which assets/groups drove the portfolio return.
-- **Attribution** → why the portfolio out/under-performed a benchmark (allocation/selection/interaction).
-
-## Directory Map (high level)
-```
-app/
-  api/endpoints/           # HTTP routes
-  models/                  # Pydantic models (req/resp)
-core/
-  periods.py               # Period resolution & calendars
-  annualize.py             # Annualization utilities
-  envelope.py              # Response wrapper, meta/diagnostics
-engine/
-  ror.py                   # TWR return construction
-  mwr.py                   # XIRR/Dietz family
-  contribution.py          # Contribution & smoothing
-  attribution.py           # Brinson effects & linking
-docs/
-  guides/                  # You are here
-  examples/                # JSON requests & captured responses
-```
-
-## Response Envelope (standard)
-Every endpoint returns:
-```json
-{
-  "data": { "...endpoint specific..." },
-  "meta": {
-    "request_id": "uuid",
-    "as_of": "2025-09-07",
-    "config": { "precision_mode": "DECIMAL_STRICT", "rounding": 6 }
-  },
-  "diagnostics": {
-    "notes": ["string"],
-    "counts": { "rows": 123, "positions": 12 },
-    "residuals": { "bp_difference": 0.1 }
-  }
-}
-```
+Endpoints also return endpoint‑specific `data` structures (see API Reference).
 
 ## Precision & Rounding
-- Modes: `FLOAT64` (faster) and `DECIMAL_STRICT` (deterministic).
-- Default rounding: 6–8 decimals for rates/weights; configurable per endpoint.
+- `precision_mode`: `"FLOAT64"` (numpy/pandas) or `"DECIMAL_STRICT"` (decimal objects) as surfaced in requests.
+- `rounding_precision`: integer; applied on float path at the end of `run_calculations` (Decimal path remains exact until emission).
 
-## Non‑Goals
-- No inference of booking rules from raw bank data.
-- No portfolio accounting; inputs must already be pre‑accounted MV and CF series.
+## Periods & Calendars
+- `calendar.type`: `"BUSINESS"` or `"NATURAL"`; `trading_calendar` default `"NYSE"`.
+- `periods.type`: one of `"YTD" | "QTD" | "MTD" | "WTD" | "Y1" | "Y3" | "Y5" | "ITD" | "ROLLING" | "EXPLICIT"`.
+  - `EXPLICIT` requires `periods.explicit = {start, end, frequency}`.
+  - `ROLLING` requires `periods.rolling = {months|days}`.
+- Resolution is performed by `core.periods.resolve_period` with strict validation (raises `APIBadRequestError` on invalid definitions).
 
-## Next Steps
-- Read **Data Model** for field names & enums.
-- See **API Reference** for contracts and examples.
-- Dive into **Methodology** guides for TWR, MWR, Contribution, Attribution.
+## Resets, NIP, and Signs
+- **NIP**: computed via rules in `engine.rules` (V2 rule: `begin_mv + bod_cf == 0` and `end_mv + eod_cf == 0`).
+- **Resets**: initial reset rules + NCTRL‑4; legs zeroed on reset dates; blocks restart the next day.
+- **Sign**: derived per day; emits `+1` long / `-1` short; affects compounding legs and `long_short` label.
+
+See: `docs/guides/rules_and_diagnostics.md` and the implementation‑faithful methodology docs.

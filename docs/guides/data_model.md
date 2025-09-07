@@ -1,119 +1,99 @@
-# Data Model (Canonical, snake_case)
+# Data Model (Exact Contracts from Snapshot)
 
-This document defines the canonical request/response fields used across all endpoints. All names are **snake_case**. Dates are ISO‑8601 (`YYYY-MM-DD`). Numbers are decimal strings or JSON numbers depending on precision mode.
+This document reflects the **actual request/response models** in `app/models/*` and the **engine column names** from `engine/schema.py`.
 
-## Common Types
-- **Date**: `YYYY-MM-DD`
-- **Decimal**: JSON number or string (when `DECIMAL_STRICT`), rounded by API.
-- **Enum**: fixed set of uppercase tokens.
+## Engine Column Names (single source of truth)
+From `engine/schema.PortfolioColumns` (subset shown):
+- Inputs: `day`, `perf_date`, `begin_mv`, `bod_cf`, `eod_cf`, `mgmt_fees` (if present), `end_mv`
+- Derived/Flags: `sign`, `nip`, `perf_reset`, `nctrl_1..nctrl_4`, `effective_period_start_date`
+- Returns: `daily_ror`, `temp_long_cum_ror`, `temp_short_cum_ror`, `long_cum_ror`, `short_cum_ror`, `final_cum_ror`
 
-## Portfolio Time Series Schema
-For TWR/Contribution/Attribution inputs:
+## Shared Request Components (`core/envelope.py`)
 
+### Calendar
+```json
+{ "type": "BUSINESS", "trading_calendar": "NYSE" }
+```
+- `type`: `"BUSINESS"` | `"NATURAL"`
+
+### Annualization
+```json
+{ "enabled": false }
+```
+
+### Periods
 ```json
 {
-  "portfolio": {
-    "id": "string",
-    "base_currency": "USD"
-  },
-  "series": [
-    {
-      "date": "2025-01-02",
-      "begin_mv": 1000000.0,
-      "bod_cf": 0.0,
-      "fees": 0.0,
-      "tx_costs": 0.0,
-      "eod_cf": 0.0,
-      "end_mv": 1015000.0
-    }
-  ]
+  "type": "EXPLICIT",
+  "explicit": { "start": "2025-01-01", "end": "2025-01-31", "frequency": "daily" }
+}
+```
+- `type`: `"YTD" | "QTD" | "MTD" | "WTD" | "Y1" | "Y3" | "Y5" | "ITD" | "ROLLING" | "EXPLICIT"`
+- `rolling`: `{ "months": <int> }` **or** `{ "days": <int> }` (required when `type="ROLLING"`)
+
+### Output
+```json
+{
+  "include_timeseries": false,
+  "include_cumulative": false,
+  "top_n": 20
 }
 ```
 
-### Field Definitions
-- `begin_mv` — Market value at start of the day/period (post‑BOD CF).
-- `bod_cf` — Cash flows applied at beginning of day (subscriptions/redemptions).
-- `fees` — Management/advisory fees (negative for charges).
-- `tx_costs` — Transaction/execution costs (negative for costs).
-- `eod_cf` — Cash flows applied at end of day.
-- `end_mv` — Market value at end of day after EOD CF.
-
-> If your data separates **gross** vs **net** effects, set `fees`/`tx_costs` accordingly and choose the metric basis at request time.
-
-## Position‑Level Series (Contribution/Attribution)
+### Flags
 ```json
-{
-  "positions": [
-    {
-      "id": "AAPL",
-      "name": "Apple Inc.",
-      "group_keys": { "sector": "Technology", "region": "US" },
-      "series": [
-        { "date": "2025-01-02", "begin_mv": 200000.0, "bod_cf": 0.0, "pnl": 2500.0, "eod_cf": 0.0, "end_mv": 202500.0 }
-      ]
-    }
-  ]
-}
+{ "fail_fast": false, "compat_legacy_names": false }
 ```
 
-- `pnl` — Mark‑to‑market profit/loss for the interval (used when provided; otherwise implied from begin/end flows).  
-- `group_keys` — Arbitrary key→value map used for multi‑level grouping.
+### Base Request Fields
+- `calculation_id: UUID` (auto‑generated default)
+- `as_of: date` (ISO `YYYY-MM-DD`)
+- `currency: string` (default `"USD"`)
+- `precision_mode`: `"FLOAT64"` | `"DECIMAL_STRICT"`
+- `rounding_precision: int`
+- `calendar`, `annualization`, `periods`, `output`, `flags`
 
-## Benchmarks (Attribution)
-```json
-{
-  "benchmark": {
-    "mode": "BY_GROUP",        // or "BY_INSTRUMENT"
-    "group_keys": ["sector", "region"],
-    "weights": [
-      { "date": "2025-01-02", "key": {"sector":"Technology","region":"US"}, "weight": 0.27, "return": 0.004 }
-    ]
-  }
-}
-```
+## Performance Request (`app/models/requests.py`)
 
-## Configuration (per request)
-```json
-{
-  "config": {
-    "precision_mode": "DECIMAL_STRICT",   // or FLOAT64
-    "rounding": 6,
-    "periods": { "type": "EXPLICIT", "start": "2025-01-01", "end": "2025-01-31", "frequency": "DAILY" },
-    "annualization": { "enabled": true, "basis": "ACT_365" },
-    "metric_basis": "NET",                // NET or GROSS
-    "linking": "CARINO",                  // attribution/contribution linking
-    "weighting": "BOD"                    // contribution weighting: BOD | AVG_CAPITAL | TWR_DENOM
-  }
-}
-```
+### DailyInputData
+- `day: int`, `perf_date: date`
+- `begin_mv: float`
+- `bod_cf: float = 0.0`, `eod_cf: float = 0.0`
+- `fees`/`mgmt_fees` (if included in your build) and `tx_costs` (when enabled)
 
-### Enums
-- `precision_mode`: `DECIMAL_STRICT`, `FLOAT64`
-- `periods.type`: `EXPLICIT`, `ITD`, `YTD`, `QTD`, `MTD`, `WTD`, `ROLLING_MONTHS`, `ROLLING_DAYS`
-- `annualization.basis`: `BUS_252`, `ACT_365`, `ACT_ACT`
-- `metric_basis`: `NET`, `GROSS`
-- `linking`: `NONE`, `CARINO`, `LOG`
-- `weighting`: `BOD`, `AVG_CAPITAL`, `TWR_DENOM`
+### PerformanceRequest (top‑level)
+- `portfolio_number: str`
+- `daily_data: List[DailyInputData]`
+- `metric_basis: "NET" | "GROSS"` (see `app/core/constants.py`)
+- `periods: Optional[Periods]` (if omitted, engine resolves based on `as_of` and defaults)
+- Base request fields (see above)
+- `fee_effect`, `reset_policy` (see their models in requests file)
 
-## Response Envelope
-```json
-{
-  "data": { "...depends on endpoint..." },
-  "meta": {
-    "request_id": "uuid",
-    "as_of": "2025-09-07",
-    "config": { "...echo of effective config..." }
-  },
-  "diagnostics": {
-    "notes": ["carino_linking_applied"],
-    "counts": { "rows": 31, "positions": 12 },
-    "residuals": { "bp_difference": 0.02 }
-  }
-}
-```
+### PerformanceResponse (`app/models/responses.py`)
+- `calculation_id: UUID`
+- `portfolio_number: str`
+- `breakdowns: PerformanceBreakdown`
+- Optional `reset_events: List[ResetEvent]` (emitted when `reset_policy.emit = true`)
+- `meta: Meta`, `diagnostics: Diagnostics`, `audit: Audit`
 
-## Validation Rules (high level)
-- Dates must be monotonic and contiguous when `frequency=DAILY`.
-- `begin_mv`, `end_mv` ≥ 0; flows/fees may be negative.
-- When `positions` are supplied, their sum should reconcile to portfolio totals (tolerances applied).
-- Benchmarks must cover portfolio groups for attribution days, otherwise residuals will be reported.
+## Money‑Weighted Return (MWR)
+
+### MoneyWeightedReturnRequest (`app/models/mwr_requests.py`)
+- `begin_mv: float`, `end_mv: float`
+- `cash_flows: List[{amount: float, date: date}]`
+- `solver: { method: "XIRR" | "MODIFIED_DIETZ" | "DIETZ", max_iterations?: int, tol?: float }`
+- `emit_cashflows_used: bool = true`
+- Base request fields (`as_of`, `precision_mode`, `periods`, `annualization`, etc.)
+
+### MoneyWeightedReturnResponse (`app/models/mwr_responses.py`)
+- `mwr: float`, `mwr_annualized?: float`
+- `method: "XIRR" | "MODIFIED_DIETZ" | "DIETZ"`
+- `convergence?: { iterations?: int, residual?: float, converged?: bool }`
+- `cashflows_used?: List[CashFlow]`
+- `start_date: date`, `end_date: date`, `notes: List[str]`
+- `meta`, `diagnostics`, `audit`
+
+## Contribution & Attribution Models
+- Contribution request/response mirror the portfolio series + positions with `group_keys` and optional `smoothing` + `emit.timeseries` controls (see `app/models/contribution_*` and `adapters/api_adapter.py`).
+- Attribution request/response include `benchmark` in `"BY_GROUP"` or `"BY_INSTRUMENT"` mode; frequency mapping is aligned to `common/enums.Frequency`.
+
