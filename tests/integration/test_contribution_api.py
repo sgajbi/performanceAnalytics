@@ -11,6 +11,7 @@ def client():
     with TestClient(app) as c:
         yield c
 
+
 @pytest.fixture(scope="module")
 def happy_path_payload():
     """Provides a standard, valid payload for contribution tests."""
@@ -22,19 +23,19 @@ def happy_path_payload():
             "period_type": "ITD",
             "metric_basis": "NET",
             "daily_data": [
-                { "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "End Market Value": 1020, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
-                { "Perf. Date": "2025-01-02", "Begin Market Value": 1020, "End Market Value": 1080, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2}
-            ]
+                {"Perf. Date": "2025-01-01", "Begin Market Value": 1000, "End Market Value": 1020, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
+                {"Perf. Date": "2025-01-02", "Begin Market Value": 1020, "End Market Value": 1080, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+            ],
         },
         "positions_data": [
             {
                 "position_id": "Stock_A",
                 "daily_data": [
-                    { "Perf. Date": "2025-01-01", "Begin Market Value": 600, "End Market Value": 612, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
-                    { "Perf. Date": "2025-01-02", "Begin Market Value": 612, "End Market Value": 670, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2}
-                ]
+                    {"Perf. Date": "2025-01-01", "Begin Market Value": 600, "End Market Value": 612, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
+                    {"Perf. Date": "2025-01-02", "Begin Market Value": 612, "End Market Value": 670, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+                ],
             }
-        ]
+        ],
     }
 
 
@@ -102,18 +103,33 @@ def test_contribution_endpoint_with_timeseries(client, happy_path_payload):
     assert len(response_data["by_position_timeseries"][0]["series"]) == 2
 
 
+def test_contribution_endpoint_hierarchy_not_implemented(client, happy_path_payload):
+    """
+    Tests that a request with the 'hierarchy' field returns a 501 Not Implemented error.
+    """
+    payload = happy_path_payload.copy()
+    payload["hierarchy"] = ["assetClass", "sector"]
+
+    response = client.post("/performance/contribution", json=payload)
+
+    assert response.status_code == 501
+    assert response.json()["detail"] == "Hierarchical contribution analysis is not yet implemented."
+
+
 def test_contribution_endpoint_error_handling(client, mocker):
     """Tests that a generic server error is raised for calculation failures."""
-    mocker.patch('app.api.endpoints.contribution.calculate_position_contribution', side_effect=EngineCalculationError("Test Error"))
+    mocker.patch("app.api.endpoints.contribution.calculate_position_contribution", side_effect=EngineCalculationError("Test Error"))
 
     payload = {
         "portfolio_number": "ERROR",
         "portfolio_data": {
-            "report_start_date": "2025-01-01", "report_end_date": "2025-01-02", "period_type": "ITD", "metric_basis": "NET", "daily_data": [
-                {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1025}
-            ]
+            "report_start_date": "2025-01-01",
+            "report_end_date": "2025-01-02",
+            "period_type": "ITD",
+            "metric_basis": "NET",
+            "daily_data": [{"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1025}],
         },
-        "positions_data": []
+        "positions_data": [],
     }
     response = client.post("/performance/contribution", json=payload)
 

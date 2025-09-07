@@ -24,9 +24,17 @@ settings = get_settings()
 @router.post("/contribution", response_model=ContributionResponse, summary="Calculate Position Contribution")
 async def calculate_contribution_endpoint(request: ContributionRequest):
     """
-    Calculates the performance contribution for each position within a portfolio,
-    using the Carino smoothing algorithm for multi-period returns.
+    Calculates the performance contribution for each position within a portfolio.
+
+    - If a `hierarchy` is provided, it performs a multi-level breakdown.
+    - Otherwise, it calculates contribution at the individual position level.
     """
+    if request.hierarchy:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Hierarchical contribution analysis is not yet implemented.",
+        )
+
     try:
         # 1. Create a single config object for all TWR calculations
         perf_start_date = request.portfolio_data.daily_data[0].perf_date
@@ -42,17 +50,13 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
         )
 
         # 2. Calculate portfolio-level performance
-        portfolio_df = create_engine_dataframe(
-            [item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data]
-        )
+        portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
         portfolio_results, portfolio_diags = run_calculations(portfolio_df, twr_config)
 
         # 3. Calculate performance for each individual position
         position_results_map = {}
         for position in request.positions_data:
-            position_df = create_engine_dataframe(
-                [item.model_dump(by_alias=True) for item in position.daily_data]
-            )
+            position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.daily_data])
             position_results, _ = run_calculations(position_df, twr_config)
             position_results_map[position.position_id] = position_results
 
@@ -60,7 +64,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
         contribution_results = calculate_position_contribution(
             portfolio_results, position_results_map, request.smoothing, request.emit
         )
-        
+
         # 5. Format the response
         raw_timeseries = contribution_results.pop("timeseries", None)
         total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
@@ -71,7 +75,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
                 total_contribution=data["total_contribution"],
                 average_weight=data["average_weight"],
                 total_return=data["total_return"],
-            ) for pos_id, data in contribution_results.items()
+            )
+            for pos_id, data in contribution_results.items()
         ]
         total_contribution_sum = sum(pc.total_contribution for pc in position_contributions)
 
@@ -91,7 +96,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
         periods={
             "type": request.portfolio_data.period_type.value,
             "start": str(twr_config.report_start_date or twr_config.performance_start_date),
-            "end": str(twr_config.report_end_date)
+            "end": str(twr_config.report_end_date),
         },
     )
     diagnostics = Diagnostics(
@@ -102,12 +107,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
     )
     audit = Audit(
         sum_of_parts_vs_total_bp=(total_contribution_sum - total_portfolio_return) * 100,
-        counts={
-            "input_positions": len(request.positions_data),
-            "calculation_days": len(portfolio_results)
-        }
+        counts={"input_positions": len(request.positions_data), "calculation_days": len(portfolio_results)},
     )
-    
+
     # 7. Construct final payload including optional time-series
     response_payload = {
         "calculation_id": request.calculation_id,
@@ -125,19 +127,18 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
     if request.emit.timeseries and raw_timeseries:
         timeseries = []
         for row in raw_timeseries:
-            total_contrib = sum(v for k, v in row.items() if k != 'date')
-            timeseries.append(DailyContribution(date=row['date'], total_contribution=total_contrib))
+            total_contrib = sum(v for k, v in row.items() if k != "date")
+            timeseries.append(DailyContribution(date=row["date"], total_contribution=total_contrib))
         response_payload["timeseries"] = timeseries
 
     if request.emit.by_position_timeseries and raw_timeseries:
         by_pos_ts = {pos_id: [] for pos_id in position_results_map.keys()}
         for row in raw_timeseries:
             for pos_id in by_pos_ts.keys():
-                by_pos_ts[pos_id].append(PositionDailyContribution(date=row['date'], contribution=row.get(pos_id, 0.0)))
+                by_pos_ts[pos_id].append(PositionDailyContribution(date=row["date"], contribution=row.get(pos_id, 0.0)))
 
         response_payload["by_position_timeseries"] = [
-            PositionContributionSeries(position_id=pos_id, series=series)
-            for pos_id, series in by_pos_ts.items()
+            PositionContributionSeries(position_id=pos_id, series=series) for pos_id, series in by_pos_ts.items()
         ]
 
     return ContributionResponse.model_validate(response_payload)
