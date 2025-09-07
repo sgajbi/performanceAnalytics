@@ -106,6 +106,34 @@ def test_calculate_twr_endpoint_quarterly_weekly_annualized(client):
     assert "annualized_return_pct" in week_1["summary"]
 
 
+def test_calculate_twr_with_empty_period(client):
+    """
+    Tests that the breakdown aggregator correctly handles periods with no data.
+    """
+    payload = {
+        "portfolio_number": "EMPTY_PERIOD_TEST",
+        "performance_start_date": "2024-12-31",
+        "report_end_date": "2025-03-31",
+        "metric_basis": "NET",
+        "period_type": "YTD",
+        "frequencies": ["monthly"],
+        "daily_data": [
+            {"Day": 1, "Perf. Date": "2025-01-01", "Begin Market Value": 1000, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1010},
+            # February is intentionally left empty
+            {"Day": 2, "Perf. Date": "2025-03-01", "Begin Market Value": 1010, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "End Market Value": 1020}
+        ]
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    monthly_breakdown = data["breakdowns"]["monthly"]
+
+    # The response should only contain breakdowns for Jan and Mar, skipping empty Feb
+    assert len(monthly_breakdown) == 2
+    assert monthly_breakdown[0]["period"] == "2025-01"
+    assert monthly_breakdown[1]["period"] == "2025-03"
+
+
 @pytest.mark.parametrize(
     "error_class, expected_status",
     [
