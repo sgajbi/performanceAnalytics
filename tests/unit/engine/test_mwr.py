@@ -47,3 +47,33 @@ def test_calculate_mwr_xirr():
     assert result.method == "XIRR"
     # FIX: The correct XIRR for this cash flow series is ~36.89%
     assert result.mwr == pytest.approx(36.89, abs=1e-2)
+
+
+def test_calculate_mwr_xirr_fallback_to_dietz():
+    """
+    Tests that XIRR correctly falls back to Dietz when no sign change
+    is present in the cash flow series, which makes XIRR unsolvable.
+    """
+    result = calculate_money_weighted_return(
+        beginning_mv=1000.0,
+        ending_mv=-200.0,  # End with negative MV
+        cash_flows=[
+            CashFlow(amount=100.0, date=date(2025, 3, 15))  # Single deposit
+        ],
+        calculation_method="XIRR",
+        annualization=Annualization(enabled=False),
+        as_of=date(2025, 12, 31)
+    )
+
+    # Assert that the engine correctly fell back
+    assert result.method == "DIETZ"
+
+    # Assert that the reason for fallback is documented
+    assert "No sign change in cash flows." in result.notes
+    assert "XIRR failed, falling back to Simple Dietz." in result.notes
+
+    # Assert the Dietz calculation is correct
+    # Gain = -200 - 1000 - 100 = -1300
+    # Avg Capital = 1000 + 100/2 = 1050
+    # MWR = -1300 / 1050 = -1.238095
+    assert result.mwr == pytest.approx(-123.8095, abs=1e-4)
