@@ -2,17 +2,15 @@
 # API Reference
 
 This document provides a detailed reference for all public endpoints in the Portfolio Performance Analytics API.
-
 ---
 
 ## `GET /`
 
 A root endpoint to verify that the service is running.
-
 * **Method**: `GET`
 * **Path**: `/`
 * **Response**: A simple JSON object with a welcome message.
-    ```json
+```json
     {
       "message": "Welcome to the Portfolio Performance Analytics API. Access /docs for API documentation."
     }
@@ -23,7 +21,6 @@ A root endpoint to verify that the service is running.
 ## `POST /performance/twr`
 
 Calculates the Time-Weighted Return (TWR) for a portfolio, with options for breaking down the results by different time frequencies.
-
 ### Request Body
 
 | Parameter | Type | Description |
@@ -48,13 +45,11 @@ Calculates the Time-Weighted Return (TWR) for a portfolio, with options for brea
 | `Eod Cashflow` | float | Cash flow occurring at the end of the day (after market close). |
 | `Mgmt fees` | float | Management fees for the day (typically negative). |
 | `End Market Value` | float | The market value at the end of the day. |
-
 ---
 
 ## `POST /performance/mwr`
 
 Calculates the Money-Weighted Return (MWR) for a portfolio, which measures the performance of the actual capital invested.
-
 ### Request Body
 
 | Parameter | Type | Description |
@@ -76,7 +71,6 @@ Calculates the Money-Weighted Return (MWR) for a portfolio, which measures the p
 ## `POST /performance/contribution`
 
 Decomposes the portfolio's total TWR into the individual contributions from its underlying positions.
-
 ### Request Body
 
 | Parameter | Type | Description |
@@ -84,6 +78,9 @@ Decomposes the portfolio's total TWR into the individual contributions from its 
 | `portfolio_number` | string | A unique identifier for the portfolio. |
 | `portfolio_data` | object | Contains the configuration and full time series for the total portfolio. The structure is identical to the main request body of the `/performance/twr` endpoint. |
 | `positions_data` | array | An array of objects, each representing an individual position. |
+| `smoothing` | object | Optional. Controls how multi-period contributions are linked. Default: `{"method": "CARINO"}`. |
+| `emit` | object | Optional. Controls whether to include daily time-series data in the response. Default: `{"timeseries": false}`. |
+
 
 ### `positions_data` Object Structure
 
@@ -91,7 +88,6 @@ Decomposes the portfolio's total TWR into the individual contributions from its 
 | :--- | :--- | :--- |
 | `position_id` | string | A unique identifier for the position (e.g., a ticker). |
 | `daily_data` | array | The full time series for this position, using the same `daily_data` object structure as the `/performance/twr` endpoint. |
-
 ---
 
 ## `POST /performance/attribution`
@@ -111,7 +107,6 @@ Decomposes the portfolio's active return against a benchmark into Allocation, Se
 | `instruments_data`| array | **Required for `by_instrument` mode**. An array of objects, each representing an instrument. Contains `instrument_id`, `meta` (a dict for grouping keys, e.g., `{"sector": "Tech"}`), and `daily_data`. |
 | `portfolio_groups_data`| array | **Required for `by_group` mode**. Pre-aggregated data for portfolio groups. |
 | `benchmark_groups_data`| array | Pre-aggregated data for benchmark groups. |
-
 ````
 
 -----
@@ -139,6 +134,7 @@ Here are three request files for a consistent two-month portfolio containing two
   ]
 }
 ```
+
 ### **File: `E2E_MWR_Request.json`**
 
 ```json
@@ -261,5 +257,5 @@ Here are three request files for a consistent two-month portfolio containing two
   ]
 }
 ```
- 
+
  
