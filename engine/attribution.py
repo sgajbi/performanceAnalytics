@@ -125,8 +125,8 @@ def _align_and_prepare_data(request: AttributionRequest, portfolio_groups_data: 
     portfolio_weights = resampler_p['weight_bop'].first()
     benchmark_weights = resampler_b['weight_bop'].first()
 
-    df_p = pd.concat([portfolio_returns.stack(group_by), portfolio_weights.stack(group_by)], axis=1); df_p.columns = ['r_p', 'w_p']
-    df_b = pd.concat([benchmark_returns.stack(group_by), benchmark_weights.stack(group_by)], axis=1); df_b.columns = ['r_b', 'w_b']
+    df_p = pd.concat([portfolio_returns.stack(group_by, future_stack=True), portfolio_weights.stack(group_by, future_stack=True)], axis=1); df_p.columns = ['r_p', 'w_p']
+    df_b = pd.concat([benchmark_returns.stack(group_by, future_stack=True), benchmark_weights.stack(group_by, future_stack=True)], axis=1); df_b.columns = ['r_b', 'w_b']
     aligned_df = pd.merge(df_p, df_b, left_index=True, right_index=True, how='outer').fillna(0.0)
     aligned_df.index.names = ['date'] + group_by
     total_benchmark_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby(level='date').sum()
