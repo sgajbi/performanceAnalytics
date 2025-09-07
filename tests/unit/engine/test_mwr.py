@@ -109,3 +109,22 @@ def test_calculate_mwr_dietz_annualization():
     # Days in period = 180
     # Annualized = (1 + 0.00975609756)^(365/180) - 1 = ~0.01988
     assert result.mwr_annualized == pytest.approx(1.9882, abs=1e-4)
+
+
+def test_calculate_mwr_zero_denominator():
+    """
+    Tests that the MWR calculation correctly handles a zero denominator
+    by returning 0.0 and adding a note.
+    """
+    result = calculate_money_weighted_return(
+        beginning_mv=-50.0,
+        ending_mv=50.0,
+        cash_flows=[CashFlow(amount=100.0, date=date(2025, 1, 1))],
+        calculation_method="DIETZ",
+        annualization=Annualization(enabled=False),
+        as_of=date(2025, 12, 31)
+    )
+
+    assert result.method == "DIETZ"
+    assert result.mwr == 0.0
+    assert "Calculation resulted in a zero denominator." in result.notes
