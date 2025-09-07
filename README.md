@@ -29,7 +29,7 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 2.  **Create and activate a virtual environment:**
     ```bash
     python -m venv .venv
-    source .venv/Scripts/activate
+    source .venv/bin/activate
     ```
 
 3.  **Install dependencies:**
@@ -71,9 +71,7 @@ pytest --benchmark-only "tests/benchmarks/"
 
 ### 3\. Check Test Coverage
 
-This project enforces high standards for test coverage to ensure correctness and maintainability. The goals are **100% coverage for the `engine` module** and **\>95% for the overall project**.
-
-To run the tests and generate a detailed coverage report, use the `pytest-cov` plugin:
+This project enforces high standards for test coverage to ensure correctness and maintainability. The goals are **100% coverage for the `engine` module** and **\>95% for the overall project**. To run the tests and generate a detailed coverage report, use the `pytest-cov` plugin:
 
 ```bash
 pytest --cov=engine --cov=app --cov-report term-missing
@@ -93,25 +91,25 @@ pytest --cov=engine --cov=app --cov-report term-missing
     ```bash
     curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
     -H "Content-Type: application/json" \
-    -d @sampleInput.json
+    -d @docs/examples/twr_request.json
     ```
 
 ### 2\. Money-Weighted Return (MWR)
 
   - **Endpoint:** `POST /performance/mwr`
-  - **Example Payload:** See `tests/integration/test_mwr_api.py`.
+  - **Example Payload:** See `docs/examples/mwr_request.json`.
 
 ### 3\. Position Contribution
 
   - **Endpoint:** `POST /performance/contribution`
   - **Description:** Decomposes the portfolio's TWR into the contributions from its individual positions. Can be run at a single level or as a multi-level hierarchy (e.g., by sector).
-  - **Example Payload:** See `tests/integration/test_contribution_api.py`.
+  - **Example Payload:** See `docs/examples/contribution_request.json`.
 
 ### 4\. Performance Attribution
 
   - **Endpoint:** `POST /performance/attribution`
   - **Description:** Decomposes the portfolio's active return against a benchmark into allocation, selection, and interaction effects.
-  - **Example Payload:** See `tests/integration/test_attribution_api.py`.
+  - **Example Payload:** See `docs/examples/attribution_request.json`.
 
 -----
 
@@ -122,7 +120,3 @@ The core calculation logic is a standalone library. For instructions on how to u
   - **[Using the Performance Engine as a Standalone Library](https://www.google.com/search?q=./docs/guides/standalone_engine_usage.md)**
 
 <!-- end list -->
-
-````
-
- 

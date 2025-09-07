@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
-from app.core.constants import BEGIN_MARKET_VALUE_FIELD, END_MARKET_VALUE_FIELD, PERF_DATE_FIELD
 from app.models.requests import PerformanceRequest
 from app.models.responses import PerformanceResultItem, PerformanceSummary
 from common.enums import Frequency, PeriodType
@@ -54,10 +53,7 @@ def sample_engine_outputs():
 
 
 def test_create_engine_config():
-    """
-    Tests that the adapter correctly converts a PerformanceRequest
-    into an EngineConfig object.
-    """
+    """Tests that the adapter correctly converts a PerformanceRequest into an EngineConfig object."""
     request_data = {
         "portfolio_number": "TEST_01",
         "performance_start_date": "2024-12-31",
@@ -78,27 +74,22 @@ def test_create_engine_config():
 
 
 def test_create_engine_dataframe_happy_path():
-    """
-    Tests that a list of daily data dictionaries is correctly converted
-    into a DataFrame with internal engine schema column names.
-    """
+    """Tests that a list of daily data dictionaries is correctly converted into a DataFrame."""
     api_daily_data: List[Dict[str, Any]] = [
-        {PERF_DATE_FIELD: "2025-01-01", BEGIN_MARKET_VALUE_FIELD: 1000},
-        {PERF_DATE_FIELD: "2025-01-02", BEGIN_MARKET_VALUE_FIELD: 1010},
+        {"perf_date": "2025-01-01", "begin_mv": 1000},
+        {"perf_date": "2025-01-02", "begin_mv": 1010},
     ]
 
     engine_df = create_engine_dataframe(api_daily_data)
 
     assert isinstance(engine_df, pd.DataFrame)
     assert not engine_df.empty
-    assert PortfolioColumns.PERF_DATE.value in engine_df.columns
-    assert PortfolioColumns.BEGIN_MV.value in engine_df.columns
+    assert "perf_date" in engine_df.columns
+    assert "begin_mv" in engine_df.columns
 
 
 def test_create_engine_dataframe_empty_input():
-    """
-    Tests that an empty list of daily data correctly results in an empty DataFrame.
-    """
+    """Tests that an empty list of daily data correctly results in an empty DataFrame."""
     empty_api_data: List[Dict[str, Any]] = []
     engine_df = create_engine_dataframe(empty_api_data)
     assert isinstance(engine_df, pd.DataFrame)
@@ -106,12 +97,9 @@ def test_create_engine_dataframe_empty_input():
 
 
 def test_create_engine_dataframe_raises_error():
-    """
-    Tests that the adapter function correctly raises a ValueError for malformed input,
-    ensuring the exception path is covered.
-    """
+    """Tests that the adapter function correctly raises a ValueError for malformed input."""
     malformed_api_data = [
-        {PERF_DATE_FIELD: "2025-01-01", BEGIN_MARKET_VALUE_FIELD: 1000},
+        {"perf_date": "2025-01-01", "begin_mv": 1000},
         "not_a_dictionary"
     ]
     with pytest.raises(ValueError, match="Failed to process daily data"):
@@ -119,31 +107,26 @@ def test_create_engine_dataframe_raises_error():
 
 
 def test_format_breakdowns_for_response_daily(sample_engine_outputs):
-    """
-    Tests that the daily breakdown is formatted correctly, including
-    the nested daily_data field with API-aliased keys.
-    """
+    """Tests that the daily breakdown is formatted correctly with snake_case keys."""
     breakdowns_data, daily_results_df = sample_engine_outputs
-    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, compat_legacy_names=False)
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
 
     assert Frequency.DAILY in formatted_response
     daily_breakdown = formatted_response[Frequency.DAILY]
     result_item = daily_breakdown[0]
     assert isinstance(result_item, PerformanceResultItem)
     assert isinstance(result_item.summary, PerformanceSummary)
-    assert result_item.summary.begin_market_value == 1000.0
+    assert result_item.summary.begin_mv == 1000.0
     assert result_item.daily_data is not None
     nested_daily = result_item.daily_data[0]
-    assert BEGIN_MARKET_VALUE_FIELD in nested_daily
+    assert "begin_mv" in nested_daily
+    assert PortfolioColumns.BEGIN_MV.value in nested_daily
 
 
 def test_format_breakdowns_for_response_monthly(sample_engine_outputs):
-    """
-    Tests that aggregated breakdowns (e.g., monthly) are formatted
-    correctly, with the daily_data field being None.
-    """
+    """Tests that aggregated breakdowns are formatted correctly, with daily_data being None."""
     breakdowns_data, daily_results_df = sample_engine_outputs
-    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, compat_legacy_names=False)
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
 
     assert Frequency.MONTHLY in formatted_response
     monthly_breakdown = formatted_response[Frequency.MONTHLY]
@@ -154,10 +137,8 @@ def test_format_breakdowns_for_response_monthly(sample_engine_outputs):
 
 
 def test_format_breakdowns_for_response_empty_input():
-    """
-    Tests that the formatter handles empty engine output gracefully.
-    """
+    """Tests that the formatter handles empty engine output gracefully."""
     empty_breakdowns = {}
     empty_df = pd.DataFrame()
-    formatted_response = format_breakdowns_for_response(empty_breakdowns, empty_df, compat_legacy_names=False)
+    formatted_response = format_breakdowns_for_response(empty_breakdowns, empty_df)
     assert formatted_response == {}

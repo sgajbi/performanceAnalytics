@@ -3,16 +3,11 @@ import logging
 from typing import Any, Dict, List
 
 import pandas as pd
-from app.core.constants import (
-    BEGIN_MARKET_VALUE_FIELD,
-    END_MARKET_VALUE_FIELD,
-    FINAL_CUMULATIVE_ROR_PERCENT_FIELD,
-)
 from app.models.requests import PerformanceRequest
 from app.models.responses import PerformanceBreakdown, PerformanceResultItem, PerformanceSummary
 from common.enums import Frequency
 from engine.config import EngineConfig, PrecisionMode
-from engine.schema import API_TO_ENGINE_MAP, ENGINE_TO_API_MAP, PortfolioColumns
+from engine.schema import PortfolioColumns
 
 logger = logging.getLogger(__name__)
 
@@ -32,14 +27,13 @@ def create_engine_config(request: PerformanceRequest) -> EngineConfig:
 
 def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
     """
-    Creates a Pandas DataFrame for the engine from the raw daily data list,
-    mapping API aliases to the internal engine schema.
+    Creates a Pandas DataFrame for the engine from the raw daily data list.
+    No renaming is needed as the API contract now matches the engine's snake_case schema.
     """
     if not daily_data:
         return pd.DataFrame()
     try:
         df = pd.DataFrame(daily_data)
-        df.rename(columns=API_TO_ENGINE_MAP, inplace=True)
         return df
     except Exception as e:
         logger.exception("Failed to create DataFrame from daily data.")
@@ -47,28 +41,23 @@ def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
 
 
 def format_breakdowns_for_response(
-    breakdowns_data: Dict[Frequency, List[Dict]], daily_results_df: pd.DataFrame, compat_legacy_names: bool
+    breakdowns_data: Dict[Frequency, List[Dict]], daily_results_df: pd.DataFrame
 ) -> PerformanceBreakdown:
     """
     Takes the pure breakdown dict from the engine and formats it into
     the Pydantic response models.
     """
     response_breakdowns = {}
-    aliased_daily_df = daily_results_df.rename(columns=ENGINE_TO_API_MAP)
-    aliased_daily_records = aliased_daily_df.to_dict(orient="records")
+    daily_records = daily_results_df.to_dict(orient="records")
 
     for freq, results in breakdowns_data.items():
         formatted_results = []
         for i, result_item in enumerate(results):
             summary_data = result_item["summary"]
 
-            # Handle backward compatibility for field renaming
-            if freq == Frequency.DAILY and compat_legacy_names:
-                summary_data[FINAL_CUMULATIVE_ROR_PERCENT_FIELD] = summary_data.pop("period_return_pct")
-
             pydantic_summary_data = {
-                BEGIN_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.BEGIN_MV),
-                END_MARKET_VALUE_FIELD: summary_data.get(PortfolioColumns.END_MV),
+                "begin_mv": summary_data.get(PortfolioColumns.BEGIN_MV),
+                "end_mv": summary_data.get(PortfolioColumns.END_MV),
                 "net_cash_flow": summary_data.get("net_cash_flow"),
                 **summary_data,
             }
@@ -76,8 +65,8 @@ def format_breakdowns_for_response(
             summary_model = PerformanceSummary.model_validate(pydantic_summary_data)
 
             daily_data_for_period = None
-            if freq == Frequency.DAILY and i < len(aliased_daily_records):
-                daily_data_for_period = [aliased_daily_records[i]]
+            if freq == Frequency.DAILY and i < len(daily_records):
+                daily_data_for_period = [daily_records[i]]
 
             formatted_results.append(
                 PerformanceResultItem(

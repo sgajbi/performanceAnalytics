@@ -4,7 +4,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def happy_path_payload():
-    """Provides a standard, valid payload for contribution tests."""
+    """Provides a standard, valid snake_case payload for contribution tests."""
     return {
         "portfolio_number": "CONTRIB_TEST_01",
         "portfolio_data": {
@@ -13,8 +13,8 @@ def happy_path_payload():
             "period_type": "ITD",
             "metric_basis": "NET",
             "daily_data": [
-                {"Perf. Date": "2025-01-01", "Begin Market Value": 1000, "End Market Value": 1020, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
-                {"Perf. Date": "2025-01-02", "Begin Market Value": 1020, "End Market Value": 1080, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+                {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1020, "bod_cf": 0, "eod_cf": 0, "mgmt_fees": 0},
+                {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1020, "end_mv": 1080, "bod_cf": 50, "eod_cf": 0, "mgmt_fees": 0},
             ],
         },
         "positions_data": [
@@ -22,8 +22,8 @@ def happy_path_payload():
                 "position_id": "Stock_A",
                 "meta": {"sector": "Technology"},
                 "daily_data": [
-                    {"Perf. Date": "2025-01-01", "Begin Market Value": 600, "End Market Value": 612, "BOD Cashflow": 0, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 1},
-                    {"Perf. Date": "2025-01-02", "Begin Market Value": 612, "End Market Value": 670, "BOD Cashflow": 50, "Eod Cashflow": 0, "Mgmt fees": 0, "Day": 2},
+                    {"day": 1, "perf_date": "2025-01-01", "begin_mv": 600, "end_mv": 612, "bod_cf": 0, "eod_cf": 0, "mgmt_fees": 0},
+                    {"day": 2, "perf_date": "2025-01-02", "begin_mv": 612, "end_mv": 670, "bod_cf": 50, "eod_cf": 0, "mgmt_fees": 0},
                 ],
             }
         ],

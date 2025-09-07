@@ -1,0 +1,71 @@
+{
+  "portfolio_number": "CONTRIB_EXAMPLE_01",
+  "hierarchy": [
+    "sector",
+    "position_id"
+  ],
+  "portfolio_data": {
+    "report_start_date": "2025-01-01",
+    "report_end_date": "2025-01-02",
+    "period_type": "YTD",
+    "metric_basis": "NET",
+    "daily_data": [
+      {
+        "day": 1,
+        "perf_date": "2025-01-01",
+        "begin_mv": 1000,
+        "end_mv": 1020
+      },
+      {
+        "day": 2,
+        "perf_date": "2025-01-02",
+        "begin_mv": 1020,
+        "bod_cf": 50,
+        "end_mv": 1080
+      }
+    ]
+  },
+  "positions_data": [
+    {
+      "position_id": "Stock_A",
+      "meta": {
+        "sector": "Technology"
+      },
+      "daily_data": [
+        {
+          "day": 1,
+          "perf_date": "2025-01-01",
+          "begin_mv": 600,
+          "end_mv": 612
+        },
+        {
+          "day": 2,
+          "perf_date": "2025-01-02",
+          "begin_mv": 612,
+          "bod_cf": 50,
+          "end_mv": 670
+        }
+      ]
+    },
+    {
+      "position_id": "Stock_B",
+      "meta": {
+        "sector": "Healthcare"
+      },
+      "daily_data": [
+        {
+          "day": 1,
+          "perf_date": "2025-01-01",
+          "begin_mv": 400,
+          "end_mv": 408
+        },
+        {
+          "day": 2,
+          "perf_date": "2025-01-02",
+          "begin_mv": 408,
+          "end_mv": 410
+        }
+      ]
+    }
+  ]
+}
