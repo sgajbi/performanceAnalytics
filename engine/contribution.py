@@ -111,9 +111,10 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
     return instruments_df, portfolio_results_df
 
 
-def calculate_hierarchical_contribution(request: ContributionRequest) -> Dict:
+def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[Dict, Dict]:
     """
     Orchestrates the full multi-level, hierarchical position contribution calculation.
+    Returns a tuple: (results_dict, lineage_data_dict)
     """
     instruments_df, portfolio_results_df = _prepare_hierarchical_data(request)
 
@@ -177,8 +178,14 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Dict:
         "coverage_mv_pct": 100.0,  # Placeholder
         "weighting_scheme": request.weighting_scheme.value,
     }
+    
+    results = {"summary": summary, "levels": response_levels}
+    lineage_data = {
+        "portfolio_twr.csv": portfolio_results_df,
+        "daily_contributions.csv": daily_contributions_df
+    }
 
-    return {"summary": summary, "levels": response_levels}
+    return results, lineage_data
 
 
 def _calculate_single_period_weights(

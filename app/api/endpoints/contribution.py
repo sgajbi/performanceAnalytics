@@ -51,8 +51,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     # 2. Route to the correct engine based on whether a hierarchy is requested
     if request.hierarchy:
         # --- HIERARCHICAL PATH ---
-        # NOTE: Lineage for hierarchical contribution is not yet fully implemented.
-        results = calculate_hierarchical_contribution(request)
+        results, lineage_data = calculate_hierarchical_contribution(request)
 
         meta = Meta(
             calculation_id=request.calculation_id,
@@ -68,10 +67,11 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             input_fingerprint=input_fingerprint,
             calculation_hash=calculation_hash,
         )
+        # TODO: Plumb diagnostics from hierarchical path
         diagnostics = Diagnostics(nip_days=0, reset_days=0, effective_period_start=twr_config.report_start_date or twr_config.performance_start_date, notes=[])
         audit = Audit(counts={"input_positions": len(request.positions_data)})
-
-        return ContributionResponse(
+        
+        response_model = ContributionResponse(
             calculation_id=request.calculation_id,
             portfolio_number=request.portfolio_number,
             report_start_date=request.portfolio_data.report_start_date,
@@ -82,6 +82,16 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             diagnostics=diagnostics,
             audit=audit,
         )
+
+        background_tasks.add_task(
+            lineage_service.capture,
+            calculation_id=request.calculation_id,
+            calculation_type="ContributionHierarchy",
+            request_model=request,
+            response_model=response_model,
+            calculation_details=lineage_data
+        )
+        return response_model
 
     # --- SINGLE-LEVEL PATH (EXISTING LOGIC) ---
     try:
