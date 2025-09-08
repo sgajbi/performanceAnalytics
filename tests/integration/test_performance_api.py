@@ -50,6 +50,50 @@ def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
     assert response_data["audit"]["counts"]["input_rows"] == 5
 
 
+def test_calculate_twr_endpoint_with_data_policy(client):
+    """Tests that a request with data_policy overrides and flagging works end-to-end."""
+    payload = {
+        "portfolio_number": "POLICY_TEST",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-03",
+        "period_type": "YTD",
+        "frequencies": ["daily"],
+        "daily_data": [
+            {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0},
+            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1010.0, "end_mv": 2000.0}, # Outlier
+            {"day": 3, "perf_date": "2025-01-03", "begin_mv": 1020.0, "end_mv": 1030.0}, # To be ignored
+        ],
+        "data_policy": {
+            "overrides": {
+                "market_values": [{"perf_date": "2025-01-01", "end_mv": 1005.0}]
+            },
+            "ignore_days": [
+                {"entity_type": "PORTFOLIO", "entity_id": "POLICY_TEST", "dates": ["2025-01-03"]}
+            ],
+            "outliers": {"enabled": True, "action": "FLAG", "params": {"mad_k": 2.0}}
+        }
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    # Assert override was applied
+    daily_breakdown = data["breakdowns"]["daily"]
+    assert daily_breakdown[0]["summary"]["period_return_pct"] == pytest.approx(0.5)
+
+    # Assert ignore_days was applied
+    assert daily_breakdown[2]["summary"]["period_return_pct"] == 0.0
+
+    # Assert diagnostics are correct
+    diags = data["diagnostics"]
+    assert diags["policy"]["overrides"]["applied_mv_count"] == 1
+    assert diags["policy"]["ignored_days_count"] == 1
+    assert diags["policy"]["outliers"]["flagged_rows"] == 1
+    assert data["samples"]["outliers"][0]["raw_return"] > 90
+
+
 def test_calculate_twr_endpoint_decimal_strict_mode(client):
     """Tests that precision_mode=DECIMAL_STRICT is respected."""
     payload = {

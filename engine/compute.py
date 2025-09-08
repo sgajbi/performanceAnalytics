@@ -8,6 +8,7 @@ import pandas as pd
 from engine.config import EngineConfig, PrecisionMode
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 from engine.periods import get_effective_period_start_dates
+from engine.policies import apply_robustness_policies, _flag_outliers
 from engine.ror import calculate_cumulative_ror, calculate_daily_ror
 from engine.rules import calculate_nip, calculate_sign
 from engine.schema import PortfolioColumns
@@ -30,10 +31,15 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 
         _prepare_dataframe(df, config)
 
+        df, policy_diagnostics = apply_robustness_policies(df, config.data_policy)
+
         df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value] = get_effective_period_start_dates(
             df[PortfolioColumns.PERF_DATE.value], config
         )
         df[PortfolioColumns.DAILY_ROR.value] = calculate_daily_ror(df, config.metric_basis)
+        
+        if config.data_policy:
+            _flag_outliers(df, config.data_policy.model_dump().get("outliers"), policy_diagnostics)
 
         df[PortfolioColumns.PERF_RESET.value] = 0
         df[PortfolioColumns.SIGN.value] = calculate_sign(df)
@@ -67,8 +73,10 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
             "nip_days": int(final_df[PortfolioColumns.NIP.value].sum()),
             "reset_days": int(final_df[PortfolioColumns.PERF_RESET.value].sum()),
             "effective_period_start": df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value].min().date(),
-            "notes": [],
-            "resets": reset_events
+            "notes": policy_diagnostics.get("notes", []),
+            "resets": reset_events,
+            "policy": policy_diagnostics.get("policy"),
+            "samples": policy_diagnostics.get("samples")
         }
 
     except InvalidEngineInputError:

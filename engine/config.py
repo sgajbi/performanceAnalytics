@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Literal, Optional
 
 from common.enums import PeriodType
+from core.envelope import DataPolicy
 
 
 class PrecisionMode(str, Enum):
@@ -39,3 +40,4 @@ class EngineConfig:
     report_start_date: Optional[date] = None
     precision_mode: PrecisionMode = PrecisionMode.FLOAT64
     feature_flags: FeatureFlags = field(default_factory=FeatureFlags)
+    data_policy: Optional[DataPolicy] = None

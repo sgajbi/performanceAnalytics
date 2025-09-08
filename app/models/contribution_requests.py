@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from common.enums import PeriodType, WeightingScheme
-from core.envelope import Annualization, Calendar, Flags, Output, Periods
+from core.envelope import Annualization, Calendar, Flags, Output, Periods, DataPolicy
 
 
 class PositionDailyData(BaseModel):
@@ -81,3 +81,4 @@ class ContributionRequest(BaseModel):
     periods: Optional[Periods] = None
     output: Output = Field(default_factory=Output)
     flags: Flags = Field(default_factory=Flags)
+    data_policy: Optional[DataPolicy] = None

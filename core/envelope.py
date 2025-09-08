@@ -1,9 +1,34 @@
 # core/envelope.py
 from datetime import date
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, model_validator
+
+
+class OverridesPolicy(BaseModel):
+    market_values: List[Dict[str, Any]] = Field(default_factory=list)
+    cash_flows: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class IgnoreDaysPolicy(BaseModel):
+    entity_type: Literal["PORTFOLIO", "POSITION"]
+    entity_id: str
+    dates: List[date]
+
+
+class OutlierPolicy(BaseModel):
+    enabled: bool = False
+    scope: List[str] = ["SECURITY_RETURNS"]
+    method: Literal["MAD"] = "MAD"
+    params: Dict[str, Any] = {"mad_k": 5.0, "window": 63}
+    action: Literal["FLAG"] = "FLAG"
+
+
+class DataPolicy(BaseModel):
+    overrides: Optional[OverridesPolicy] = None
+    ignore_days: Optional[List[IgnoreDaysPolicy]] = None
+    outliers: Optional[OutlierPolicy] = None
 
 
 # --- Shared Request Components ---
@@ -72,9 +97,9 @@ class BaseRequest(BaseModel):
     periods: Periods
     output: Output = Field(default_factory=Output)
     flags: Flags = Field(default_factory=Flags)
+    data_policy: Optional[DataPolicy] = None
 
 
-# --- Shared Response Components ---
 class Meta(BaseModel):
     calculation_id: UUID
     engine_version: str
@@ -84,11 +109,18 @@ class Meta(BaseModel):
     periods: Dict
 
 
+class PolicyDiagnostics(BaseModel):
+    overrides: Dict[str, int] = {"applied_mv_count": 0, "applied_cf_count": 0}
+    ignored_days_count: int = 0
+    outliers: Dict[str, int] = {"flagged_rows": 0}
+
 class Diagnostics(BaseModel):
     nip_days: int
     reset_days: int
     effective_period_start: date
     notes: List[str] = Field(default_factory=list)
+    policy: Optional[PolicyDiagnostics] = None
+    samples: Optional[Dict[str, List[Dict]]] = None
 
 
 class Audit(BaseModel):
