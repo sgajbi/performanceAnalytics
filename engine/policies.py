@@ -54,6 +54,8 @@ def _apply_ignore_days(df: pd.DataFrame, ignore_days: list, diagnostics: Dict) -
         return df
 
     df_copy = df.copy()
+    # Ensure DataFrame is sorted by date for correct forward-fill logic
+    df_copy.sort_values(by=PortfolioColumns.PERF_DATE.value, inplace=True)
     df_copy.set_index(PortfolioColumns.PERF_DATE.value, inplace=True)
 
     for item in ignore_days:
@@ -81,14 +83,12 @@ def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) ->
     if not outlier_policy or not outlier_policy.get("enabled"):
         return
 
-    if outlier_policy["action"] != "FLAG":
-        return  # Only flagging is supported
+    if outlier_policy.get("action") != "FLAG":
+        return
 
     window = outlier_policy.get("params", {}).get("window", 63)
     mad_k = outlier_policy.get("params", {}).get("mad_k", 5.0)
 
-    # This requires daily_ror to be calculated first.
-    # We will flag them and add to diagnostics.
     if PortfolioColumns.DAILY_ROR.value not in df.columns:
         return
 
@@ -96,8 +96,9 @@ def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) ->
     median = ror_series.rolling(window=window, min_periods=1).median()
     mad = (ror_series - median).abs().rolling(window=window, min_periods=1).median()
     
-    # Avoid division by zero if MAD is 0
-    mad = mad.replace(0, np.nan).ffill().fillna(1e-9)
+    mad.replace(0, np.nan, inplace=True)
+    mad.ffill(inplace=True)
+    mad.fillna(1e-9, inplace=True)
 
     upper_bound = median + mad_k * mad
     lower_bound = median - mad_k * mad
@@ -106,20 +107,22 @@ def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) ->
     diagnostics["policy"]["outliers"]["flagged_rows"] = int(outliers.sum())
 
     if int(outliers.sum()) > 0:
-        sample = df[outliers].iloc[0]
-        diagnostics["samples"]["outliers"].append(
-            {
-                "date": sample[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"),
-                "raw_return": sample[PortfolioColumns.DAILY_ROR.value],
-                "threshold": upper_bound[outliers].iloc[0]
-            }
-        )
+        outlier_indices = df.index[outliers]
+        for index in outlier_indices:
+            sample = df.loc[index]
+            diagnostics["samples"]["outliers"].append(
+                {
+                    "date": sample[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"),
+                    "raw_return": sample[PortfolioColumns.DAILY_ROR.value],
+                    "threshold": upper_bound[index] if ror_series[index] > 0 else lower_bound[index]
+                }
+            )
 
 
 def apply_robustness_policies(
     df: pd.DataFrame, data_policy_model: BaseModel | None
 ) -> Tuple[pd.DataFrame, Dict]:
-    """Orchestrator to apply all robustness policies in the correct order."""
+    """Orchestrator to apply override and ignore day policies."""
     diagnostics = {
         "policy": {
             "overrides": {"applied_mv_count": 0, "applied_cf_count": 0},
@@ -133,13 +136,10 @@ def apply_robustness_policies(
     if not data_policy_model:
         return df, diagnostics
 
-    # Convert Pydantic model to dict for easier processing
     data_policy = data_policy_model.model_dump(exclude_unset=True)
     
-    # 1. Apply Overrides and Ignore Days first as they modify the base data
+    # Only apply pre-calculation policies here
     df = _apply_overrides(df, data_policy.get("overrides"), diagnostics)
     df = _apply_ignore_days(df, data_policy.get("ignore_days"), diagnostics)
 
-    # Outlier flagging would happen after daily_ror is calculated, so we only
-    # return the diagnostics structure for the orchestrator to use later.
     return df, diagnostics

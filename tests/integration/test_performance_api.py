@@ -32,7 +32,7 @@ def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
             {"day": 2, "perf_date": "2025-01-02", "begin_mv": 101000.0, "end_mv": 102010.0},
             {"day": 3, "perf_date": "2025-01-03", "begin_mv": 102010.0, "end_mv": 100989.9},
             {"day": 4, "perf_date": "2025-01-04", "begin_mv": 100989.9, "bod_cf": 25000.0, "end_mv": 127249.29},
-            {"day": 5, "perf_date": "2025-01-05", "begin_mv": 127249.29, "end_mv": 125976.7971},
+            {"day": 5, "perf_date": "2025-01-05", "begin_mv": 127249.29, "end_mv": 125976.7971}
         ],
     }
 
@@ -62,8 +62,10 @@ def test_calculate_twr_endpoint_with_data_policy(client):
         "frequencies": ["daily"],
         "daily_data": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0},
-            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1010.0, "end_mv": 2000.0}, # Outlier
-            {"day": 3, "perf_date": "2025-01-03", "begin_mv": 1020.0, "end_mv": 1030.0}, # To be ignored
+            # Corrected begin_mv to match the overridden end_mv of the previous day
+            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1005.0, "end_mv": 2000.0}, # Outlier
+            # Corrected begin_mv to match the end_mv of the previous day
+            {"day": 3, "perf_date": "2025-01-03", "begin_mv": 2000.0, "end_mv": 1030.0}, # To be ignored
         ],
         "data_policy": {
             "overrides": {
@@ -91,7 +93,7 @@ def test_calculate_twr_endpoint_with_data_policy(client):
     assert diags["policy"]["overrides"]["applied_mv_count"] == 1
     assert diags["policy"]["ignored_days_count"] == 1
     assert diags["policy"]["outliers"]["flagged_rows"] == 1
-    assert data["samples"]["outliers"][0]["raw_return"] > 90
+    assert data["samples"]["outliers"][0]["raw_return"] == pytest.approx(99.004975)
 
 
 def test_calculate_twr_endpoint_decimal_strict_mode(client):
