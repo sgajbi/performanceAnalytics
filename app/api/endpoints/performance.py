@@ -1,5 +1,6 @@
 # app/api/endpoints/performance.py
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
+import pandas as pd
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
@@ -102,7 +103,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
 
 
 @router.post("/mwr", response_model=MoneyWeightedReturnResponse, summary="Calculate Money-Weighted Return")
-async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
+async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest, background_tasks: BackgroundTasks):
     """Calculates the money-weighted return (MWR) for a portfolio over a given period."""
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
     
@@ -153,18 +154,64 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
         "diagnostics": diagnostics,
         "audit": audit,
     }
+    
+    response_model = MoneyWeightedReturnResponse.model_validate(response_payload)
 
-    return MoneyWeightedReturnResponse.model_validate(response_payload)
+    # Create DataFrame for lineage capture
+    lineage_df_data = [{"date": str(request.as_of), "type": "begin_mv", "amount": request.begin_mv}]
+    lineage_df_data.extend([{"date": str(cf.date), "type": "cash_flow", "amount": cf.amount} for cf in request.cash_flows])
+    lineage_df_data.append({"date": str(request.as_of), "type": "end_mv", "amount": request.end_mv})
+    lineage_df = pd.DataFrame(lineage_df_data)
+
+    background_tasks.add_task(
+        lineage_service.capture,
+        calculation_id=request.calculation_id,
+        calculation_type="MWR",
+        request_model=request,
+        response_model=response_model,
+        calculation_details={"mwr_cashflow_schedule.csv": lineage_df}
+    )
+
+    return response_model
 
 
 @router.post("/attribution", response_model=AttributionResponse, summary="Calculate Multi-Level Performance Attribution")
-async def calculate_attribution_endpoint(request: AttributionRequest):
+async def calculate_attribution_endpoint(request: AttributionRequest, background_tasks: BackgroundTasks):
     """
     Calculates multi-level, Brinson-style performance attribution, decomposing
     active return into allocation, selection, and interaction effects.
     """
+    input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
+    
     try:
         response = run_attribution_calculations(request)
+        
+        # Add hash to meta if it exists, otherwise create it
+        if response.meta:
+            response.meta.input_fingerprint = input_fingerprint
+            response.meta.calculation_hash = calculation_hash
+        else:
+            # Placeholder meta if engine doesn't create one
+             response.meta = Meta(
+                calculation_id=request.calculation_id,
+                engine_version=settings.APP_VERSION,
+                precision_mode=request.precision_mode,
+                annualization=request.annualization,
+                calendar=request.calendar,
+                periods={},
+                input_fingerprint=input_fingerprint,
+                calculation_hash=calculation_hash
+            )
+        
+        # Placeholder for detailed attribution dataframes
+        background_tasks.add_task(
+            lineage_service.capture,
+            calculation_id=request.calculation_id,
+            calculation_type="Attribution",
+            request_model=request,
+            response_model=response,
+            calculation_details={}
+        )
         return response
     except (InvalidEngineInputError, ValueError, NotImplementedError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

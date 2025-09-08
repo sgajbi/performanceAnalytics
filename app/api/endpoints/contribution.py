@@ -1,5 +1,5 @@
 # app/api/endpoints/contribution.py
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 import pandas as pd
 from adapters.api_adapter import create_engine_dataframe
 from app.core.config import get_settings
@@ -12,6 +12,8 @@ from app.models.contribution_responses import (
     PositionDailyContribution,
 )
 from core.envelope import Audit, Diagnostics, Meta
+from core.repro import generate_canonical_hash
+from app.services.lineage_service import lineage_service
 from engine.compute import run_calculations
 from engine.contribution import calculate_hierarchical_contribution, calculate_position_contribution
 from engine.config import EngineConfig
@@ -22,12 +24,14 @@ settings = get_settings()
 
 
 @router.post("/contribution", response_model=ContributionResponse, summary="Calculate Position Contribution")
-async def calculate_contribution_endpoint(request: ContributionRequest):
+async def calculate_contribution_endpoint(request: ContributionRequest, background_tasks: BackgroundTasks):
     """
     Calculates the performance contribution for each position within a portfolio.
     - If a `hierarchy` is provided, it performs a multi-level breakdown.
     - Otherwise, it calculates contribution at the individual position level.
     """
+    input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
+
     # 1. Create shared TWR config and diagnostics object from the request
     try:
         perf_start_date = request.portfolio_data.daily_data[0].perf_date
@@ -47,9 +51,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
     # 2. Route to the correct engine based on whether a hierarchy is requested
     if request.hierarchy:
         # --- HIERARCHICAL PATH ---
+        # NOTE: Lineage for hierarchical contribution is not yet fully implemented.
         results = calculate_hierarchical_contribution(request)
 
-        # Build envelope manually for now
         meta = Meta(
             calculation_id=request.calculation_id,
             engine_version=settings.APP_VERSION,
@@ -61,8 +65,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
                 "start": str(twr_config.report_start_date or twr_config.performance_start_date),
                 "end": str(twr_config.report_end_date),
             },
+            input_fingerprint=input_fingerprint,
+            calculation_hash=calculation_hash,
         )
-        # TODO: Populate diagnostics and audit properly in subsequent steps
         diagnostics = Diagnostics(nip_days=0, reset_days=0, effective_period_start=twr_config.report_start_date or twr_config.performance_start_date, notes=[])
         audit = Audit(counts={"input_positions": len(request.positions_data)})
 
@@ -124,6 +129,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
             "start": str(twr_config.report_start_date or twr_config.performance_start_date),
             "end": str(twr_config.report_end_date),
         },
+        input_fingerprint=input_fingerprint,
+        calculation_hash=calculation_hash,
     )
     diagnostics = Diagnostics(
         nip_days=portfolio_diags.get("nip_days", 0),
@@ -168,4 +175,19 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
             PositionContributionSeries(position_id=pos_id, series=series) for pos_id, series in by_pos_ts.items()
         ]
 
-    return ContributionResponse.model_validate(response_payload)
+    response_model = ContributionResponse.model_validate(response_payload)
+
+    lineage_details = {"portfolio_twr.csv": portfolio_results}
+    if raw_timeseries:
+        lineage_details["positions_daily_contribution.csv"] = pd.DataFrame(raw_timeseries)
+
+    background_tasks.add_task(
+        lineage_service.capture,
+        calculation_id=request.calculation_id,
+        calculation_type="Contribution",
+        request_model=request,
+        response_model=response_model,
+        calculation_details=lineage_details,
+    )
+
+    return response_model

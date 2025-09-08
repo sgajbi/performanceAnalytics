@@ -31,6 +31,24 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
     assert response_data["audit"]["counts"]["calculation_days"] == 2
 
 
+def test_contribution_lineage_flow(client, happy_path_payload):
+    """Tests that lineage is correctly captured for a single-level contribution request."""
+    payload = happy_path_payload.copy()
+    payload["emit"] = {"timeseries": True} # Ensure timeseries is generated for capture
+    
+    contrib_response = client.post("/performance/contribution", json=payload)
+    assert contrib_response.status_code == 200
+    calculation_id = contrib_response.json()["calculation_id"]
+
+    lineage_response = client.get(f"/performance/lineage/{calculation_id}")
+    assert lineage_response.status_code == 200
+    lineage_data = lineage_response.json()
+
+    assert lineage_data["calculation_type"] == "Contribution"
+    assert "portfolio_twr.csv" in lineage_data["artifacts"]
+    assert "positions_daily_contribution.csv" in lineage_data["artifacts"]
+
+
 def test_contribution_endpoint_no_smoothing(client, happy_path_payload):
     """Tests that the endpoint correctly processes a request with smoothing disabled."""
     payload = happy_path_payload.copy()

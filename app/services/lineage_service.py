@@ -57,7 +57,11 @@ class LineageService:
             logger.info(f"Successfully captured lineage data for calculation_id: {calculation_id}")
 
         except Exception as e:
-            logger.error(f"Failed to capture lineage data for {calculation_id}: {e}", exc_info=True)
+            # Add robust logging to make silent errors visible in the server console
+            logger.error(
+                f"FATAL: Failed to capture lineage data for calculation_id: {calculation_id}. Reason: {e}",
+                exc_info=True
+            )
 
 
 lineage_service = LineageService(storage_path=settings.LINEAGE_STORAGE_PATH)
