@@ -25,7 +25,6 @@ settings = get_settings()
 async def calculate_contribution_endpoint(request: ContributionRequest):
     """
     Calculates the performance contribution for each position within a portfolio.
-
     - If a `hierarchy` is provided, it performs a multi-level breakdown.
     - Otherwise, it calculates contribution at the individual position level.
     """
@@ -40,6 +39,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
             period_type=request.portfolio_data.period_type,
             precision_mode=request.precision_mode,
             rounding_precision=request.rounding_precision,
+            data_policy=request.data_policy,
         )
     except IndexError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="portfolio_data.daily_data cannot be empty.")
@@ -130,6 +130,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest):
         reset_days=portfolio_diags.get("reset_days", 0),
         effective_period_start=portfolio_diags.get("effective_period_start"),
         notes=portfolio_diags.get("notes", []),
+        policy=portfolio_diags.get("policy"),
+        samples=portfolio_diags.get("samples"),
     )
     audit = Audit(
         sum_of_parts_vs_total_bp=(total_contribution_sum - total_portfolio_return) * 100,

@@ -64,6 +64,8 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
         reset_days=diagnostics_data.get("reset_days", 0),
         effective_period_start=diagnostics_data.get("effective_period_start"),
         notes=diagnostics_data.get("notes", []),
+        policy=diagnostics_data.get("policy"),
+        samples=diagnostics_data.get("samples"),
     )
     audit = Audit(counts={"input_rows": len(request.daily_data), "output_rows": len(daily_results_df)})
 
