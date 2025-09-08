@@ -1,3 +1,25 @@
+# Virtual Environment
 .venv/
+venv/
+ENV/
+
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE / Editor directories
+.idea/
+.vscode/
+
+# Environment variables
+.env
+
+# Lineage data (RFC 025)
+lineage_data/

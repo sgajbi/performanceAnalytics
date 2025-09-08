@@ -1,4 +1,5 @@
 # app/api/endpoints/lineage.py
+import json
 import os
 from typing import Dict
 from uuid import UUID
@@ -31,17 +32,22 @@ async def get_lineage_data(calculation_id: UUID, request: Request):
 
     artifacts = {}
     try:
-        for filename in os.listdir(lineage_dir):
-            # Construct a relative URL that the static file server can handle
-            file_url = request.url_for("lineage_files", path=f"{calculation_id}/{filename}")
-            artifacts[filename] = ArtifactLink(url=str(file_url))
+        manifest_path = os.path.join(lineage_dir, "manifest.json")
+        if not os.path.exists(manifest_path):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lineage manifest not found.")
+        
+        with open(manifest_path, "r") as f:
+            manifest_data = json.load(f)
 
-        # We need to get metadata like calc_type and timestamp from a manifest file
-        # For now, we'll use placeholder values.
+        for filename in os.listdir(lineage_dir):
+            if filename != "manifest.json":
+                file_url = request.url_for("lineage_files", path=f"{calculation_id}/{filename}")
+                artifacts[filename] = ArtifactLink(url=str(file_url))
+
         return LineageResponse(
             calculation_id=calculation_id,
-            calculation_type="UNKNOWN",
-            timestamp_utc="N/A",
+            calculation_type=manifest_data.get("calculation_type", "UNKNOWN"),
+            timestamp_utc=manifest_data.get("timestamp_utc", "N/A"),
             artifacts=artifacts,
         )
     except Exception as e:

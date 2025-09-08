@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Dict
 from uuid import UUID
 
@@ -45,6 +46,14 @@ class LineageService:
             for filename, df in calculation_details.items():
                 df.to_csv(os.path.join(target_dir, filename), index=False)
             
+            # Save metadata manifest
+            manifest_data = {
+                "calculation_type": calculation_type,
+                "timestamp_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            }
+            with open(os.path.join(target_dir, "manifest.json"), "w") as f:
+                json.dump(manifest_data, f, indent=2)
+
             logger.info(f"Successfully captured lineage data for calculation_id: {calculation_id}")
 
         except Exception as e:

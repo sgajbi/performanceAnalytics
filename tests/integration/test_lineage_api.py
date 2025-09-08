@@ -51,6 +51,8 @@ def test_lineage_end_to_end_flow(client):
     lineage_data = lineage_response.json()
 
     assert lineage_data["calculation_id"] == calculation_id
+    assert lineage_data["calculation_type"] == "TWR"
+    assert "Z" in lineage_data["timestamp_utc"] # Check for UTC timezone indicator
     assert "request.json" in lineage_data["artifacts"]
     assert "response.json" in lineage_data["artifacts"]
     assert "twr_calculation_details.csv" in lineage_data["artifacts"]
