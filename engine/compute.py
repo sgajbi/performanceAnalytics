@@ -41,7 +41,7 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
         
         # Apply outlier flagging now that RoR is calculated
         if config.data_policy:
-            _flag_outliers(df, config.data_policy.model_dump(exclude_unset=True).get("outliers"), policy_diagnostics)
+            _flag_outliers(df, config.data_policy, policy_diagnostics)
 
         df[PortfolioColumns.PERF_RESET.value] = 0
         df[PortfolioColumns.SIGN.value] = calculate_sign(df)

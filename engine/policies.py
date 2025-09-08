@@ -78,11 +78,12 @@ def _apply_ignore_days(df: pd.DataFrame, ignore_days: list, diagnostics: Dict) -
     return df_copy.reset_index()
 
 
-def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) -> None:
-    """Detects and flags outliers without modifying data."""
-    if not outlier_policy or not outlier_policy.get("enabled"):
+def _flag_outliers(df: pd.DataFrame, data_policy_model: BaseModel | None, diagnostics: Dict) -> None:
+    """Detects and flags outliers, excluding ignored days from statistical analysis."""
+    if not data_policy_model or not data_policy_model.outliers or not data_policy_model.outliers.enabled:
         return
-
+    
+    outlier_policy = data_policy_model.outliers.model_dump()
     if outlier_policy.get("action") != "FLAG":
         return
 
@@ -92,9 +93,16 @@ def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) ->
     if PortfolioColumns.DAILY_ROR.value not in df.columns:
         return
 
+    # Exclude ignored days from the statistical calculation
     ror_series = df[PortfolioColumns.DAILY_ROR.value]
-    median = ror_series.rolling(window=window, min_periods=1).median()
-    mad = (ror_series - median).abs().rolling(window=window, min_periods=1).median()
+    ror_for_stats = ror_series.copy()
+    if data_policy_model.ignore_days:
+        ignored_dates = {d for item in data_policy_model.ignore_days for d in item.dates}
+        valid_mask = ~df[PortfolioColumns.PERF_DATE.value].dt.date.isin(ignored_dates)
+        ror_for_stats = ror_for_stats.where(valid_mask) # Use .where to keep index alignment
+
+    median = ror_for_stats.rolling(window=window, min_periods=1).median().ffill()
+    mad = (ror_for_stats - median).abs().rolling(window=window, min_periods=1).median().ffill()
     
     mad.replace(0, np.nan, inplace=True)
     mad.ffill(inplace=True)
@@ -103,7 +111,12 @@ def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) ->
     upper_bound = median + mad_k * mad
     lower_bound = median - mad_k * mad
 
+    # Flag outliers based on the original full series
     outliers = (ror_series > upper_bound) | (ror_series < lower_bound)
+    # But only flag if the day was not ignored
+    if data_policy_model.ignore_days:
+        outliers &= valid_mask
+    
     diagnostics["policy"]["outliers"]["flagged_rows"] = int(outliers.sum())
 
     if int(outliers.sum()) > 0:
@@ -122,7 +135,7 @@ def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) ->
 def apply_robustness_policies(
     df: pd.DataFrame, data_policy_model: BaseModel | None
 ) -> Tuple[pd.DataFrame, Dict]:
-    """Orchestrator to apply all robustness policies in the correct order."""
+    """Orchestrator to apply pre-calculation robustness policies."""
     diagnostics = {
         "policy": {
             "overrides": {"applied_mv_count": 0, "applied_cf_count": 0},
@@ -136,10 +149,8 @@ def apply_robustness_policies(
     if not data_policy_model:
         return df, diagnostics
 
-    data_policy = data_policy_model.model_dump(exclude_unset=True)
-    
-    # Apply pre-calculation policies that modify the base data
-    df = _apply_overrides(df, data_policy.get("overrides"), diagnostics)
-    df = _apply_ignore_days(df, data_policy.get("ignore_days"), diagnostics)
+    # These policies modify the base data before RoR calculation
+    df = _apply_overrides(df, data_policy_model.model_dump(exclude_unset=True).get("overrides"), diagnostics)
+    df = _apply_ignore_days(df, data_policy_model.model_dump(exclude_unset=True).get("ignore_days"), diagnostics)
 
     return df, diagnostics

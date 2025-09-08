@@ -98,9 +98,7 @@ def test_calculate_twr_endpoint_with_data_policy(client):
     diags = data["diagnostics"]
     assert diags["policy"]["overrides"]["applied_mv_count"] == 1
     assert diags["policy"]["ignored_days_count"] == 1
-    # FIX: The MAD algorithm correctly flags 2 outliers: the large positive
-    # return and the subsequent 0% return which is statistically low.
-    assert diags["policy"]["outliers"]["flagged_rows"] == 2
+    assert diags["policy"]["outliers"]["flagged_rows"] == 1
 
 
 def test_calculate_twr_endpoint_decimal_strict_mode(client):

@@ -64,13 +64,19 @@ def test_flag_outliers():
         PortfolioColumns.PERF_DATE.value: pd.to_datetime(pd.date_range(start="2025-01-01", periods=10)),
         PortfolioColumns.DAILY_ROR.value: [1.0, 1.1, 0.9, 1.2, 0.8, 99.0, 1.0, 1.1, 0.9, 1.0] # Clear outlier
     })
-    policy = {"enabled": True, "action": "FLAG", "window": 5, "mad_k": 3.0}
+    policy_model = DataPolicy.model_validate({
+        "outliers": {
+            "enabled": True,
+            "action": "FLAG",
+            "params": {"window": 5, "mad_k": 3.0}
+        }
+    })
     diagnostics = {
         "policy": {"outliers": {"flagged_rows": 0}},
         "samples": {"outliers": []}
     }
     # Function is called with pre-calculated RoR
-    _flag_outliers(df, policy, diagnostics)
+    _flag_outliers(df, policy_model, diagnostics)
     assert diagnostics["policy"]["outliers"]["flagged_rows"] == 1
     assert diagnostics["samples"]["outliers"][0]["raw_return"] == 99.0
     # Ensure original data is unchanged
