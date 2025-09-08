@@ -1,5 +1,5 @@
 # app/api/endpoints/performance.py
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
@@ -8,7 +8,9 @@ from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
 from app.models.responses import PerformanceResponse
+from app.services.lineage_service import lineage_service
 from core.envelope import Audit, Diagnostics, Meta
+from core.repro import generate_canonical_hash
 from engine.attribution import run_attribution_calculations
 from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
@@ -20,11 +22,13 @@ settings = get_settings()
 
 
 @router.post("/twr", response_model=PerformanceResponse, summary="Calculate Time-Weighted Return")
-async def calculate_twr_endpoint(request: PerformanceRequest):
+async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: BackgroundTasks):
     """
     Calculates time-weighted return (TWR) and provides performance breakdowns
     by requested frequencies (daily, monthly, yearly, etc.).
     """
+    input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
+    
     try:
         engine_config = create_engine_config(request)
         engine_df = create_engine_dataframe([item.model_dump() for item in request.daily_data])
@@ -58,6 +62,8 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
         calendar=request.calendar,
         annualization=request.annualization,
         periods={"type": request.period_type.value, "start": str(engine_config.report_start_date or engine_config.performance_start_date), "end": str(engine_config.report_end_date)},
+        input_fingerprint=input_fingerprint,
+        calculation_hash=calculation_hash,
     )
     diagnostics = Diagnostics(
         nip_days=diagnostics_data.get("nip_days", 0),
@@ -81,12 +87,25 @@ async def calculate_twr_endpoint(request: PerformanceRequest):
     if request.reset_policy.emit and diagnostics_data.get("resets"):
         response_payload["reset_events"] = diagnostics_data["resets"]
 
-    return PerformanceResponse.model_validate(response_payload)
+    response_model = PerformanceResponse.model_validate(response_payload)
+
+    background_tasks.add_task(
+        lineage_service.capture,
+        calculation_id=request.calculation_id,
+        calculation_type="TWR",
+        request_model=request,
+        response_model=response_model,
+        calculation_details={"twr_calculation_details.csv": daily_results_df}
+    )
+
+    return response_model
 
 
 @router.post("/mwr", response_model=MoneyWeightedReturnResponse, summary="Calculate Money-Weighted Return")
 async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
     """Calculates the money-weighted return (MWR) for a portfolio over a given period."""
+    input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
+    
     try:
         mwr_result = calculate_money_weighted_return(
             begin_mv=request.begin_mv,
@@ -109,6 +128,8 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest):
         annualization=request.annualization,
         calendar=request.calendar,
         periods={"type": "EXPLICIT", "start": str(mwr_result.start_date), "end": str(mwr_result.end_date)},
+        input_fingerprint=input_fingerprint,
+        calculation_hash=calculation_hash,
     )
     diagnostics = Diagnostics(
         nip_days=0,

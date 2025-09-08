@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, model_validator
 
 
+# --- NEW Data Policy Models ---
 class OverridesPolicy(BaseModel):
     market_values: List[Dict[str, Any]] = Field(default_factory=list)
     cash_flows: List[Dict[str, Any]] = Field(default_factory=list)
@@ -100,6 +101,7 @@ class BaseRequest(BaseModel):
     data_policy: Optional[DataPolicy] = None
 
 
+# --- Shared Response Components ---
 class Meta(BaseModel):
     calculation_id: UUID
     engine_version: str
@@ -107,8 +109,11 @@ class Meta(BaseModel):
     annualization: Annualization
     calendar: Calendar
     periods: Dict
+    input_fingerprint: Optional[str] = None
+    calculation_hash: Optional[str] = None
 
 
+# --- MODIFIED Diagnostics Model ---
 class PolicyDiagnostics(BaseModel):
     overrides: Dict[str, int] = {"applied_mv_count": 0, "applied_cf_count": 0}
     ignored_days_count: int = 0
