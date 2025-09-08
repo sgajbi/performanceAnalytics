@@ -122,7 +122,7 @@ def _flag_outliers(df: pd.DataFrame, outlier_policy: Dict, diagnostics: Dict) ->
 def apply_robustness_policies(
     df: pd.DataFrame, data_policy_model: BaseModel | None
 ) -> Tuple[pd.DataFrame, Dict]:
-    """Orchestrator to apply override and ignore day policies."""
+    """Orchestrator to apply all robustness policies in the correct order."""
     diagnostics = {
         "policy": {
             "overrides": {"applied_mv_count": 0, "applied_cf_count": 0},
@@ -138,7 +138,7 @@ def apply_robustness_policies(
 
     data_policy = data_policy_model.model_dump(exclude_unset=True)
     
-    # Only apply pre-calculation policies here
+    # Apply pre-calculation policies that modify the base data
     df = _apply_overrides(df, data_policy.get("overrides"), diagnostics)
     df = _apply_ignore_days(df, data_policy.get("ignore_days"), diagnostics)
 

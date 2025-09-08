@@ -31,7 +31,7 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 
         _prepare_dataframe(df, config)
 
-        # Apply overrides first as they correct the base data
+        # Apply policies that modify base data before calculations
         df, policy_diagnostics = apply_robustness_policies(df, config.data_policy)
 
         df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value] = get_effective_period_start_dates(
@@ -42,12 +42,6 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
         # Apply outlier flagging now that RoR is calculated
         if config.data_policy:
             _flag_outliers(df, config.data_policy.model_dump(exclude_unset=True).get("outliers"), policy_diagnostics)
-
-        # Now, apply ignore_days which zeroes out RoR for specific days AFTER flagging
-        if config.data_policy and config.data_policy.ignore_days:
-            dates_to_ignore = {d for item in config.data_policy.ignore_days for d in item.dates}
-            df.loc[df[PortfolioColumns.PERF_DATE.value].dt.date.isin(dates_to_ignore), PortfolioColumns.DAILY_ROR.value] = 0.0
-
 
         df[PortfolioColumns.PERF_RESET.value] = 0
         df[PortfolioColumns.SIGN.value] = calculate_sign(df)
