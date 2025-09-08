@@ -1,0 +1,83 @@
+{
+  "calculation_id": "f6e4064a-3e03-40b8-bd4a-43ddfaeede98",
+  "portfolio_number": "EMPTY_PERIOD_TEST",
+  "breakdowns": {
+    "monthly": [
+      {
+        "period": "2025-01",
+        "summary": {
+          "begin_mv": 1000.0,
+          "end_mv": 1010.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 1.0000000000000009,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      },
+      {
+        "period": "2025-03",
+        "summary": {
+          "begin_mv": 1010.0,
+          "end_mv": 1020.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 0.9900989999999998,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      }
+    ]
+  },
+  "reset_events": null,
+  "meta": {
+    "calculation_id": "f6e4064a-3e03-40b8-bd4a-43ddfaeede98",
+    "engine_version": "0.1.0",
+    "precision_mode": "FLOAT64",
+    "annualization": {
+      "enabled": false,
+      "basis": "BUS/252",
+      "periods_per_year": null
+    },
+    "calendar": {
+      "type": "BUSINESS",
+      "trading_calendar": "NYSE"
+    },
+    "periods": {
+      "type": "YTD",
+      "start": "2024-12-31",
+      "end": "2025-03-31"
+    },
+    "input_fingerprint": "sha256:8b49b62a3c150c500fe446e98ee69795ea1b33430d9cc915d68b157803831300",
+    "calculation_hash": "sha256:ab98ef1496aef815099cf2e0265ccd38bba49032c5c9fee068582c6ace337895"
+  },
+  "diagnostics": {
+    "nip_days": 0,
+    "reset_days": 0,
+    "effective_period_start": "2025-01-01",
+    "notes": [],
+    "policy": {
+      "overrides": {
+        "applied_mv_count": 0,
+        "applied_cf_count": 0
+      },
+      "ignored_days_count": 0,
+      "outliers": {
+        "flagged_rows": 0
+      }
+    },
+    "samples": {
+      "outliers": []
+    }
+  },
+  "audit": {
+    "sum_of_parts_vs_total_bp": null,
+    "residual_applied_bp": null,
+    "counts": {
+      "input_rows": 2,
+      "output_rows": 2
+    }
+  }
+}

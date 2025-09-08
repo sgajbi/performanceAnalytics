@@ -1,0 +1,137 @@
+{
+  "calculation_id": "55059e78-6e3c-44fa-8b24-f95c496b6d85",
+  "portfolio_number": "POLICY_TEST",
+  "performance_start_date": "2024-12-27",
+  "metric_basis": "NET",
+  "report_start_date": "2024-12-28",
+  "report_end_date": "2025-01-03",
+  "period_type": "YTD",
+  "frequencies": [
+    "daily"
+  ],
+  "daily_data": [
+    {
+      "day": 1,
+      "perf_date": "2024-12-28",
+      "begin_mv": 1000.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 1001.0
+    },
+    {
+      "day": 2,
+      "perf_date": "2024-12-29",
+      "begin_mv": 1001.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 1002.0
+    },
+    {
+      "day": 3,
+      "perf_date": "2024-12-30",
+      "begin_mv": 1002.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 1003.0
+    },
+    {
+      "day": 4,
+      "perf_date": "2024-12-31",
+      "begin_mv": 1003.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 1004.0
+    },
+    {
+      "day": 5,
+      "perf_date": "2025-01-01",
+      "begin_mv": 1004.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 1010.0
+    },
+    {
+      "day": 6,
+      "perf_date": "2025-01-02",
+      "begin_mv": 1005.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 2000.0
+    },
+    {
+      "day": 7,
+      "perf_date": "2025-01-03",
+      "begin_mv": 2000.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 2020.0
+    }
+  ],
+  "as_of": null,
+  "currency": "USD",
+  "precision_mode": "FLOAT64",
+  "rounding_precision": 6,
+  "calendar": {
+    "type": "BUSINESS",
+    "trading_calendar": "NYSE"
+  },
+  "annualization": {
+    "enabled": false,
+    "basis": "BUS/252",
+    "periods_per_year": null
+  },
+  "periods": null,
+  "output": {
+    "include_timeseries": false,
+    "include_cumulative": false,
+    "top_n": 20
+  },
+  "flags": {
+    "fail_fast": false,
+    "compat_legacy_names": false
+  },
+  "fee_effect": {
+    "enabled": false
+  },
+  "reset_policy": {
+    "emit": false
+  },
+  "data_policy": {
+    "overrides": {
+      "market_values": [
+        {
+          "perf_date": "2025-01-01",
+          "end_mv": 1005.0
+        }
+      ],
+      "cash_flows": []
+    },
+    "ignore_days": [
+      {
+        "entity_type": "PORTFOLIO",
+        "entity_id": "POLICY_TEST",
+        "dates": [
+          "2025-01-03"
+        ]
+      }
+    ],
+    "outliers": {
+      "enabled": true,
+      "scope": [
+        "SECURITY_RETURNS"
+      ],
+      "method": "MAD",
+      "params": {
+        "mad_k": 3.0
+      },
+      "action": "FLAG"
+    }
+  }
+}

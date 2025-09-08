@@ -1,0 +1,137 @@
+{
+  "calculation_id": "de5aeca7-aeb3-426e-9338-591f9cd4649b",
+  "portfolio_number": "LONG_TEST",
+  "breakdowns": {
+    "quarterly": [
+      {
+        "period": "2024-Q1",
+        "summary": {
+          "begin_mv": 100000.0,
+          "end_mv": 103000.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 2.999999829901956,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": 1097.6414406130862,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      },
+      {
+        "period": "2024-Q2",
+        "summary": {
+          "begin_mv": 103000.0,
+          "end_mv": 104000.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 0.9708739999999993,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": 1041.3559550457612,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      }
+    ],
+    "weekly": [
+      {
+        "period": "2024-01-05",
+        "summary": {
+          "begin_mv": 100000.0,
+          "end_mv": 101000.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 1.0000000000000009,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": 1127.4002099240245,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      },
+      {
+        "period": "2024-02-02",
+        "summary": {
+          "begin_mv": 101000.0,
+          "end_mv": 102000.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 0.9900989999999998,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": 1097.4491500038566,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      },
+      {
+        "period": "2024-03-01",
+        "summary": {
+          "begin_mv": 102000.0,
+          "end_mv": 103000.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 0.9803919999999966,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": 1068.7918421868821,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      },
+      {
+        "period": "2024-04-05",
+        "summary": {
+          "begin_mv": 103000.0,
+          "end_mv": 104000.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 0.9708739999999993,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": 1041.3559550457612,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      }
+    ]
+  },
+  "reset_events": null,
+  "meta": {
+    "calculation_id": "de5aeca7-aeb3-426e-9338-591f9cd4649b",
+    "engine_version": "0.1.0",
+    "precision_mode": "FLOAT64",
+    "annualization": {
+      "enabled": true,
+      "basis": "BUS/252",
+      "periods_per_year": null
+    },
+    "calendar": {
+      "type": "BUSINESS",
+      "trading_calendar": "NYSE"
+    },
+    "periods": {
+      "type": "YTD",
+      "start": "2024-01-01",
+      "end": "2024-05-31"
+    },
+    "input_fingerprint": "sha256:9ccae4399b2ed9e7ff94ef4d735db17e36ced9d70c8eed655d717978a18bf55a",
+    "calculation_hash": "sha256:9afb2f61d3c79cdbf90605366f387795051ea814bed5f2edfd6be08bcbec59da"
+  },
+  "diagnostics": {
+    "nip_days": 0,
+    "reset_days": 0,
+    "effective_period_start": "2024-01-01",
+    "notes": [],
+    "policy": {
+      "overrides": {
+        "applied_mv_count": 0,
+        "applied_cf_count": 0
+      },
+      "ignored_days_count": 0,
+      "outliers": {
+        "flagged_rows": 0
+      }
+    },
+    "samples": {
+      "outliers": []
+    }
+  },
+  "audit": {
+    "sum_of_parts_vs_total_bp": null,
+    "residual_applied_bp": null,
+    "counts": {
+      "input_rows": 4,
+      "output_rows": 4
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "calculation_id": "66a655f7-e0c6-4630-8e09-ee99f7106576",
+  "portfolio_number": "PORT_STANDARD_GROWTH",
+  "performance_start_date": "2024-12-31",
+  "metric_basis": "NET",
+  "report_start_date": "2025-01-01",
+  "report_end_date": "2025-01-05",
+  "period_type": "YTD",
+  "frequencies": [
+    "daily",
+    "monthly"
+  ],
+  "daily_data": [
+    {
+      "day": 1,
+      "perf_date": "2025-01-01",
+      "begin_mv": 100000.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 101000.0
+    },
+    {
+      "day": 2,
+      "perf_date": "2025-01-02",
+      "begin_mv": 101000.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 102010.0
+    },
+    {
+      "day": 3,
+      "perf_date": "2025-01-03",
+      "begin_mv": 102010.0,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 100989.9
+    },
+    {
+      "day": 4,
+      "perf_date": "2025-01-04",
+      "begin_mv": 100989.9,
+      "bod_cf": 25000.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 127249.29
+    },
+    {
+      "day": 5,
+      "perf_date": "2025-01-05",
+      "begin_mv": 127249.29,
+      "bod_cf": 0.0,
+      "eod_cf": 0.0,
+      "mgmt_fees": 0.0,
+      "end_mv": 125976.7971
+    }
+  ],
+  "as_of": null,
+  "currency": "USD",
+  "precision_mode": "FLOAT64",
+  "rounding_precision": 6,
+  "calendar": {
+    "type": "BUSINESS",
+    "trading_calendar": "NYSE"
+  },
+  "annualization": {
+    "enabled": false,
+    "basis": "BUS/252",
+    "periods_per_year": null
+  },
+  "periods": null,
+  "output": {
+    "include_timeseries": false,
+    "include_cumulative": false,
+    "top_n": 20
+  },
+  "flags": {
+    "fail_fast": false,
+    "compat_legacy_names": false
+  },
+  "fee_effect": {
+    "enabled": false
+  },
+  "reset_policy": {
+    "emit": false
+  },
+  "data_policy": null
+}

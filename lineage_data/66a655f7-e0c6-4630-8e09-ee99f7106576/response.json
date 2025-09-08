@@ -1,0 +1,262 @@
+{
+  "calculation_id": "66a655f7-e0c6-4630-8e09-ee99f7106576",
+  "portfolio_number": "PORT_STANDARD_GROWTH",
+  "breakdowns": {
+    "daily": [
+      {
+        "period": "2025-01-01",
+        "summary": {
+          "begin_mv": 100000.0,
+          "end_mv": 101000.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 1.0,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": [
+          {
+            "day": 1,
+            "perf_date": "2025-01-01",
+            "begin_mv": 100000.0,
+            "bod_cf": 0.0,
+            "eod_cf": 0.0,
+            "mgmt_fees": 0.0,
+            "end_mv": 101000.0,
+            "sign": 1,
+            "daily_ror": 1.0,
+            "nip": 0,
+            "perf_reset": 0,
+            "nctrl_1": 0,
+            "nctrl_2": 0,
+            "nctrl_3": 0,
+            "nctrl_4": 0,
+            "temp_long_cum_ror": 1.0,
+            "temp_short_cum_ror": 0.0,
+            "long_cum_ror": 1.0,
+            "short_cum_ror": 0.0,
+            "final_cum_ror": 1.0,
+            "long_short": "L",
+            "effective_period_start_date": "2025-01-01T00:00:00"
+          }
+        ]
+      },
+      {
+        "period": "2025-01-02",
+        "summary": {
+          "begin_mv": 101000.0,
+          "end_mv": 102010.0,
+          "net_cash_flow": 0.0,
+          "period_return_pct": 1.0,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": [
+          {
+            "day": 2,
+            "perf_date": "2025-01-02",
+            "begin_mv": 101000.0,
+            "bod_cf": 0.0,
+            "eod_cf": 0.0,
+            "mgmt_fees": 0.0,
+            "end_mv": 102010.0,
+            "sign": 1,
+            "daily_ror": 1.0,
+            "nip": 0,
+            "perf_reset": 0,
+            "nctrl_1": 0,
+            "nctrl_2": 0,
+            "nctrl_3": 0,
+            "nctrl_4": 0,
+            "temp_long_cum_ror": 2.01,
+            "temp_short_cum_ror": 0.0,
+            "long_cum_ror": 2.01,
+            "short_cum_ror": 0.0,
+            "final_cum_ror": 2.01,
+            "long_short": "L",
+            "effective_period_start_date": "2025-01-01T00:00:00"
+          }
+        ]
+      },
+      {
+        "period": "2025-01-03",
+        "summary": {
+          "begin_mv": 102010.0,
+          "end_mv": 100989.9,
+          "net_cash_flow": 0.0,
+          "period_return_pct": -1.0,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": [
+          {
+            "day": 3,
+            "perf_date": "2025-01-03",
+            "begin_mv": 102010.0,
+            "bod_cf": 0.0,
+            "eod_cf": 0.0,
+            "mgmt_fees": 0.0,
+            "end_mv": 100989.9,
+            "sign": 1,
+            "daily_ror": -1.0,
+            "nip": 0,
+            "perf_reset": 0,
+            "nctrl_1": 0,
+            "nctrl_2": 0,
+            "nctrl_3": 0,
+            "nctrl_4": 0,
+            "temp_long_cum_ror": 0.9899,
+            "temp_short_cum_ror": 0.0,
+            "long_cum_ror": 0.9899,
+            "short_cum_ror": 0.0,
+            "final_cum_ror": 0.9899,
+            "long_short": "L",
+            "effective_period_start_date": "2025-01-01T00:00:00"
+          }
+        ]
+      },
+      {
+        "period": "2025-01-04",
+        "summary": {
+          "begin_mv": 100989.9,
+          "end_mv": 127249.29,
+          "net_cash_flow": 25000.0,
+          "period_return_pct": 0.999596,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": [
+          {
+            "day": 4,
+            "perf_date": "2025-01-04",
+            "begin_mv": 100989.9,
+            "bod_cf": 25000.0,
+            "eod_cf": 0.0,
+            "mgmt_fees": 0.0,
+            "end_mv": 127249.29,
+            "sign": 1,
+            "daily_ror": 0.999596,
+            "nip": 0,
+            "perf_reset": 0,
+            "nctrl_1": 0,
+            "nctrl_2": 0,
+            "nctrl_3": 0,
+            "nctrl_4": 0,
+            "temp_long_cum_ror": 1.999391,
+            "temp_short_cum_ror": 0.0,
+            "long_cum_ror": 1.999391,
+            "short_cum_ror": 0.0,
+            "final_cum_ror": 1.999391,
+            "long_short": "L",
+            "effective_period_start_date": "2025-01-01T00:00:00"
+          }
+        ]
+      },
+      {
+        "period": "2025-01-05",
+        "summary": {
+          "begin_mv": 127249.29,
+          "end_mv": 125976.7971,
+          "net_cash_flow": 0.0,
+          "period_return_pct": -1.0,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": [
+          {
+            "day": 5,
+            "perf_date": "2025-01-05",
+            "begin_mv": 127249.29,
+            "bod_cf": 0.0,
+            "eod_cf": 0.0,
+            "mgmt_fees": 0.0,
+            "end_mv": 125976.7971,
+            "sign": 1,
+            "daily_ror": -1.0,
+            "nip": 0,
+            "perf_reset": 0,
+            "nctrl_1": 0,
+            "nctrl_2": 0,
+            "nctrl_3": 0,
+            "nctrl_4": 0,
+            "temp_long_cum_ror": 0.979397,
+            "temp_short_cum_ror": 0.0,
+            "long_cum_ror": 0.979397,
+            "short_cum_ror": 0.0,
+            "final_cum_ror": 0.979397,
+            "long_short": "L",
+            "effective_period_start_date": "2025-01-01T00:00:00"
+          }
+        ]
+      }
+    ],
+    "monthly": [
+      {
+        "period": "2025-01",
+        "summary": {
+          "begin_mv": 100000.0,
+          "end_mv": 125976.7971,
+          "net_cash_flow": 25000.0,
+          "period_return_pct": 0.9793970907959526,
+          "cumulative_return_pct_to_date": null,
+          "annualized_return_pct": null,
+          "final_cum_ror": null
+        },
+        "daily_data": null
+      }
+    ]
+  },
+  "reset_events": null,
+  "meta": {
+    "calculation_id": "66a655f7-e0c6-4630-8e09-ee99f7106576",
+    "engine_version": "0.1.0",
+    "precision_mode": "FLOAT64",
+    "annualization": {
+      "enabled": false,
+      "basis": "BUS/252",
+      "periods_per_year": null
+    },
+    "calendar": {
+      "type": "BUSINESS",
+      "trading_calendar": "NYSE"
+    },
+    "periods": {
+      "type": "YTD",
+      "start": "2025-01-01",
+      "end": "2025-01-05"
+    },
+    "input_fingerprint": "sha256:7017bd18a251b1b4e21d638973148ee9cdb07e3385b811fcc9ea411a99711671",
+    "calculation_hash": "sha256:12c9bbd660caf0153e6dbc8c8630266c31bd4109c9e921eb974bc3f138187e7e"
+  },
+  "diagnostics": {
+    "nip_days": 0,
+    "reset_days": 0,
+    "effective_period_start": "2025-01-01",
+    "notes": [],
+    "policy": {
+      "overrides": {
+        "applied_mv_count": 0,
+        "applied_cf_count": 0
+      },
+      "ignored_days_count": 0,
+      "outliers": {
+        "flagged_rows": 0
+      }
+    },
+    "samples": {
+      "outliers": []
+    }
+  },
+  "audit": {
+    "sum_of_parts_vs_total_bp": null,
+    "residual_applied_bp": null,
+    "counts": {
+      "input_rows": 5,
+      "output_rows": 5
+    }
+  }
+}
