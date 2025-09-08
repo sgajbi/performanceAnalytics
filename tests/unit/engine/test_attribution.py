@@ -65,14 +65,14 @@ def test_run_attribution_calculations_arithmetic_linking(by_group_request_data):
     """Tests the main orchestrator with simple arithmetic linking."""
     by_group_request_data['linking'] = 'none'
     request = AttributionRequest.model_validate(by_group_request_data)
-    response = run_attribution_calculations(request)
+    response, _ = run_attribution_calculations(request)
     assert abs(response.reconciliation.residual) < 1e-9
 
 
 def test_run_attribution_calculations_geometric_linking(by_group_request_data):
     """Tests the main orchestrator with top-down geometric linking enabled."""
     request = AttributionRequest.model_validate(by_group_request_data)
-    response = run_attribution_calculations(request)
+    response, _ = run_attribution_calculations(request)
     assert abs(response.reconciliation.residual) < 1e-9
     assert response.reconciliation.sum_of_effects == pytest.approx(response.reconciliation.total_active_return)
 

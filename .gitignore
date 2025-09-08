@@ -23,3 +23,4 @@ htmlcov/
 
 # Lineage data (RFC 025)
 lineage_data/
+htmlcov/

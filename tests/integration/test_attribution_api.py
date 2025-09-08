@@ -38,6 +38,26 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
     assert tech_group["selection"] == pytest.approx(0.25)
 
 
+def test_attribution_lineage_flow(client):
+    """Tests that lineage is correctly captured for an attribution request."""
+    payload = {
+        "portfolio_number": "ATTRIB_LINEAGE_01", "mode": "by_group", "group_by": ["sector"], "linking": "none", "frequency": "monthly",
+        "portfolio_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 1.0}]}],
+        "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.01, "weight_bop": 1.0}]}],
+    }
+    attrib_response = client.post("/performance/attribution", json=payload)
+    assert attrib_response.status_code == 200
+    calculation_id = attrib_response.json()["calculation_id"]
+
+    lineage_response = client.get(f"/performance/lineage/{calculation_id}")
+    assert lineage_response.status_code == 200
+    lineage_data = lineage_response.json()
+
+    assert lineage_data["calculation_type"] == "Attribution"
+    assert "aligned_panel.csv" in lineage_data["artifacts"]
+    assert "single_period_effects.csv" in lineage_data["artifacts"]
+
+
 def test_attribution_endpoint_hierarchical(client):
     """Tests multi-level hierarchical attribution, ensuring bottom-up aggregation is correct."""
     payload = {

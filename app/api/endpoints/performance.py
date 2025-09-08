@@ -184,7 +184,7 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
     
     try:
-        response = run_attribution_calculations(request)
+        response, lineage_data = run_attribution_calculations(request)
         
         # Add hash to meta if it exists, otherwise create it
         if response.meta:
@@ -200,17 +200,16 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
                 calendar=request.calendar,
                 periods={},
                 input_fingerprint=input_fingerprint,
-                calculation_hash=calculation_hash
+                calculation_hash=calculation_hash,
             )
         
-        # Placeholder for detailed attribution dataframes
         background_tasks.add_task(
             lineage_service.capture,
             calculation_id=request.calculation_id,
             calculation_type="Attribution",
             request_model=request,
             response_model=response,
-            calculation_details={}
+            calculation_details=lineage_data
         )
         return response
     except (InvalidEngineInputError, ValueError, NotImplementedError) as e:

@@ -1,5 +1,5 @@
 # engine/attribution.py
-from typing import List
+from typing import List, Dict, Tuple
 import pandas as pd
 import numpy as np
 
@@ -165,8 +165,12 @@ def _link_effects_top_down(effects_df: pd.DataFrame, geometric_total_ar: float, 
     return linked_effects
 
 
-def run_attribution_calculations(request: AttributionRequest) -> AttributionResponse:
-    """Orchestrates the full multi-level performance attribution calculation."""
+def run_attribution_calculations(request: AttributionRequest) -> Tuple[AttributionResponse, Dict[str, pd.DataFrame]]:
+    """
+    Orchestrates the full multi-level performance attribution calculation.
+    Returns a tuple of (AttributionResponse, lineage_data_dictionary).
+    """
+    lineage_data = {}
     if request.mode == AttributionMode.BY_INSTRUMENT:
         portfolio_groups_data = _prepare_data_from_instruments(request)
     elif request.mode == AttributionMode.BY_GROUP:
@@ -175,11 +179,16 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
         raise ValueError("Invalid attribution mode specified.")
 
     aligned_df = _align_and_prepare_data(request, portfolio_groups_data)
+    lineage_data["aligned_panel.csv"] = aligned_df.reset_index()
+
     if aligned_df.empty:
         dummy_level = AttributionLevelResult(dimension=request.group_by[0], groups=[], totals=AttributionLevelTotals(allocation=0.0, selection=0.0, interaction=0.0, total_effect=0.0))
-        return AttributionResponse(calculation_id=request.calculation_id, portfolio_number=request.portfolio_number, model=request.model, linking=request.linking, levels=[dummy_level], reconciliation=Reconciliation(total_active_return=0.0, sum_of_effects=0.0, residual=0.0))
+        response = AttributionResponse(calculation_id=request.calculation_id, portfolio_number=request.portfolio_number, model=request.model, linking=request.linking, levels=[dummy_level], reconciliation=Reconciliation(total_active_return=0.0, sum_of_effects=0.0, residual=0.0))
+        return response, lineage_data
 
     effects_df = _calculate_single_period_effects(aligned_df.reset_index(), request.model)
+    lineage_data["single_period_effects.csv"] = effects_df.copy()
+
     per_period_p_return = (effects_df.set_index('date')['w_p'] * effects_df.set_index('date')['r_p']).groupby(level='date').sum()
     per_period_b_return = effects_df.groupby('date')['r_b_total'].first()
     per_period_active_return = per_period_p_return - per_period_b_return
@@ -222,7 +231,7 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
     levels.reverse() # Present from top-level to granular
     final_totals = levels[0].totals
 
-    return AttributionResponse(
+    response = AttributionResponse(
         calculation_id=request.calculation_id,
         portfolio_number=request.portfolio_number,
         model=request.model,
@@ -234,3 +243,4 @@ def run_attribution_calculations(request: AttributionRequest) -> AttributionResp
             residual=(active_return * 100) - final_totals.total_effect
         ),
     )
+    return response, lineage_data
