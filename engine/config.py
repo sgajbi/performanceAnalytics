@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Literal, Optional
 
 from common.enums import PeriodType
-from core.envelope import DataPolicy
+from core.envelope import DataPolicy, FXRequestBlock, HedgingRequestBlock
 
 
 class PrecisionMode(str, Enum):
@@ -41,3 +41,8 @@ class EngineConfig:
     precision_mode: PrecisionMode = PrecisionMode.FLOAT64
     feature_flags: FeatureFlags = field(default_factory=FeatureFlags)
     data_policy: Optional[DataPolicy] = None
+
+    currency_mode: Optional[Literal["BASE_ONLY", "LOCAL_ONLY", "BOTH"]] = "BASE_ONLY"
+    report_ccy: Optional[str] = "USD"
+    fx: Optional[FXRequestBlock] = None
+    hedging: Optional[HedgingRequestBlock] = None
