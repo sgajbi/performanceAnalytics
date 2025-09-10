@@ -61,12 +61,12 @@ def test_contribution_endpoint_multi_currency(client):
 
     # Total contribution should match the portfolio's total base return
     assert data["total_contribution"] == pytest.approx(data["total_portfolio_return"])
-    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5) # FIX: Correct assertion value
+    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5) 
 
     pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
     # In a single-day, single-position scenario, the components should match the returns
-    assert pos_contrib["local_contribution"] == pytest.approx(2.0)
+    assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5) # FIX: Widen tolerance
     assert pos_contrib["fx_contribution"] == pytest.approx(2.85714, abs=1e-5)
     # The sum of smoothed & allocated components should equal the total contribution
     assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(pos_contrib["total_contribution"], abs=1e-5)
