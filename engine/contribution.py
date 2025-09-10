@@ -317,7 +317,6 @@ def calculate_position_contribution(
                 k_t = k_daily.iloc[i]
                 adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
                 
-                # Apportion the adjustment to local and fx based on their raw contribution
                 total_raw_contrib = c_local_t + c_fx_t
                 if total_raw_contrib != 0:
                     smoothed_local += adjustment * (c_local_t / total_raw_contrib)
@@ -377,7 +376,17 @@ def calculate_position_contribution(
     if sum_of_weights != 0 and smoothing.method == "CARINO":
         for pos_id in position_ids:
             weight_proportion = final_results[pos_id]["average_weight"] / sum_of_weights
-            final_results[pos_id]["total_contribution"] += residual * weight_proportion * 100
+            residual_for_pos = residual * weight_proportion
+            final_results[pos_id]["total_contribution"] += residual_for_pos * 100
+            
+            # --- FIX: Apply residual to components ---
+            if config and config.currency_mode == "BOTH":
+                total_contrib_unalloc = final_results[pos_id]["total_contribution"] - (residual_for_pos * 100)
+                if total_contrib_unalloc != 0:
+                    local_prop = final_results[pos_id]["local_contribution"] / total_contrib_unalloc
+                    fx_prop = final_results[pos_id]["fx_contribution"] / total_contrib_unalloc
+                    final_results[pos_id]["local_contribution"] += residual_for_pos * local_prop * 100
+                    final_results[pos_id]["fx_contribution"] += residual_for_pos * fx_prop * 100
 
     if emit.timeseries:
         final_results["timeseries"] = contrib_df[["date"] + position_ids].to_dict(orient="records")
