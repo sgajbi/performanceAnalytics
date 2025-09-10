@@ -54,30 +54,26 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
         fx_rates_df['date'] = pd.to_datetime(fx_rates_df['date'])
         fx_rates_df = fx_rates_df.set_index('date')['rate'].sort_index()
 
-        # Get prior day's FX rate for each performance date
-        merged_df = pd.merge_asof(
-            df[[PortfolioColumns.PERF_DATE.value]].sort_values(by=PortfolioColumns.PERF_DATE.value),
-            fx_rates_df.rename('end_rate'),
-            left_on=PortfolioColumns.PERF_DATE.value,
-            right_index=True,
-            direction='forward'
+        # Create a complete date range from one day before the first perf date to the last
+        full_date_range = pd.date_range(
+            start=df[PortfolioColumns.PERF_DATE.value].min() - pd.Timedelta(days=1),
+            end=df[PortfolioColumns.PERF_DATE.value].max(),
+            freq='D'
         )
-        merged_df = pd.merge_asof(
-            merged_df,
-            fx_rates_df.rename('start_rate'),
-            left_on=PortfolioColumns.PERF_DATE.value,
-            right_index=True,
-            direction='backward'
-        )
-        merged_df = merged_df.set_index(PortfolioColumns.PERF_DATE.value)
+        # Reindex and forward-fill the rates to handle weekends/holidays
+        all_rates = fx_rates_df.reindex(full_date_range).ffill()
+
+        # Map start and end rates to the performance dates
+        df['start_rate'] = df[PortfolioColumns.PERF_DATE.value].apply(lambda x: all_rates.get(x - pd.Timedelta(days=1)))
+        df['end_rate'] = df[PortfolioColumns.PERF_DATE.value].map(all_rates)
 
         # Calculate FX return
-        fx_ror = (merged_df['end_rate'] / merged_df['start_rate']) - 1
+        fx_ror = (df['end_rate'] / df['start_rate']) - 1
         fx_ror = fx_ror.fillna(0.0)
 
         result_df["local_ror"] = local_ror * hundred
-        result_df["fx_ror"] = fx_ror * hundred
-        result_df[PortfolioColumns.DAILY_ROR.value] = ((1 + local_ror) * (1 + fx_ror) - 1) * hundred
+        result_df["fx_ror"] = fx_ror.values * hundred
+        result_df[PortfolioColumns.DAILY_ROR.value] = ((1 + local_ror) * (1 + fx_ror.values) - 1) * hundred
     else:
         # Standard base-currency-only calculation
         result_df[PortfolioColumns.DAILY_ROR.value] = local_ror * hundred
