@@ -82,7 +82,8 @@ def test_calculate_twr_endpoint_multi_currency(client):
     assert "portfolio_return" in data
     assert data["portfolio_return"]["local"] == pytest.approx(3.02)
     assert data["portfolio_return"]["fx"] == pytest.approx(1.90476, abs=1e-5)
-    assert data["portfolio_return"]["base"] == pytest.approx(5.011, abs=1e-3)
+    # FIX: Correct the expected compounded base return value
+    assert data["portfolio_return"]["base"] == pytest.approx(4.98228, abs=1e-5)
     assert data["meta"]["report_ccy"] == "USD"
 
 
