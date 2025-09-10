@@ -1,4 +1,5 @@
 # tests/integration/test_contribution_api.py
+from datetime import date
 from fastapi.testclient import TestClient
 import pytest
 from main import app
@@ -29,6 +30,40 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
     assert "audit" in response_data
     assert response_data["audit"]["counts"]["input_positions"] == 1
     assert response_data["audit"]["counts"]["calculation_days"] == 2
+
+
+def test_contribution_endpoint_multi_currency(client):
+    """Tests an end-to-end multi-currency contribution request."""
+    payload = {
+        "portfolio_number": "MULTI_CCY_CONTRIB_01",
+        "portfolio_data": {
+            "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
+            "period_type": "ITD", "metric_basis": "GROSS",
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}]
+        },
+        "positions_data": [{
+            "position_id": "EUR_STOCK",
+            "meta": {"currency": "EUR"},
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}]
+        }],
+        "currency_mode": "BOTH",
+        "report_ccy": "USD",
+        "fx": {
+            "rates": [
+                {"date": "2024-12-31", "ccy": "EUR", "rate": 1.05},
+                {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08}
+            ]
+        }
+    }
+    response = client.post("/performance/contribution", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["total_contribution"] == pytest.approx(4.91428, abs=1e-5)
+    pos_contrib = data["position_contributions"][0]
+    assert pos_contrib["position_id"] == "EUR_STOCK"
+    assert pos_contrib["local_contribution"] == pytest.approx(2.0)
+    assert pos_contrib["fx_contribution"] == pytest.approx(2.85714, abs=1e-5)
 
 
 def test_contribution_lineage_flow(client, happy_path_payload):

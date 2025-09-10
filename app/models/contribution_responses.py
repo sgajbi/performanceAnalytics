@@ -14,6 +14,8 @@ class PositionContribution(BaseModel):
     total_contribution: float
     average_weight: float
     total_return: float
+    local_contribution: Optional[float] = None # ADDED
+    fx_contribution: Optional[float] = None    # ADDED
 
 
 class DailyContribution(BaseModel):
@@ -37,14 +39,14 @@ class PositionContributionSeries(BaseModel):
     series: List[PositionDailyContribution]
 
 
-
-
 class ContributionSummary(BaseModel):
     """High-level summary for a multi-level contribution calculation."""
 
     portfolio_contribution: float
     coverage_mv_pct: float
     weighting_scheme: str
+    local_contribution: Optional[float] = None # ADDED
+    fx_contribution: Optional[float] = None    # ADDED
 
 
 class ContributionRow(BaseModel):
@@ -56,6 +58,8 @@ class ContributionRow(BaseModel):
     children_count: Optional[int] = None
     is_other: bool = False
     residual_bp: Optional[float] = None
+    local_contribution: Optional[float] = None # ADDED
+    fx_contribution: Optional[float] = None    # ADDED
 
 
 class ContributionLevel(BaseModel):

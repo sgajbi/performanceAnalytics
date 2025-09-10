@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from common.enums import PeriodType, WeightingScheme
-from core.envelope import Annualization, Calendar, Flags, Output, Periods, DataPolicy
+from core.envelope import Annualization, Calendar, DataPolicy, Flags, Output, Periods, FXRequestBlock, HedgingRequestBlock
 
 
 class PositionDailyData(BaseModel):
@@ -82,3 +82,8 @@ class ContributionRequest(BaseModel):
     output: Output = Field(default_factory=Output)
     flags: Flags = Field(default_factory=Flags)
     data_policy: Optional[DataPolicy] = None
+
+    currency_mode: Optional[Literal["BASE_ONLY", "LOCAL_ONLY", "BOTH"]] = None
+    report_ccy: Optional[str] = None
+    fx: Optional[FXRequestBlock] = None
+    hedging: Optional[HedgingRequestBlock] = None
