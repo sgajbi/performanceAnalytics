@@ -37,8 +37,12 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
         df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value] = get_effective_period_start_dates(
             df[PortfolioColumns.PERF_DATE.value], config
         )
-        df[PortfolioColumns.DAILY_ROR.value] = calculate_daily_ror(df, config.metric_basis)
-        
+
+        # This now returns a DataFrame which might include local_ror, fx_ror
+        ror_df = calculate_daily_ror(df, config.metric_basis, config)
+        for col in ror_df.columns:
+            df[col] = ror_df[col]
+
         # Apply outlier flagging now that RoR is calculated
         if config.data_policy:
             _flag_outliers(df, config.data_policy, policy_diagnostics)

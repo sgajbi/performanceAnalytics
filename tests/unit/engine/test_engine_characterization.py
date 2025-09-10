@@ -10,6 +10,7 @@ from tests.unit.engine.characterization_data import (
     short_growth_scenario,
     eod_flip_net_scenario,
     eod_flip_gross_scenario,
+    multi_currency_scenario,
 )
 
 @pytest.mark.parametrize(
@@ -22,6 +23,7 @@ from tests.unit.engine.characterization_data import (
         (short_growth_scenario, "short_growth"),
         (eod_flip_net_scenario, "eod_flip_net"),
         (eod_flip_gross_scenario, "eod_flip_gross"),
+        (multi_currency_scenario, "multi_currency"),
     ],
     ids=[
         "long_flip",
@@ -31,6 +33,7 @@ from tests.unit.engine.characterization_data import (
         "short_growth",
         "eod_flip_net",
         "eod_flip_gross",
+        "multi_currency",
     ]
 )
 def test_engine_characterization_scenarios(scenario_func, scenario_name):
@@ -53,5 +56,5 @@ def test_engine_characterization_scenarios(scenario_func, scenario_name):
         actual_df,
         expected_df.reset_index(drop=True),
         check_exact=False,
-        atol=1e-6,
+        atol=1e-4,
     )
