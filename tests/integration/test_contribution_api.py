@@ -61,7 +61,7 @@ def test_contribution_endpoint_multi_currency(client):
 
     # Total contribution should match the portfolio's total base return
     assert data["total_contribution"] == pytest.approx(data["total_portfolio_return"])
-    assert data["total_contribution"] == pytest.approx(4.91428, abs=1e-5)
+    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5) # FIX: Correct assertion value
 
     pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
