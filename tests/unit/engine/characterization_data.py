@@ -64,7 +64,7 @@ def short_flip_scenario():
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3)],
         PortfolioColumns.SIGN: [-1, 1, 1],
         PortfolioColumns.DAILY_ROR: [10.0, -16.6667, 10.0],
-        PortfolioColumns.NIP: [0, 0, 0, 0],
+        PortfolioColumns.NIP: [0, 0, 0], # FIX: Corrected length from 4 to 3
         PortfolioColumns.PERF_RESET: [0, 0, 0],
         PortfolioColumns.LONG_SHORT: ["S", "L", "L"],
         PortfolioColumns.NCTRL_1: [0, 0, 0],
@@ -228,6 +228,6 @@ def multi_currency_scenario():
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2)],
         PortfolioColumns.DAILY_ROR: [4.9143, 0.0648], # Base currency (USD) RoR
-        PortfolioColumns.FINAL_CUM_ROR: [4.9143, 5.011],
+        PortfolioColumns.FINAL_CUM_ROR: [4.9143, 4.9823], # FIX: Corrected compounded value
     })
     return engine_config, input_df, expected_df
