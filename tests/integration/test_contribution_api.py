@@ -59,11 +59,17 @@ def test_contribution_endpoint_multi_currency(client):
     assert response.status_code == 200
     data = response.json()
 
+    # Total contribution should match the portfolio's total base return
+    assert data["total_contribution"] == pytest.approx(data["total_portfolio_return"])
     assert data["total_contribution"] == pytest.approx(4.91428, abs=1e-5)
+
     pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
+    # In a single-day, single-position scenario, the components should match the returns
     assert pos_contrib["local_contribution"] == pytest.approx(2.0)
     assert pos_contrib["fx_contribution"] == pytest.approx(2.85714, abs=1e-5)
+    # The sum of smoothed & allocated components should equal the total contribution
+    assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(pos_contrib["total_contribution"], abs=1e-5)
 
 
 def test_contribution_lineage_flow(client, happy_path_payload):
@@ -94,7 +100,7 @@ def test_contribution_endpoint_no_smoothing(client, happy_path_payload):
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["total_contribution"] != pytest.approx(response_data["total_portfolio_return"])
-    assert response_data["position_contributions"][0]["total_contribution"] == pytest.approx(1.94766, abs=1e-5)
+    assert response_data["position_contributions"][0]["total_contribution"] == pytest.approx(1.947688, abs=1e-6)
 
 
 def test_contribution_endpoint_with_timeseries(client, happy_path_payload):

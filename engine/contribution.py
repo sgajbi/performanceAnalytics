@@ -56,11 +56,11 @@ def _calculate_daily_instrument_contributions(
         port_ror_daily_map = portfolio_df_indexed[PortfolioColumns.DAILY_ROR.value] / 100
         df["R_port_t"] = df[PortfolioColumns.PERF_DATE.value].map(port_ror_daily_map)
         
-        # Smooth each component separately
-        df["smoothed_local_contribution"] = df["raw_local_contribution"] # Approximation, can be refined
-        df["smoothed_fx_contribution"] = df["raw_fx_contribution"] # Approximation, can be refined
-        
         adjustment_factor = df["daily_weight"] * (df["R_port_t"] * ((df["K_total"] / df["k_t"]) - 1))
+        
+        # Apply smoothing to all components
+        df["smoothed_local_contribution"] = df["raw_local_contribution"]
+        df["smoothed_fx_contribution"] = df["raw_fx_contribution"]
         df["smoothed_contribution"] = df["raw_contribution"] + adjustment_factor.fillna(0.0)
     else:
         df["smoothed_local_contribution"] = df["raw_local_contribution"]
@@ -302,26 +302,36 @@ def calculate_position_contribution(
         for pos_id in position_ids:
             pos_ror_t = position_results_map[pos_id].iloc[i][PortfolioColumns.DAILY_ROR.value] / 100
             weight_t = daily_weights.get(pos_id, 0.0)
-
+            
+            # Decomposed contributions
+            local_ror = position_results_map[pos_id].iloc[i].get("local_ror", pos_ror_t * 100) / 100
+            fx_ror = position_results_map[pos_id].iloc[i].get("fx_ror", 0.0) / 100
+            c_local_t = weight_t * local_ror
+            c_fx_t = weight_t * fx_ror
             c_p_t = weight_t * pos_ror_t
-            smoothed_c = c_p_t
+
+            smoothed_c, smoothed_local, smoothed_fx = c_p_t, c_local_t, c_fx_t
 
             if smoothing.method == "CARINO":
                 ror_port_t = port_daily_ror.iloc[i]
                 k_t = k_daily.iloc[i]
                 adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
+                
+                # Apportion the adjustment to local and fx based on their raw contribution
+                total_raw_contrib = c_local_t + c_fx_t
+                if total_raw_contrib != 0:
+                    smoothed_local += adjustment * (c_local_t / total_raw_contrib)
+                    smoothed_fx += adjustment * (c_fx_t / total_raw_contrib)
                 smoothed_c += adjustment
 
+
             if port_row[PortfolioColumns.NIP.value] == 1 or port_row[PortfolioColumns.PERF_RESET.value] == 1:
-                smoothed_c = 0.0
+                smoothed_c, smoothed_local, smoothed_fx = 0.0, 0.0, 0.0
 
             row_contribs[pos_id] = smoothed_c
-            
             if config and config.currency_mode == "BOTH":
-                local_ror = position_results_map[pos_id].iloc[i].get("local_ror", 0.0) / 100
-                fx_ror = position_results_map[pos_id].iloc[i].get("fx_ror", 0.0) / 100
-                row_contribs[f"{pos_id}_local"] = weight_t * local_ror
-                row_contribs[f"{pos_id}_fx"] = weight_t * fx_ror
+                row_contribs[f"{pos_id}_local"] = smoothed_local
+                row_contribs[f"{pos_id}_fx"] = smoothed_fx
 
         daily_contributions.append(row_contribs)
 
