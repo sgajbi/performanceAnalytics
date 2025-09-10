@@ -4,14 +4,22 @@ from decimal import Decimal
 
 import numpy as np
 import pandas as pd
+from engine.config import EngineConfig
 from engine.rules import calculate_initial_resets, calculate_nctrl4_reset
 from engine.schema import PortfolioColumns
 
 
-def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
-    """Calculates the daily rate of return, supporting both float and Decimal."""
+def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfig = None) -> pd.DataFrame:
+    """
+    Calculates the daily rate of return, supporting both float and Decimal.
+    If FX config is provided, it returns a DataFrame with local, fx, and base returns.
+    Otherwise, it returns a DataFrame with a single daily_ror column.
+    """
     is_decimal_mode = df[PortfolioColumns.BEGIN_MV.value].dtype == "object"
+    zero = Decimal(0) if is_decimal_mode else 0.0
+    hundred = Decimal(100) if is_decimal_mode else 100.0
 
+    # --- 1. Calculate Local Rate of Return ---
     if is_decimal_mode:
         numerator = (
             df[PortfolioColumns.END_MV.value] - df[PortfolioColumns.BOD_CF.value] -
@@ -21,32 +29,60 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str) -> pd.Series:
             numerator += df[PortfolioColumns.MGMT_FEES.value]
 
         denominator = (df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).abs()
-        daily_ror = pd.Series([Decimal(0)] * len(df), index=df.index)
-
-        is_after_start = df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
-        safe_division_mask = (denominator != Decimal(0)) & is_after_start
-
-        if safe_division_mask.any():
-            daily_ror.loc[safe_division_mask] = (
-                numerator[safe_division_mask] / denominator[safe_division_mask]
-            ) * Decimal(100)
-        return daily_ror
+        local_ror = pd.Series([zero] * len(df), index=df.index, dtype=object)
     else:
-        begin_mv = df[PortfolioColumns.BEGIN_MV.value].to_numpy()
-        bod_cf = df[PortfolioColumns.BOD_CF.value].to_numpy()
-        eod_cf = df[PortfolioColumns.EOD_CF.value].to_numpy()
-        mgmt_fees = df[PortfolioColumns.MGMT_FEES.value].to_numpy()
-        end_mv = df[PortfolioColumns.END_MV.value].to_numpy()
-        numerator = end_mv - begin_mv - bod_cf - eod_cf
+        numerator = (df[PortfolioColumns.END_MV.value] - df[PortfolioColumns.BOD_CF.value] -
+                     df[PortfolioColumns.BEGIN_MV.value] - df[PortfolioColumns.EOD_CF.value]).to_numpy()
         if metric_basis == "NET":
-            numerator += mgmt_fees
-        denominator = np.abs(begin_mv + bod_cf)
-        daily_ror = np.full(denominator.shape, 0.0, dtype=np.float64)
-        is_after_start = (df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]).to_numpy()
-        safe_division_mask = (denominator != 0) & is_after_start
-        np.divide(numerator, denominator, out=daily_ror, where=safe_division_mask)
-        daily_ror[safe_division_mask] *= 100
-        return pd.Series(daily_ror, index=df.index)
+            numerator += df[PortfolioColumns.MGMT_FEES.value].to_numpy()
+        denominator = np.abs(df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).to_numpy()
+        local_ror = np.full(denominator.shape, 0.0, dtype=np.float64)
+
+    is_after_start = df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
+    safe_division_mask = (denominator != zero) & is_after_start
+
+    if is_decimal_mode:
+        if safe_division_mask.any():
+            local_ror.loc[safe_division_mask] = numerator[safe_division_mask] / denominator[safe_division_mask]
+    else:
+        np.divide(numerator, denominator, out=local_ror, where=safe_division_mask)
+
+    # --- 2. Handle FX Decomposition if Activated ---
+    result_df = pd.DataFrame(index=df.index)
+    if config and config.currency_mode and config.currency_mode != "BASE_ONLY" and config.fx:
+        fx_rates_df = pd.DataFrame([rate.model_dump() for rate in config.fx.rates])
+        fx_rates_df['date'] = pd.to_datetime(fx_rates_df['date'])
+        fx_rates_df = fx_rates_df.set_index('date')['rate'].sort_index()
+
+        # Get prior day's FX rate for each performance date
+        merged_df = pd.merge_asof(
+            df[[PortfolioColumns.PERF_DATE.value]].sort_values(by=PortfolioColumns.PERF_DATE.value),
+            fx_rates_df.rename('end_rate'),
+            left_on=PortfolioColumns.PERF_DATE.value,
+            right_index=True,
+            direction='forward'
+        )
+        merged_df = pd.merge_asof(
+            merged_df,
+            fx_rates_df.rename('start_rate'),
+            left_on=PortfolioColumns.PERF_DATE.value,
+            right_index=True,
+            direction='backward'
+        )
+        merged_df = merged_df.set_index(PortfolioColumns.PERF_DATE.value)
+
+        # Calculate FX return
+        fx_ror = (merged_df['end_rate'] / merged_df['start_rate']) - 1
+        fx_ror = fx_ror.fillna(0.0)
+
+        result_df["local_ror"] = local_ror * hundred
+        result_df["fx_ror"] = fx_ror * hundred
+        result_df[PortfolioColumns.DAILY_ROR.value] = ((1 + local_ror) * (1 + fx_ror) - 1) * hundred
+    else:
+        # Standard base-currency-only calculation
+        result_df[PortfolioColumns.DAILY_ROR.value] = local_ror * hundred
+
+    return result_df
 
 
 def calculate_cumulative_ror(df: pd.DataFrame, config):
