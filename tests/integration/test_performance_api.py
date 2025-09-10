@@ -1,6 +1,7 @@
 # tests/integration/test_performance_api.py
 from uuid import uuid4
 from decimal import Decimal
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -48,6 +49,41 @@ def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
     assert response_data["diagnostics"]["nip_days"] == 0
     assert "audit" in response_data
     assert response_data["audit"]["counts"]["input_rows"] == 5
+
+
+def test_calculate_twr_endpoint_multi_currency(client):
+    """Tests an end-to-end multi-currency TWR request."""
+    payload = {
+        "portfolio_number": "MULTI_CCY_API_TEST",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "GROSS",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-02",
+        "period_type": "YTD",
+        "frequencies": ["daily"],
+        "daily_data": [
+            {"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0},
+            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 102.0, "end_mv": 103.02}
+        ],
+        "currency_mode": "BOTH",
+        "report_ccy": "USD",
+        "fx": {
+            "rates": [
+                {"date": "2024-12-31", "ccy": "EUR", "rate": 1.05},
+                {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08},
+                {"date": "2025-01-02", "ccy": "EUR", "rate": 1.07},
+            ]
+        }
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "portfolio_return" in data
+    assert data["portfolio_return"]["local"] == pytest.approx(3.02)
+    assert data["portfolio_return"]["fx"] == pytest.approx(1.90476, abs=1e-5)
+    assert data["portfolio_return"]["base"] == pytest.approx(5.011, abs=1e-3)
+    assert data["meta"]["report_ccy"] == "USD"
 
 
 def test_calculate_twr_endpoint_with_data_policy(client):
