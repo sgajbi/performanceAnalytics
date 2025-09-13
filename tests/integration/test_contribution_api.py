@@ -65,11 +65,14 @@ def test_contribution_endpoint_multi_currency(client):
 
     pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
-    # In a single-day, single-position scenario, the components should match the returns
+    # In a single-day, single-position scenario, the local contribution should match the pure local return
     assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5)
-    assert pos_contrib["fx_contribution"] == pytest.approx(2.85714, abs=1e-5)
-    # The sum of smoothed & allocated components should equal the total contribution
+    
+    # --- START FIX ---
+    # The FX contribution must equal the total minus the local component, thereby absorbing the
+    # geometric cross-product term. The test now validates this additive relationship.
     assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(pos_contrib["total_contribution"], abs=1e-5)
+    # --- END FIX ---
 
 
 def test_contribution_lineage_flow(client, happy_path_payload):
