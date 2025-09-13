@@ -89,6 +89,50 @@ def test_attribution_endpoint_hierarchical(client):
     assert equity_ac_effects["selection"] == pytest.approx(tech_sector_effects["selection"] + health_sector_effects["selection"])
 
 
+def test_attribution_endpoint_currency_attribution(client):
+    """Tests the Karnosky-Singer currency attribution model end-to-end."""
+    # This test uses a simplified scenario to isolate the currency effects.
+    # Portfolio and Benchmark are 100% in a single EUR asset.
+    payload = {
+        "portfolio_number": "FX_ATTRIB_01", "mode": "by_instrument", "group_by": ["currency"],
+        "linking": "none", "frequency": "daily", "currency_mode": "BOTH", "report_ccy": "USD",
+        "portfolio_data": {
+            "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "GROSS",
+            "period_type": "ITD", "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 101.0, "end_mv": 103.02}]
+        },
+        "instruments_data": [{
+            "instrument_id": "EUR_ASSET", "meta": {"currency": "EUR"},
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}] # 2% local return
+        }],
+        "benchmark_groups_data": [{
+            "key": {"currency": "EUR"}, "observations": [{"date": "2025-01-01", "return": 0.015, "weight_bop": 1.0}] # 1.5% local return
+        }],
+        "fx": { "rates": [
+            {"date": "2024-12-31", "ccy": "EUR", "rate": 1.00},
+            {"date": "2025-01-01", "ccy": "EUR", "rate": 1.01} # 1% fx return
+        ]}
+    }
+    response = client.post("/performance/attribution", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "currency_attribution" in data
+    assert data["currency_attribution"] is not None
+    eur_effects = data["currency_attribution"][0]["effects"]
+
+    # Expected values based on Karnosky-Singer (where active local return is 0.5%)
+    # LA = (1-1) * 0.015 = 0
+    assert eur_effects["local_allocation"] == pytest.approx(0.0)
+    # LS = 1 * (0.02 - 0.015) = 0.005
+    assert eur_effects["local_selection"] == pytest.approx(0.5)
+    # CA = (1-1) * (1+0.015) * 0.01 = 0
+    assert eur_effects["currency_allocation"] == pytest.approx(0.0)
+    # CS = 1 * (0.02 - 0.015) * 0.01 = 0.00005
+    assert eur_effects["currency_selection"] == pytest.approx(0.005)
+    # Total = 0.505
+    assert eur_effects["total_effect"] == pytest.approx(0.505)
+
+
 @pytest.mark.parametrize(
     "error_class, expected_status",
     [(InvalidEngineInputError, 400), (EngineCalculationError, 500), (ValueError, 400), (NotImplementedError, 400), (Exception, 500)]
