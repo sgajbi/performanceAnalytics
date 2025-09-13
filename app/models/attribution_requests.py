@@ -32,10 +32,22 @@ class InstrumentData(BaseModel):
     daily_data: List[DailyInputData]
 
 
+class BenchmarkObservation(BaseModel):
+    """Represents a single benchmark data point for a period."""
+    date: date
+    weight_bop: float
+    # Base return is required, but local/fx are optional for backward compatibility
+    # and for single-currency attribution.
+    return_base: float
+    return_local: Optional[float] = None
+    return_fx: Optional[float] = None
+
+
 class BenchmarkGroup(BaseModel):
     """Time series data for a single benchmark group."""
     key: Dict[str, Any]
-    observations: List[Dict]
+    observations: List[BenchmarkObservation]
+
 
 
 class PortfolioGroup(BaseModel):
@@ -68,3 +80,7 @@ class AttributionRequest(BaseModel):
     periods: Optional[Periods] = None
     output: Output = Field(default_factory=Output)
     flags: Flags = Field(default_factory=Flags)
+    currency_mode: Optional[Literal["BASE_ONLY", "LOCAL_ONLY", "BOTH"]] = "BASE_ONLY"
+    report_ccy: Optional[str] = None
+    fx: Optional[FXRequestBlock] = None
+    hedging: Optional[HedgingRequestBlock] = None

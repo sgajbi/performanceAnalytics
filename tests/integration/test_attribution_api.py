@@ -23,8 +23,8 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
             {"instrument_id": "JNJ", "meta": {"sector": "Health"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 406.5}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-01", "return": 0.015, "weight_bop": 0.5}]},
-            {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-01", "return": 0.02, "weight_bop": 0.5}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-01", "return_base": 0.015, "weight_bop": 0.5}]},
+            {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-01", "return_base": 0.02, "weight_bop": 0.5}]}
         ]
     }
 
@@ -43,7 +43,7 @@ def test_attribution_lineage_flow(client):
     payload = {
         "portfolio_number": "ATTRIB_LINEAGE_01", "mode": "by_group", "group_by": ["sector"], "linking": "none", "frequency": "monthly",
         "portfolio_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 1.0}]}],
-        "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.01, "weight_bop": 1.0}]}],
+        "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 1.0}]}],
     }
     attrib_response = client.post("/performance/attribution", json=payload)
     assert attrib_response.status_code == 200
@@ -71,9 +71,9 @@ def test_attribution_endpoint_hierarchical(client):
             {"instrument_id": "UST", "meta": {"assetClass": "Bond", "sector": "Government"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 300, "end_mv": 309}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"assetClass": "Equity", "sector": "Tech"}, "observations": [{"date": "2025-01-01", "return": 0.01, "weight_bop": 0.4}]},
-            {"key": {"assetClass": "Equity", "sector": "Health"}, "observations": [{"date": "2025-01-01", "return": 0.01, "weight_bop": 0.3}]},
-            {"key": {"assetClass": "Bond", "sector": "Government"}, "observations": [{"date": "2025-01-01", "return": 0.02, "weight_bop": 0.3}]}
+            {"key": {"assetClass": "Equity", "sector": "Tech"}, "observations": [{"date": "2025-01-01", "return_base": 0.01, "weight_bop": 0.4}]},
+            {"key": {"assetClass": "Equity", "sector": "Health"}, "observations": [{"date": "2025-01-01", "return_base": 0.01, "weight_bop": 0.3}]},
+            {"key": {"assetClass": "Bond", "sector": "Government"}, "observations": [{"date": "2025-01-01", "return_base": 0.02, "weight_bop": 0.3}]}
         ]
     }
     response = client.post("/performance/attribution", json=payload)
@@ -104,9 +104,16 @@ def test_attribution_endpoint_currency_attribution(client):
             "instrument_id": "EUR_ASSET", "meta": {"currency": "EUR"},
             "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}] # 2% local return
         }],
+        # --- START MODIFICATION: Update benchmark data to provide decomposed returns ---
         "benchmark_groups_data": [{
-            "key": {"currency": "EUR"}, "observations": [{"date": "2025-01-01", "return": 0.015, "weight_bop": 1.0}] # 1.5% local return
+            "key": {"currency": "EUR"}, "observations": [{
+                "date": "2025-01-01", "weight_bop": 1.0,
+                "return_local": 0.015, # 1.5% local return
+                "return_fx": 0.01, # 1% fx return
+                "return_base": 0.02515 # (1.015 * 1.01) - 1
+            }]
         }],
+        # --- END MODIFICATION ---
         "fx": { "rates": [
             {"date": "2024-12-31", "ccy": "EUR", "rate": 1.00},
             {"date": "2025-01-01", "ccy": "EUR", "rate": 1.01} # 1% fx return
