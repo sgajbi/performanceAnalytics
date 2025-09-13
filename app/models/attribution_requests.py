@@ -12,7 +12,7 @@ from common.enums import (
     LinkingMethod,
     PeriodType,
 )
-from core.envelope import Annualization, Calendar, Flags, Output, Periods
+from core.envelope import Annualization, Calendar, Flags, Output, Periods, FXRequestBlock, HedgingRequestBlock
 from app.models.requests import DailyInputData
 
 
@@ -47,7 +47,6 @@ class BenchmarkGroup(BaseModel):
     """Time series data for a single benchmark group."""
     key: Dict[str, Any]
     observations: List[BenchmarkObservation]
-
 
 
 class PortfolioGroup(BaseModel):
