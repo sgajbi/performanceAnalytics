@@ -44,6 +44,10 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             precision_mode=request.precision_mode,
             rounding_precision=request.rounding_precision,
             data_policy=request.data_policy,
+            currency_mode=request.currency_mode,
+            report_ccy=request.report_ccy,
+            fx=request.fx,
+            hedging=request.hedging,
         )
     except IndexError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="portfolio_data.daily_data cannot be empty.")
@@ -66,6 +70,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             },
             input_fingerprint=input_fingerprint,
             calculation_hash=calculation_hash,
+            report_ccy=request.report_ccy,
         )
         # TODO: Plumb diagnostics from hierarchical path
         diagnostics = Diagnostics(nip_days=0, reset_days=0, effective_period_start=twr_config.report_start_date or twr_config.performance_start_date, notes=[])
@@ -95,17 +100,41 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
 
     # --- SINGLE-LEVEL PATH (EXISTING LOGIC) ---
     try:
+        # Recalculate portfolio TWR using base currency values if in FX mode
+        portfolio_twr_config = twr_config
+        if twr_config.currency_mode == "BOTH":
+            portfolio_twr_config = EngineConfig(
+                performance_start_date=twr_config.performance_start_date,
+                report_start_date=twr_config.report_start_date,
+                report_end_date=twr_config.report_end_date,
+                metric_basis=twr_config.metric_basis,
+                period_type=twr_config.period_type,
+                currency_mode="BASE_ONLY" # Ensure no decomposition for base ccy assets
+            )
+            
         portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
-        portfolio_results, portfolio_diags = run_calculations(portfolio_df, twr_config)
+        portfolio_results, portfolio_diags = run_calculations(portfolio_df, portfolio_twr_config)
 
         position_results_map = {}
         for position in request.positions_data:
+            pos_twr_config = twr_config
+            # Create a specific config for this position if it's in a foreign currency
+            if request.currency_mode != "BOTH" or position.meta.get("currency") == request.report_ccy:
+                 pos_twr_config = EngineConfig(
+                    performance_start_date=twr_config.performance_start_date,
+                    report_start_date=twr_config.report_start_date,
+                    report_end_date=twr_config.report_end_date,
+                    metric_basis=twr_config.metric_basis,
+                    period_type=twr_config.period_type,
+                    currency_mode="BASE_ONLY"
+                )
+
             position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.daily_data])
-            position_results, _ = run_calculations(position_df, twr_config)
+            position_results, _ = run_calculations(position_df, pos_twr_config)
             position_results_map[position.position_id] = position_results
 
         contribution_results = calculate_position_contribution(
-            portfolio_results, position_results_map, request.smoothing, request.emit
+            portfolio_results, position_results_map, request.smoothing, request.emit, twr_config
         )
 
         raw_timeseries = contribution_results.pop("timeseries", None)
@@ -117,6 +146,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 total_contribution=data["total_contribution"],
                 average_weight=data["average_weight"],
                 total_return=data["total_return"],
+                local_contribution=data.get("local_contribution"),
+                fx_contribution=data.get("fx_contribution"),
             )
             for pos_id, data in contribution_results.items()
         ]
@@ -141,6 +172,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         },
         input_fingerprint=input_fingerprint,
         calculation_hash=calculation_hash,
+        report_ccy=request.report_ccy,
     )
     diagnostics = Diagnostics(
         nip_days=portfolio_diags.get("nip_days", 0),

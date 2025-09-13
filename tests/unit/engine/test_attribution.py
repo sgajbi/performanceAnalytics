@@ -17,15 +17,18 @@ from app.models.attribution_requests import AttributionRequest
 @pytest.fixture
 def single_period_data():
     """Provides aligned data for a single period for attribution testing."""
-    data = {'group': ['Equity', 'Bonds', 'Cash'], 'w_p': [0.60, 0.30, 0.10], 'r_p': [0.10, 0.04, 0.01], 'w_b': [0.50, 0.40, 0.10], 'r_b': [0.08, 0.03, 0.01]}
+    # --- START FIX: Update column names to match new internal schema ---
+    data = {'group': ['Equity', 'Bonds', 'Cash'], 'w_p': [0.60, 0.30, 0.10], 'r_base_p': [0.10, 0.04, 0.01], 'w_b': [0.50, 0.40, 0.10], 'r_base_b': [0.08, 0.03, 0.01]}
     df = pd.DataFrame(data).set_index('group')
-    df['r_b_total'] = (df['w_b'] * df['r_b']).sum()
+    df['r_b_total'] = (df['w_b'] * df['r_base_b']).sum()
+    # --- END FIX ---
     return df
 
 
 @pytest.fixture
 def by_group_request_data():
     """Provides a sample AttributionRequest for by_group mode where weights sum to 1."""
+    # --- START FIX: Update benchmark observations to use new model ---
     return {
         "portfolio_number": "ATTRIB_UNIT_TEST_01", "mode": "by_group", "group_by": ["sector"], "model": "BF", "linking": "carino", "frequency": "monthly",
         "portfolio_groups_data": [
@@ -33,10 +36,11 @@ def by_group_request_data():
             {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-15", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.005, "weight_bop": 0.4}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-10", "return": 0.01, "weight_bop": 0.4}, {"date": "2025-02-12", "return": -0.01, "weight_bop": 0.45}]},
-            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-10", "return": 0.005, "weight_bop": 0.6}, {"date": "2025-02-12", "return": 0.002, "weight_bop": 0.55}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-10", "return_base": 0.01, "weight_bop": 0.4}, {"date": "2025-02-12", "return_base": -0.01, "weight_bop": 0.45}]},
+            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-10", "return_base": 0.005, "weight_bop": 0.6}, {"date": "2025-02-12", "return_base": 0.002, "weight_bop": 0.55}]}
         ],
     }
+    # --- END FIX ---
 
 
 def test_align_and_prepare_data_by_group(by_group_request_data):
@@ -101,7 +105,7 @@ def test_prepare_data_from_instruments():
     obs = tech_group.observations[0]
 
     assert obs['weight_bop'] == pytest.approx(1.0)
-    assert obs['return'] == pytest.approx(0.025)
+    assert obs['return_base'] == pytest.approx(0.025)
 
 
 def test_prepare_data_from_instruments_missing_portfolio_data():

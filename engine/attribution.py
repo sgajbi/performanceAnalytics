@@ -9,6 +9,7 @@ from app.models.attribution_requests import (
     PortfolioGroup,
     BenchmarkGroup,
     InstrumentData,
+    BenchmarkObservation,
 )
 from app.models.attribution_responses import (
     AttributionGroupResult,
@@ -16,6 +17,9 @@ from app.models.attribution_responses import (
     AttributionLevelTotals,
     AttributionResponse,
     Reconciliation,
+    CurrencyAttributionResult,
+    CurrencyAttributionEffects,
+    CurrencyAttributionTotals,
 )
 from common.enums import AttributionMode, LinkingMethod, PeriodType
 from engine.config import EngineConfig
@@ -38,6 +42,10 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         report_end_date=request.portfolio_data.report_end_date,
         metric_basis=request.portfolio_data.metric_basis,
         period_type=PeriodType.ITD,
+        currency_mode=request.currency_mode,
+        report_ccy=request.report_ccy,
+        fx=request.fx,
+        hedging=request.hedging,
     )
 
     portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
@@ -50,12 +58,30 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         inst_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in inst.daily_data])
         if inst_df.empty: continue
 
-        inst_results, _ = run_calculations(inst_df.copy(), twr_config)
+        inst_twr_config = twr_config
+        if request.currency_mode == "BOTH" and inst.meta.get("currency") != request.report_ccy:
+            pass
+        else:
+            inst_twr_config = EngineConfig(
+                performance_start_date=twr_config.performance_start_date, report_start_date=twr_config.report_start_date,
+                report_end_date=twr_config.report_end_date, metric_basis=twr_config.metric_basis,
+                period_type=twr_config.period_type, currency_mode="BASE_ONLY"
+            )
+
+        inst_results, _ = run_calculations(inst_df.copy(), inst_twr_config)
         inst_results[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(inst_results[PortfolioColumns.PERF_DATE.value])
         inst_results = inst_results.set_index(PortfolioColumns.PERF_DATE.value)
 
         inst_bop_mv = inst_results[PortfolioColumns.BEGIN_MV.value] + inst_results[PortfolioColumns.BOD_CF.value]
         inst_results['weight_bop'] = inst_bop_mv / portfolio_bop_mv
+        
+        inst_results.rename(columns={
+            PortfolioColumns.DAILY_ROR.value: 'return_base', 'local_ror': 'return_local', 'fx_ror': 'return_fx'
+        }, inplace=True)
+
+        for col in ['return_base', 'return_local', 'return_fx']:
+            if col in inst_results.columns:
+                inst_results[col] /= 100
 
         for key, value in inst.meta.items():
             inst_results[key] = value
@@ -66,24 +92,33 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     full_df = pd.concat(all_instruments)
     group_cols = request.group_by
 
-    full_df['weighted_ror'] = (full_df[PortfolioColumns.DAILY_ROR.value] / 100) * full_df['weight_bop']
+    return_cols = ['return_base', 'return_local', 'return_fx']
+    for col in return_cols:
+        if col in full_df.columns:
+            full_df[f'weighted_{col}'] = full_df[col] * full_df['weight_bop']
 
     grouped = full_df.groupby([PortfolioColumns.PERF_DATE.value] + group_cols)
     group_weights = grouped['weight_bop'].sum()
-    group_weighted_ror = grouped['weighted_ror'].sum()
-
-    with np.errstate(divide='ignore', invalid='ignore'):
-        group_returns = (group_weighted_ror / group_weights).fillna(0.0)
-
-    aggregated_panel = pd.DataFrame({'return': group_returns, 'weight_bop': group_weights}).reset_index()
+    
+    aggregated_panel = pd.DataFrame({'weight_bop': group_weights})
+    for col in return_cols:
+        if f'weighted_{col}' in full_df.columns:
+            group_weighted_ror = grouped[f'weighted_{col}'].sum()
+            with np.errstate(divide='ignore', invalid='ignore'):
+                group_returns = (group_weighted_ror / group_weights).fillna(0.0)
+            aggregated_panel[col] = group_returns
+    
+    aggregated_panel.reset_index(inplace=True)
 
     output_groups = []
     for keys, group_df in aggregated_panel.groupby(group_cols):
         key_dict = {group_cols[i]: key_val for i, key_val in enumerate(keys if isinstance(keys, tuple) else [keys])}
+        obs_cols = [PortfolioColumns.PERF_DATE.value, 'weight_bop'] + return_cols
+        obs_df = group_df[[c for c in obs_cols if c in group_df.columns]]
         output_groups.append(
             PortfolioGroup(
                 key=key_dict,
-                observations=group_df[[PortfolioColumns.PERF_DATE.value, 'return', 'weight_bop']].rename(columns={PortfolioColumns.PERF_DATE.value: 'date'}).to_dict(orient='records')
+                observations=obs_df.rename(columns={PortfolioColumns.PERF_DATE.value: 'date'}).to_dict(orient='records')
             )
         )
     return output_groups
@@ -99,7 +134,12 @@ def _prepare_panel_from_groups(
     for group in groups:
         group_key_tuple = tuple(group.key.get(k) for k in group_by)
         for obs in group.observations:
-            record = {'date': pd.to_datetime(obs['date']), 'return': obs.get('return', 0.0), 'weight_bop': obs.get('weight_bop', 0.0)}
+            obs_data = obs if isinstance(obs, dict) else obs.model_dump()
+            record = {'date': pd.to_datetime(obs_data['date']), 
+                      'weight_bop': obs_data.get('weight_bop', 0.0),
+                      'return_base': obs_data.get('return_base') or obs_data.get('return', 0.0),
+                      'return_local': obs_data.get('return_local'),
+                      'return_fx': obs_data.get('return_fx')}
             for i, key in enumerate(group_by): record[key] = group_key_tuple[i]
             all_obs.append(record)
 
@@ -118,36 +158,46 @@ def _align_and_prepare_data(request: AttributionRequest, portfolio_groups_data: 
     freq_map = {'daily': 'D', 'monthly': 'ME', 'quarterly': 'QE', 'yearly': 'YE'}
     freq_code = freq_map.get(request.frequency.value, 'ME')
 
-    resampler_p = portfolio_panel.unstack(level=group_by).resample(freq_code)
-    resampler_b = benchmark_panel.unstack(level=group_by).resample(freq_code)
-    portfolio_returns = resampler_p['return'].apply(lambda x: (1 + x).prod() - 1 if not x.empty else None)
-    benchmark_returns = resampler_b['return'].apply(lambda x: (1 + x).prod() - 1 if not x.empty else None)
-    portfolio_weights = resampler_p['weight_bop'].first()
-    benchmark_weights = resampler_b['weight_bop'].first()
+    return_cols = ['return_base', 'return_local', 'return_fx']
+    
+    def resample_panel(panel):
+        resampler = panel.unstack(level=group_by).resample(freq_code)
+        weights = resampler['weight_bop'].first()
+        resampled_data = {'w': weights}
+        for col in return_cols:
+            if col in panel.columns and panel[col].notna().any():
+                resampled_data[f'r_{col.split("_")[1]}'] = resampler[col].apply(lambda x: (1 + x).prod() - 1 if not x.empty else None)
+        return pd.concat([df.stack(group_by, future_stack=True) for df in resampled_data.values()], axis=1, keys=resampled_data.keys())
 
-    df_p = pd.concat([portfolio_returns.stack(group_by, future_stack=True), portfolio_weights.stack(group_by, future_stack=True)], axis=1)
-    df_p.columns = ['r_p', 'w_p']
-    df_b = pd.concat([benchmark_returns.stack(group_by, future_stack=True), benchmark_weights.stack(group_by, future_stack=True)], axis=1)
-    df_b.columns = ['r_b', 'w_b']
-    aligned_df = pd.merge(df_p, df_b, left_index=True, right_index=True, how='outer').fillna(0.0)
+    df_p = resample_panel(portfolio_panel)
+    df_b = resample_panel(benchmark_panel)
+
+    aligned_df = pd.merge(df_p, df_b, left_index=True, right_index=True, how='outer', suffixes=('_p', '_b')).fillna(0.0)
     aligned_df.index.names = ['date'] + group_by
-    total_benchmark_return = (aligned_df['w_b'] * aligned_df['r_b']).groupby(level='date').sum()
+    
+    total_benchmark_return = (aligned_df['w_b'] * aligned_df['r_base_b']).groupby(level='date').sum()
     return aligned_df.join(total_benchmark_return.rename('r_b_total'), on='date')
 
 
 def _calculate_single_period_effects(df: pd.DataFrame, model: AttributionModel) -> pd.DataFrame:
     """Calculates single-period attribution effects (A, S, I) for an aligned DataFrame."""
     if model == AttributionModel.BRINSON_FACHLER:
-        df['allocation'] = (df['w_p'] - df['w_b']) * (df['r_b'] - df['r_b_total'])
-        df['selection'] = df['w_b'] * (df['r_p'] - df['r_b'])
-        df['interaction'] = (df['w_p'] - df['w_b']) * (df['r_p'] - df['r_b'])
+        df['allocation'] = (df['w_p'] - df['w_b']) * (df['r_base_b'] - df['r_b_total'])
+        df['selection'] = df['w_b'] * (df['r_base_p'] - df['r_base_b'])
+        df['interaction'] = (df['w_p'] - df['w_b']) * (df['r_base_p'] - df['r_base_b'])
     elif model == AttributionModel.BRINSON_HOOD_BEEBOWER:
-        # BHB model defines Allocation differently and has no Interaction effect by standard definition,
-        # but for consistency we calculate it.
-        # This implementation uses a common variant.
-        df['allocation'] = (df['w_p'] - df['w_b']) * df['r_b']
-        df['selection'] = df['w_p'] * (df['r_p'] - df['r_b'])
-        df['interaction'] = (df['w_p'] - df['w_b']) * (df['r_p'] - df['r_b'])
+        df['allocation'] = (df['w_p'] - df['w_b']) * df['r_base_b']
+        df['selection'] = df['w_p'] * (df['r_base_p'] - df['r_base_b'])
+        df['interaction'] = (df['w_p'] - df['w_b']) * (df['r_base_p'] - df['r_base_b'])
+    return df
+
+
+def _calculate_currency_attribution_effects(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculates the four Karnosky-Singer currency attribution effects."""
+    df['local_allocation'] = (df['w_p'] - df['w_b']) * df['r_local_b']
+    df['local_selection'] = df['w_b'] * (df['r_local_p'] - df['r_local_b'])
+    df['currency_allocation'] = (df['w_p'] - df['w_b']) * (1 + df['r_local_b']) * df['r_fx_b']
+    df['currency_selection'] = df['w_b'] * (df['r_local_p'] - df['r_local_b']) * df['r_fx_b']
     return df
 
 
@@ -160,7 +210,8 @@ def _link_effects_top_down(effects_df: pd.DataFrame, geometric_total_ar: float, 
     
     linked_effects = effects_df.copy()
     for col in ['allocation', 'selection', 'interaction']:
-        linked_effects[col] *= scaling_factor
+        if col in linked_effects.columns:
+            linked_effects[col] *= scaling_factor
         
     return linked_effects
 
@@ -189,7 +240,7 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
     effects_df = _calculate_single_period_effects(aligned_df.reset_index(), request.model)
     lineage_data["single_period_effects.csv"] = effects_df.copy()
 
-    per_period_p_return = (effects_df.set_index('date')['w_p'] * effects_df.set_index('date')['r_p']).groupby(level='date').sum()
+    per_period_p_return = (effects_df.set_index('date')['w_p'] * effects_df.set_index('date')['r_base_p']).groupby(level='date').sum()
     per_period_b_return = effects_df.groupby('date')['r_b_total'].first()
     per_period_active_return = per_period_p_return - per_period_b_return
 
@@ -228,19 +279,57 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
             totals=AttributionLevelTotals(**(overall_level_totals * 100).to_dict()),
         ))
     
-    levels.reverse() # Present from top-level to granular
+    levels.reverse() 
     final_totals = levels[0].totals
 
     response = AttributionResponse(
-        calculation_id=request.calculation_id,
-        portfolio_number=request.portfolio_number,
-        model=request.model,
-        linking=request.linking,
-        levels=levels,
+        calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
+        model=request.model, linking=request.linking, levels=levels,
         reconciliation=Reconciliation(
             total_active_return=active_return * 100,
             sum_of_effects=final_totals.total_effect,
             residual=(active_return * 100) - final_totals.total_effect
         ),
     )
+
+    if request.currency_mode == "BOTH":
+        required_cols = {'r_local_p', 'r_local_b', 'r_fx_b', 'w_p', 'w_b'}
+        if required_cols.issubset(aligned_df.columns):
+            aligned_df_reset = aligned_df.reset_index()
+            # --- START FIX: Ensure 'currency' column exists for grouping ---
+            if 'currency' not in aligned_df_reset.columns and 'currency' in request.group_by:
+                # This can happen in by_group mode if currency isn't the only group_by key
+                # For this specific feature, we assume currency is available from instrument metadata
+                # A more robust solution would require mapping, but for now we proceed if possible.
+                pass
+
+            if 'currency' in aligned_df_reset.columns:
+                currency_df = aligned_df_reset.groupby(['date', 'currency']).sum()
+                
+                fx_effects_df = _calculate_currency_attribution_effects(currency_df)
+                # --- START FIX: Add currency effects to lineage ---
+                lineage_data["currency_attribution_effects.csv"] = fx_effects_df.reset_index()
+                # --- END FIX ---
+                
+                total_fx_effects = fx_effects_df.groupby('currency').sum(numeric_only=True)
+                
+                fx_results = []
+                for currency, row in total_fx_effects.iterrows():
+                    avg_weights = currency_df.loc[currency_df.index.get_level_values('currency') == currency][['w_p', 'w_b']].mean()
+                    effects_sum = row['local_allocation'] + row['local_selection'] + row['currency_allocation'] + row['currency_selection']
+                    effects = CurrencyAttributionEffects(
+                        local_allocation=row['local_allocation'] * 100,
+                        local_selection=row['local_selection'] * 100,
+                        currency_allocation=row['currency_allocation'] * 100,
+                        currency_selection=row['currency_selection'] * 100,
+                        total_effect=effects_sum * 100
+                    )
+                    fx_results.append(CurrencyAttributionResult(
+                        currency=currency,
+                        weight_portfolio_avg=avg_weights['w_p'] * 100,
+                        weight_benchmark_avg=avg_weights['w_b'] * 100,
+                        effects=effects
+                    ))
+                response.currency_attribution = fx_results
+    
     return response, lineage_data

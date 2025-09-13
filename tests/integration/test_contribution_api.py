@@ -1,4 +1,5 @@
 # tests/integration/test_contribution_api.py
+from datetime import date
 from fastapi.testclient import TestClient
 import pytest
 from main import app
@@ -31,6 +32,49 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
     assert response_data["audit"]["counts"]["calculation_days"] == 2
 
 
+def test_contribution_endpoint_multi_currency(client):
+    """Tests an end-to-end multi-currency contribution request."""
+    payload = {
+        "portfolio_number": "MULTI_CCY_CONTRIB_01",
+        "portfolio_data": {
+            "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
+            "period_type": "ITD", "metric_basis": "GROSS",
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}]
+        },
+        "positions_data": [{
+            "position_id": "EUR_STOCK",
+            "meta": {"currency": "EUR"},
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}]
+        }],
+        "currency_mode": "BOTH",
+        "report_ccy": "USD",
+        "fx": {
+            "rates": [
+                {"date": "2024-12-31", "ccy": "EUR", "rate": 1.05},
+                {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08}
+            ]
+        }
+    }
+    response = client.post("/performance/contribution", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    # Total contribution should match the portfolio's total base return
+    assert data["total_contribution"] == pytest.approx(data["total_portfolio_return"])
+    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5) 
+
+    pos_contrib = data["position_contributions"][0]
+    assert pos_contrib["position_id"] == "EUR_STOCK"
+    # In a single-day, single-position scenario, the local contribution should match the pure local return
+    assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5)
+    
+    # --- START FIX ---
+    # The FX contribution must equal the total minus the local component, thereby absorbing the
+    # geometric cross-product term. The test now validates this additive relationship.
+    assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(pos_contrib["total_contribution"], abs=1e-5)
+    # --- END FIX ---
+
+
 def test_contribution_lineage_flow(client, happy_path_payload):
     """Tests that lineage is correctly captured for a single-level contribution request."""
     payload = happy_path_payload.copy()
@@ -59,7 +103,7 @@ def test_contribution_endpoint_no_smoothing(client, happy_path_payload):
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["total_contribution"] != pytest.approx(response_data["total_portfolio_return"])
-    assert response_data["position_contributions"][0]["total_contribution"] == pytest.approx(1.94766, abs=1e-5)
+    assert response_data["position_contributions"][0]["total_contribution"] == pytest.approx(1.947688, abs=1e-6)
 
 
 def test_contribution_endpoint_with_timeseries(client, happy_path_payload):

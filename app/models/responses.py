@@ -38,11 +38,18 @@ class ResetEvent(BaseModel):
     impacted_rows: int
 
 
+class PortfolioReturnDecomposition(BaseModel):
+    local: float
+    fx: float
+    base: float
+
+
 class PerformanceResponse(BaseModel):
     calculation_id: UUID
     portfolio_number: str
     breakdowns: PerformanceBreakdown
     reset_events: Optional[List[ResetEvent]] = None
+    portfolio_return: Optional[PortfolioReturnDecomposition] = None # ADDED
 
     meta: Meta
     diagnostics: Diagnostics

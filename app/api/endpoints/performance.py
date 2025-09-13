@@ -8,7 +8,7 @@ from app.models.attribution_responses import AttributionResponse
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
-from app.models.responses import PerformanceResponse
+from app.models.responses import PerformanceResponse, PortfolioReturnDecomposition
 from app.services.lineage_service import lineage_service
 from core.envelope import Audit, Diagnostics, Meta
 from core.repro import generate_canonical_hash
@@ -17,6 +17,7 @@ from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 from engine.mwr import calculate_money_weighted_return
+from engine.schema import PortfolioColumns
 
 router = APIRouter()
 settings = get_settings()
@@ -65,6 +66,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         periods={"type": request.period_type.value, "start": str(engine_config.report_start_date or engine_config.performance_start_date), "end": str(engine_config.report_end_date)},
         input_fingerprint=input_fingerprint,
         calculation_hash=calculation_hash,
+        report_ccy=engine_config.report_ccy
     )
     diagnostics = Diagnostics(
         nip_days=diagnostics_data.get("nip_days", 0),
@@ -84,6 +86,17 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         "diagnostics": diagnostics,
         "audit": audit,
     }
+
+    # --- NEW FX Response Logic ---
+    if engine_config.currency_mode == "BOTH" and "local_ror" in daily_results_df.columns:
+        local_total = (1 + daily_results_df["local_ror"] / 100).prod() - 1
+        fx_total = (1 + daily_results_df["fx_ror"] / 100).prod() - 1
+        base_total = (1 + daily_results_df[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
+        response_payload["portfolio_return"] = PortfolioReturnDecomposition(
+            local=local_total * 100,
+            fx=fx_total * 100,
+            base=base_total * 100
+        )
 
     if request.reset_policy.emit and diagnostics_data.get("resets"):
         response_payload["reset_events"] = diagnostics_data["resets"]

@@ -2,7 +2,7 @@
 from datetime import date
 import pytest
 from pydantic import ValidationError
-from core.envelope import BaseRequest, Periods, RollingPeriod
+from core.envelope import BaseRequest, Periods, RollingPeriod, FXRequestBlock
 
 
 def test_base_request_validation_happy_path():
@@ -45,3 +45,17 @@ def test_rolling_period_validation():
     # Succeeds
     RollingPeriod(months=12)
     RollingPeriod(days=63)
+
+
+def test_fx_request_block_validation():
+    """Tests that the new FXRequestBlock model validates correctly."""
+    payload = {
+        "source": "CLIENT_SUPPLIED",
+        "fixing": "EOD",
+        "rates": [{"date": "2025-09-08", "ccy": "EUR", "rate": 1.10}]
+    }
+    try:
+        fx_block = FXRequestBlock.model_validate(payload)
+        assert fx_block.rates[0].ccy == "EUR"
+    except ValidationError as e:
+        pytest.fail(f"FXRequestBlock validation failed unexpectedly: {e}")

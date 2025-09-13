@@ -1,0 +1,57 @@
+
+{
+  "portfolio_number": "TWR_MCY_HEDGED_01",
+  "performance_start_date": "2024-12-31",
+  "metric_basis": "GROSS",
+  "report_start_date": "2025-01-01",
+  "report_end_date": "2025-01-02",
+  "period_type": "YTD",
+  "frequencies": [
+    "daily"
+  ],
+  "daily_data": [
+    {
+      "day": 1,
+      "perf_date": "2025-01-01",
+      "begin_mv": 100,
+      "end_mv": 102
+    },
+    {
+      "day": 2,
+      "perf_date": "2025-01-02",
+      "begin_mv": 102,
+      "end_mv": 103.02
+    }
+  ],
+  "currency_mode": "BOTH",
+  "report_ccy": "USD",
+  "fx": {
+    "rates": [
+      {
+        "date": "2024-12-31",
+        "ccy": "EUR",
+        "rate": 1.05
+      },
+      {
+        "date": "2025-01-01",
+        "ccy": "EUR",
+        "rate": 1.08
+      },
+      {
+        "date": "2025-01-02",
+        "ccy": "EUR",
+        "rate": 1.07
+      }
+    ]
+  },
+  "hedging": {
+    "mode": "RATIO",
+    "series": [
+      {
+        "date": "2025-01-01",
+        "ccy": "EUR",
+        "hedge_ratio": 0.5
+      }
+    ]
+  }
+}

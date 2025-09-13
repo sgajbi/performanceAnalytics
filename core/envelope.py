@@ -6,7 +6,31 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, model_validator
 
 
-# --- NEW Data Policy Models ---
+# --- NEW FX & Hedging Request Models ---
+class FXRate(BaseModel):
+    date: date
+    ccy: str
+    rate: float
+
+
+class FXRequestBlock(BaseModel):
+    source: Literal["CLIENT_SUPPLIED"] = "CLIENT_SUPPLIED"
+    fixing: Literal["EOD"] = "EOD"
+    rates: List[FXRate] = Field(default_factory=list)
+
+
+class HedgeRatio(BaseModel):
+    date: date
+    ccy: str
+    hedge_ratio: float = Field(..., ge=0.0, le=1.0)
+
+
+class HedgingRequestBlock(BaseModel):
+    mode: Literal["RATIO"] = "RATIO"
+    series: List[HedgeRatio] = Field(default_factory=list)
+
+
+# --- Existing Data Policy Models ---
 class OverridesPolicy(BaseModel):
     market_values: List[Dict[str, Any]] = Field(default_factory=list)
     cash_flows: List[Dict[str, Any]] = Field(default_factory=list)
@@ -111,6 +135,7 @@ class Meta(BaseModel):
     periods: Dict
     input_fingerprint: Optional[str] = None
     calculation_hash: Optional[str] = None
+    report_ccy: Optional[str] = None  # ADDED for FX
 
 
 # --- MODIFIED Diagnostics Model ---

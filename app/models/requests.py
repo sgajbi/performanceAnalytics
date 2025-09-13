@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from common.enums import Frequency, PeriodType
-from core.envelope import Annualization, Calendar, Flags, Output, Periods, DataPolicy
+from core.envelope import Annualization, Calendar, DataPolicy, Flags, Output, Periods, FXRequestBlock, HedgingRequestBlock
 
 
 class DailyInputData(BaseModel):
@@ -50,4 +50,9 @@ class PerformanceRequest(BaseModel):
     flags: Flags = Field(default_factory=Flags)
     fee_effect: FeeEffect = Field(default_factory=FeeEffect)
     reset_policy: ResetPolicy = Field(default_factory=ResetPolicy)
-    data_policy: Optional[DataPolicy] = None 
+    data_policy: Optional[DataPolicy] = None
+
+    currency_mode: Optional[Literal["BASE_ONLY", "LOCAL_ONLY", "BOTH"]] = None
+    report_ccy: Optional[str] = None
+    fx: Optional[FXRequestBlock] = None
+    hedging: Optional[HedgingRequestBlock] = None

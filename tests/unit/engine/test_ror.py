@@ -4,11 +4,12 @@ from decimal import Decimal
 
 import pandas as pd
 import pytest
-from engine.config import EngineConfig
+from engine.config import EngineConfig, FXRequestBlock
 from engine.periods import get_effective_period_start_dates
-# FIX: Import the _compound_ror helper function
+# FIX: Import the _compound_ror helper function and HedgingRequestBlock
 from engine.ror import _compound_ror, calculate_daily_ror
 from engine.schema import PortfolioColumns
+from core.envelope import HedgingRequestBlock
 
 
 @pytest.fixture
@@ -34,18 +35,18 @@ def sample_df():
 
 def test_daily_ror_net_basis(sample_df):
     """Tests that NET RoR correctly includes management fees."""
-    ror_series = calculate_daily_ror(sample_df, metric_basis="NET")
-    assert ror_series.iloc[0] == pytest.approx(8.0)
+    ror_df = calculate_daily_ror(sample_df, metric_basis="NET")
+    assert ror_df[PortfolioColumns.DAILY_ROR.value].iloc[0] == pytest.approx(8.0)
 
 def test_daily_ror_gross_basis(sample_df):
     """Tests that GROSS RoR correctly ignores management fees."""
-    ror_series = calculate_daily_ror(sample_df, metric_basis="GROSS")
-    assert ror_series.iloc[1] == pytest.approx(10.091743119)
+    ror_df = calculate_daily_ror(sample_df, metric_basis="GROSS")
+    assert ror_df[PortfolioColumns.DAILY_ROR.value].iloc[1] == pytest.approx(10.091743119)
 
 def test_daily_ror_zero_denominator(sample_df):
     """Tests that RoR is 0 when the denominator is 0."""
-    ror_series = calculate_daily_ror(sample_df, metric_basis="NET")
-    assert ror_series.iloc[2] == 0.0
+    ror_df = calculate_daily_ror(sample_df, metric_basis="NET")
+    assert ror_df[PortfolioColumns.DAILY_ROR.value].iloc[2] == 0.0
 
 def test_daily_ror_before_effective_start(sample_df):
     """Tests that RoR is 0 for dates before the effective period start."""
@@ -56,8 +57,8 @@ def test_daily_ror_before_effective_start(sample_df):
     )
     df = sample_df.copy()
     df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE] = get_effective_period_start_dates(df[PortfolioColumns.PERF_DATE], config)
-    ror_series = calculate_daily_ror(df, metric_basis="NET")
-    assert ror_series.iloc[3] == 0.0
+    ror_df = calculate_daily_ror(df, metric_basis="NET")
+    assert ror_df[PortfolioColumns.DAILY_ROR.value].iloc[3] == 0.0
 
 def test_compound_ror_decimal_strict_multi_period():
     """Tests that the decimal-strict compounding works over multiple rows."""
@@ -73,3 +74,81 @@ def test_compound_ror_decimal_strict_multi_period():
     result = _compound_ror(df, df[PortfolioColumns.DAILY_ROR], 'long', use_resets=False)
     assert isinstance(result.iloc[1], Decimal)
     assert result.iloc[1] == pytest.approx(Decimal("21.0"))
+
+
+def test_daily_ror_fx_decomposition():
+    """Tests the local, fx, and base return decomposition logic."""
+    df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
+        PortfolioColumns.BEGIN_MV: [100.0, 102.0],  # In EUR
+        PortfolioColumns.BOD_CF: [0.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0],
+        PortfolioColumns.END_MV: [102.0, 103.02], # In EUR
+        PortfolioColumns.EFFECTIVE_PERIOD_START_DATE: pd.to_datetime(["2025-01-01", "2025-01-01"])
+    })
+    fx_rates_data = {
+        "rates": [
+            {"date": date(2024, 12, 31), "ccy": "EUR", "rate": 1.05},
+            {"date": date(2025, 1, 1), "ccy": "EUR", "rate": 1.08},
+            {"date": date(2025, 1, 2), "ccy": "EUR", "rate": 1.07},
+        ]
+    }
+    config = EngineConfig(
+        performance_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 2),
+        metric_basis="GROSS",
+        period_type="YTD",
+        currency_mode="BOTH",
+        report_ccy="USD",
+        fx=FXRequestBlock.model_validate(fx_rates_data)
+    )
+
+    ror_df = calculate_daily_ror(df, config.metric_basis, config)
+
+    # Day 1: Local +2%, FX +2.86%
+    assert ror_df["local_ror"].iloc[0] == pytest.approx(2.0)
+    assert ror_df["fx_ror"].iloc[0] == pytest.approx(2.85714, abs=1e-5)
+    assert ror_df[PortfolioColumns.DAILY_ROR.value].iloc[0] == pytest.approx(4.91428, abs=1e-5)
+
+    # Day 2: Local +1%, FX -0.926%
+    assert ror_df["local_ror"].iloc[1] == pytest.approx(1.0)
+    assert ror_df["fx_ror"].iloc[1] == pytest.approx(-0.92592, abs=1e-5)
+    assert ror_df[PortfolioColumns.DAILY_ROR.value].iloc[1] == pytest.approx(0.06481, abs=1e-5)
+
+
+def test_daily_ror_fx_decomposition_with_hedging():
+    """Tests that the hedge_ratio correctly dampens the calculated FX return."""
+    df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
+        PortfolioColumns.BEGIN_MV: [100.0, 102.0], PortfolioColumns.BOD_CF: [0.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0], PortfolioColumns.MGMT_FEES: [0.0, 0.0],
+        PortfolioColumns.END_MV: [102.0, 103.02],
+        PortfolioColumns.EFFECTIVE_PERIOD_START_DATE: pd.to_datetime(["2025-01-01", "2025-01-01"])
+    })
+    fx_rates_data = {
+        "rates": [
+            {"date": date(2024, 12, 31), "ccy": "EUR", "rate": 1.05},
+            {"date": date(2025, 1, 1), "ccy": "EUR", "rate": 1.08},
+            {"date": date(2025, 1, 2), "ccy": "EUR", "rate": 1.07},
+        ]
+    }
+    hedging_data = {
+        "mode": "RATIO",
+        "series": [{"date": date(2025, 1, 1), "ccy": "EUR", "hedge_ratio": 0.50}] # Hedge 50% on day 1
+    }
+    config = EngineConfig(
+        performance_start_date=date(2025, 1, 1), report_end_date=date(2025, 1, 2),
+        metric_basis="GROSS", period_type="YTD", currency_mode="BOTH", report_ccy="USD",
+        fx=FXRequestBlock.model_validate(fx_rates_data),
+        hedging=HedgingRequestBlock.model_validate(hedging_data)
+    )
+
+    ror_df = calculate_daily_ror(df, config.metric_basis, config)
+
+    # Day 1 was 50% hedged. Original fx_ror was ~2.85714%. Hedged should be half.
+    assert ror_df["fx_ror"].iloc[0] == pytest.approx(2.85714 * 0.5, abs=1e-5)
+    assert ror_df[PortfolioColumns.DAILY_ROR.value].iloc[0] == pytest.approx(((1 + 0.02) * (1 + 0.0285714 * 0.5) - 1) * 100, abs=1e-5)
+
+    # Day 2 was not hedged. fx_ror should be the original unhedged value.
+    assert ror_df["fx_ror"].iloc[1] == pytest.approx(-0.92592, abs=1e-5)

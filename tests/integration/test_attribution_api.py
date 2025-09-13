@@ -23,8 +23,8 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
             {"instrument_id": "JNJ", "meta": {"sector": "Health"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 406.5}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-01", "return": 0.015, "weight_bop": 0.5}]},
-            {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-01", "return": 0.02, "weight_bop": 0.5}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-01", "return_base": 0.015, "weight_bop": 0.5}]},
+            {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-01", "return_base": 0.02, "weight_bop": 0.5}]}
         ]
     }
 
@@ -43,7 +43,7 @@ def test_attribution_lineage_flow(client):
     payload = {
         "portfolio_number": "ATTRIB_LINEAGE_01", "mode": "by_group", "group_by": ["sector"], "linking": "none", "frequency": "monthly",
         "portfolio_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 1.0}]}],
-        "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.01, "weight_bop": 1.0}]}],
+        "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 1.0}]}],
     }
     attrib_response = client.post("/performance/attribution", json=payload)
     assert attrib_response.status_code == 200
@@ -71,9 +71,9 @@ def test_attribution_endpoint_hierarchical(client):
             {"instrument_id": "UST", "meta": {"assetClass": "Bond", "sector": "Government"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 300, "end_mv": 309}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"assetClass": "Equity", "sector": "Tech"}, "observations": [{"date": "2025-01-01", "return": 0.01, "weight_bop": 0.4}]},
-            {"key": {"assetClass": "Equity", "sector": "Health"}, "observations": [{"date": "2025-01-01", "return": 0.01, "weight_bop": 0.3}]},
-            {"key": {"assetClass": "Bond", "sector": "Government"}, "observations": [{"date": "2025-01-01", "return": 0.02, "weight_bop": 0.3}]}
+            {"key": {"assetClass": "Equity", "sector": "Tech"}, "observations": [{"date": "2025-01-01", "return_base": 0.01, "weight_bop": 0.4}]},
+            {"key": {"assetClass": "Equity", "sector": "Health"}, "observations": [{"date": "2025-01-01", "return_base": 0.01, "weight_bop": 0.3}]},
+            {"key": {"assetClass": "Bond", "sector": "Government"}, "observations": [{"date": "2025-01-01", "return_base": 0.02, "weight_bop": 0.3}]}
         ]
     }
     response = client.post("/performance/attribution", json=payload)
@@ -87,6 +87,64 @@ def test_attribution_endpoint_hierarchical(client):
     health_sector_effects = next(g for g in level_sector["groups"] if g["key"]["sector"] == "Health")
     assert equity_ac_effects["allocation"] == pytest.approx(tech_sector_effects["allocation"] + health_sector_effects["allocation"])
     assert equity_ac_effects["selection"] == pytest.approx(tech_sector_effects["selection"] + health_sector_effects["selection"])
+
+
+def test_attribution_endpoint_currency_attribution(client):
+    """Tests the Karnosky-Singer currency attribution model end-to-end."""
+    # This test uses a simplified scenario to isolate the currency effects.
+    # Portfolio and Benchmark are 100% in a single EUR asset.
+    payload = {
+        "portfolio_number": "FX_ATTRIB_01", "mode": "by_instrument", "group_by": ["currency"],
+        "linking": "none", "frequency": "daily", "currency_mode": "BOTH", "report_ccy": "USD",
+        "portfolio_data": {
+            "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "GROSS",
+            "period_type": "ITD",
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 103.02}]
+        },
+        "instruments_data": [{
+            "instrument_id": "EUR_ASSET", "meta": {"currency": "EUR"},
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}] # 2% local return
+        }],
+        "benchmark_groups_data": [{
+            "key": {"currency": "EUR"}, "observations": [{
+                "date": "2025-01-01", "weight_bop": 1.0,
+                "return_local": 0.015, # 1.5% local return
+                "return_fx": 0.01, # 1% fx return
+                "return_base": 0.02515 # (1.015 * 1.01) - 1
+            }]
+        }],
+        "fx": { "rates": [
+            {"date": "2024-12-31", "ccy": "EUR", "rate": 1.00},
+            {"date": "2025-01-01", "ccy": "EUR", "rate": 1.01} # 1% fx return
+        ]}
+    }
+    response = client.post("/performance/attribution", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "currency_attribution" in data
+    assert data["currency_attribution"] is not None
+    eur_effects = data["currency_attribution"][0]["effects"]
+
+    # Expected values based on Karnosky-Singer (where active local return is 0.5%)
+    # LA = (1-1) * 0.015 = 0
+    assert eur_effects["local_allocation"] == pytest.approx(0.0)
+    # LS = 1 * (0.02 - 0.015) = 0.005
+    assert eur_effects["local_selection"] == pytest.approx(0.5)
+    # CA = (1-1) * (1+0.015) * 0.01 = 0
+    assert eur_effects["currency_allocation"] == pytest.approx(0.0)
+    # CS = 1 * (0.02 - 0.015) * 0.01 = 0.00005
+    assert eur_effects["currency_selection"] == pytest.approx(0.005)
+    # Total = 0.505
+    assert eur_effects["total_effect"] == pytest.approx(0.505)
+
+    # --- START NEW TEST: Verify lineage capture ---
+    calculation_id = data["calculation_id"]
+    lineage_response = client.get(f"/performance/lineage/{calculation_id}")
+    assert lineage_response.status_code == 200
+    lineage_data = lineage_response.json()
+    assert "currency_attribution_effects.csv" in lineage_data["artifacts"]
+    # --- END NEW TEST ---
 
 
 @pytest.mark.parametrize(

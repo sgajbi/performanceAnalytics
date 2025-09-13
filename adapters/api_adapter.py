@@ -22,7 +22,11 @@ def create_engine_config(request: PerformanceRequest) -> EngineConfig:
         period_type=request.period_type,
         rounding_precision=request.rounding_precision,
         precision_mode=PrecisionMode(request.precision_mode),
-        data_policy=request.data_policy, # ADDED
+        data_policy=request.data_policy,
+        currency_mode=request.currency_mode,
+        report_ccy=request.report_ccy,
+        fx=request.fx,
+        hedging=request.hedging,
     )
 
 

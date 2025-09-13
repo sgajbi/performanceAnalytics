@@ -15,6 +15,8 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 -   **Advanced Contribution Engine:** Uses the Carino smoothing algorithm to accurately link multi-period position contributions. Supports multi-level hierarchical aggregation (e.g., by sector, then by security).
 -   **Brinson Attribution Engine:** Decomposes active return into Allocation, Selection, and Interaction effects using Brinson-Fachler or Brinson-Hood-Beebower models.
 -   **Geometric Attribution Linking:** Uses the Menchero algorithm to ensure multi-period attribution effects correctly account for compounding.
+-   **Multi-Currency Performance & Hedging**: Decomposes returns into local, FX, and base currency components. Supports modeling of currency hedging strategies. See the [Multi-Currency Guide](docs/guides/multi_currency.md).
+-   **Karnosky-Singer Currency Attribution**: Decomposes active return into local market vs. currency management effects.
 -   **Decoupled Architecture:** All calculation logic is in a standalone `engine` library.
 ---
 
@@ -117,6 +119,6 @@ pytest --cov=engine --cov=app --cov-report term-missing
 
 The core calculation logic is a standalone library. For instructions on how to use it directly in your own Python scripts for batch processing or analysis, see the guide:
 
-  - **[Using the Performance Engine as a Standalone Library](https://www.google.com/search?q=./docs/guides/standalone_engine_usage.md)**
+  - **[Using the Performance Engine as a Standalone Library](https://www.google.com/search?q=docs/guides/standalone_engine_usage.md)**
 
 <!-- end list -->
