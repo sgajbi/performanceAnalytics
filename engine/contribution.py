@@ -32,10 +32,11 @@ def _calculate_daily_instrument_contributions(
     if weighting_scheme == WeightingScheme.BOD:
         df["capital_inst"] = df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]
         df["capital_port"] = df[f"{PortfolioColumns.BEGIN_MV.value}_port"] + df[f"{PortfolioColumns.BOD_CF.value}_port"]
-    # Add other weighting schemes here when implemented
-    # elif weighting_scheme == WeightingScheme.AVG_CAPITAL: ...
 
-    df["daily_weight"] = (df["capital_inst"] / df["capital_port"]).fillna(0.0)
+    # --- START FIX: Suppress expected division warnings ---
+    with np.errstate(divide='ignore', invalid='ignore'):
+        df["daily_weight"] = (df["capital_inst"] / df["capital_port"]).fillna(0.0)
+    # --- END FIX ---
 
     # 2. Calculate Raw Daily Contribution (distinguishing local and fx)
     df["raw_local_contribution"] = df["daily_weight"] * (df.get("local_ror", 0.0) / 100)
@@ -58,14 +59,9 @@ def _calculate_daily_instrument_contributions(
         
         adjustment_factor = df["daily_weight"] * (df["R_port_t"] * ((df["K_total"] / df["k_t"]) - 1))
         
-        # --- START FIX ---
-        # Calculate total smoothed contribution first
         df["smoothed_contribution"] = df["raw_contribution"] + adjustment_factor.fillna(0.0)
-        # Local contribution is the pure, unadjusted raw local contribution
         df["smoothed_local_contribution"] = df["raw_local_contribution"]
-        # FX contribution is the residual, absorbing the cross-product and smoothing effects
         df["smoothed_fx_contribution"] = df["smoothed_contribution"] - df["smoothed_local_contribution"]
-        # --- END FIX ---
     else:
         df["smoothed_local_contribution"] = df["raw_local_contribution"]
         df["smoothed_fx_contribution"] = df["raw_fx_contribution"]
@@ -114,19 +110,17 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         if position_df.empty:
             continue
         
-        # Create a specific config for this position if it's in a foreign currency
         pos_twr_config = twr_config
         if request.currency_mode == "BOTH" and position.meta.get("currency") != request.report_ccy:
-            # For now, we assume the main config's fx block covers this currency
             pass
-        else: # Reset to base-only mode for base currency assets
+        else: 
             pos_twr_config = EngineConfig(
                 performance_start_date=twr_config.performance_start_date,
                 report_start_date=twr_config.report_start_date,
                 report_end_date=twr_config.report_end_date,
                 metric_basis=twr_config.metric_basis,
                 period_type=twr_config.period_type,
-                currency_mode="BASE_ONLY" # Ensure no decomposition for base ccy assets
+                currency_mode="BASE_ONLY"
             )
 
         position_results_df, _ = run_calculations(position_df, pos_twr_config)
@@ -155,8 +149,6 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[D
         instruments_df, portfolio_results_df, request.weighting_scheme, request.smoothing
     )
 
-    # --- Aggregation Logic ---
-    # 1. Calculate total contribution and average weight for each instrument
     totals = daily_contributions_df.groupby("position_id").agg(
         contribution=("smoothed_contribution", "sum"),
         local_contribution=("smoothed_local_contribution", "sum"),
@@ -164,7 +156,6 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[D
         weight_avg=("daily_weight", "mean")
     ).reset_index()
 
-    # --- Residual Allocation ---
     port_ror_series = portfolio_results_df[PortfolioColumns.DAILY_ROR.value] / 100
     total_portfolio_return = (1 + port_ror_series).prod() - 1
     sum_of_contributions = totals["contribution"].sum()
@@ -173,7 +164,7 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[D
 
     if total_avg_weight != 0 and request.smoothing.method == "CARINO":
         totals["weight_proportion"] = totals["weight_avg"] / total_avg_weight
-        # Distribute residual to all components proportionally to maintain additivity
+        
         residual_local = residual * (totals["local_contribution"].sum() / sum_of_contributions if sum_of_contributions != 0 else 0)
         residual_fx = residual * (totals["fx_contribution"].sum() / sum_of_contributions if sum_of_contributions != 0 else 0)
         
@@ -181,14 +172,11 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[D
         totals["local_contribution"] += residual_local * totals["weight_proportion"]
         totals["fx_contribution"] += residual_fx * totals["weight_proportion"]
 
-
-    # Merge metadata back in for grouping, ensuring columns are unique
     temp_meta_cols = ["position_id"] + request.hierarchy
     metadata_cols = list(dict.fromkeys(temp_meta_cols))
     unique_meta = daily_contributions_df[metadata_cols].drop_duplicates()
     aggregated_df = pd.merge(totals, unique_meta, on="position_id")
 
-    # 2. Perform bottom-up aggregation for each level
     response_levels = []
     for i, level_name in enumerate(request.hierarchy):
         level_keys = request.hierarchy[:i+1]
@@ -219,11 +207,10 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[D
             "rows": rows
         })
 
-    # 3. Populate final summary
     portfolio_contribution = aggregated_df["contribution"].sum()
     summary = {
         "portfolio_contribution": portfolio_contribution * 100,
-        "coverage_mv_pct": 100.0,  # Placeholder
+        "coverage_mv_pct": 100.0,
         "weighting_scheme": request.weighting_scheme.value,
     }
     if request.currency_mode == "BOTH":
@@ -261,7 +248,6 @@ def _calculate_single_period_weights(
 
 def _calculate_carino_factors(ror_series: pd.Series) -> pd.Series:
     """Calculates the Carino smoothing factor k for a series of returns."""
-    # Convert index to datetime if it's not already, for potential merges
     if not isinstance(ror_series.index, pd.DatetimeIndex):
         ror_series.index = pd.to_datetime(ror_series.index)
 
@@ -280,7 +266,7 @@ def calculate_position_contribution(
     position_results_map: Dict[str, pd.DataFrame],
     smoothing: Smoothing,
     emit: Emit,
-    config: EngineConfig = None # ADDED for FX
+    config: EngineConfig = None
 ) -> Dict[str, Dict]:
     """
     Orchestrates the original single-level position contribution calculation.
@@ -319,7 +305,6 @@ def calculate_position_contribution(
             c_p_t = weight_t * pos_ror_t
 
             smoothed_c = c_p_t
-            smoothed_local = c_local_t
             
             if smoothing.method == "CARINO":
                 ror_port_t = port_daily_ror.iloc[i]
@@ -327,12 +312,8 @@ def calculate_position_contribution(
                 adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
                 smoothed_c += adjustment
 
-            # --- START FIX ---
-            # Local contribution is the pure, unadjusted raw local contribution.
             smoothed_local = c_local_t
-            # FX contribution is the residual, absorbing the cross-product and smoothing effects.
             smoothed_fx = smoothed_c - smoothed_local
-            # --- END FIX ---
 
             if port_row[PortfolioColumns.NIP.value] == 1 or port_row[PortfolioColumns.PERF_RESET.value] == 1:
                 smoothed_c, smoothed_local, smoothed_fx = 0.0, 0.0, 0.0
@@ -388,15 +369,16 @@ def calculate_position_contribution(
             weight_proportion = final_results[pos_id]["average_weight"] / sum_of_weights
             residual_for_pos = residual * weight_proportion
             
-            # Distribute residual to all components proportionally to maintain additivity
             total_contrib_unalloc = final_results[pos_id]["total_contribution"]
             final_results[pos_id]["total_contribution"] += residual_for_pos * 100
             
             if config and config.currency_mode == "BOTH" and total_contrib_unalloc != 0:
-                local_prop = final_results[pos_id]["local_contribution"] / total_contrib_unalloc
-                fx_prop = final_results[pos_id]["fx_contribution"] / total_contrib_unalloc
-                final_results[pos_id]["local_contribution"] += residual_for_pos * local_prop * 100
-                final_results[pos_id]["fx_contribution"] += residual_for_pos * fx_prop * 100
+                component_sum_unalloc = final_results[pos_id]["local_contribution"] + final_results[pos_id]["fx_contribution"]
+                if component_sum_unalloc != 0:
+                    local_prop = final_results[pos_id]["local_contribution"] / component_sum_unalloc
+                    fx_prop = final_results[pos_id]["fx_contribution"] / component_sum_unalloc
+                    final_results[pos_id]["local_contribution"] += residual_for_pos * local_prop * 100
+                    final_results[pos_id]["fx_contribution"] += residual_for_pos * fx_prop * 100
 
     if emit.timeseries:
         final_results["timeseries"] = contrib_df[["date"] + position_ids].to_dict(orient="records")

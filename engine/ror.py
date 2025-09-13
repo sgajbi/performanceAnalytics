@@ -41,11 +41,14 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
     is_after_start = df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
     safe_division_mask = (denominator != zero) & is_after_start
 
-    if is_decimal_mode:
-        if safe_division_mask.any():
-            local_ror.loc[safe_division_mask] = numerator[safe_division_mask] / denominator[safe_division_mask]
-    else:
-        np.divide(numerator, denominator, out=local_ror, where=safe_division_mask)
+    # --- START FIX: Suppress expected division warnings ---
+    with np.errstate(divide='ignore', invalid='ignore'):
+        if is_decimal_mode:
+            if safe_division_mask.any():
+                local_ror.loc[safe_division_mask] = numerator[safe_division_mask] / denominator[safe_division_mask]
+        else:
+            np.divide(numerator, denominator, out=local_ror, where=safe_division_mask)
+    # --- END FIX ---
 
     # --- 2. Handle FX Decomposition if Activated ---
     result_df = pd.DataFrame(index=df.index)
@@ -54,39 +57,31 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
         fx_rates_df['date'] = pd.to_datetime(fx_rates_df['date'])
         fx_rates_df = fx_rates_df.set_index('date')['rate'].sort_index()
 
-        # Create a complete date range from one day before the first perf date to the last
         full_date_range = pd.date_range(
             start=df[PortfolioColumns.PERF_DATE.value].min() - pd.Timedelta(days=1),
             end=df[PortfolioColumns.PERF_DATE.value].max(),
             freq='D'
         )
-        # Reindex and forward-fill the rates to handle weekends/holidays
         all_rates = fx_rates_df.reindex(full_date_range).ffill()
 
-        # Map start and end rates to the performance dates
         df['start_rate'] = df[PortfolioColumns.PERF_DATE.value].apply(lambda x: all_rates.get(x - pd.Timedelta(days=1)))
         df['end_rate'] = df[PortfolioColumns.PERF_DATE.value].map(all_rates)
 
-        # Calculate FX return
         fx_ror = (df['end_rate'] / df['start_rate']) - 1
         fx_ror = fx_ror.fillna(0.0)
 
-        # --- START FIX: Apply Hedging ---
         if config.hedging and config.hedging.mode == "RATIO" and config.hedging.series:
             hedge_series_df = pd.DataFrame([s.model_dump() for s in config.hedging.series])
             if not hedge_series_df.empty:
                 hedge_series_df['date'] = pd.to_datetime(hedge_series_df['date'])
-                # Create a lookup map for hedge ratios by date (assuming single currency context for now)
                 hedge_map = hedge_series_df.set_index('date')['hedge_ratio']
                 hedge_ratios = df[PortfolioColumns.PERF_DATE.value].map(hedge_map).fillna(0.0)
                 fx_ror = fx_ror * (1.0 - hedge_ratios)
-        # --- END FIX ---
 
         result_df["local_ror"] = local_ror * hundred
         result_df["fx_ror"] = fx_ror.values * hundred
         result_df[PortfolioColumns.DAILY_ROR.value] = ((1 + local_ror) * (1 + fx_ror.values) - 1) * hundred
     else:
-        # Standard base-currency-only calculation
         result_df[PortfolioColumns.DAILY_ROR.value] = local_ror * hundred
 
     return result_df
@@ -159,7 +154,6 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
     block_ids = block_starts.cumsum()
 
     if is_decimal_mode:
-        # Slower path for Decimals, as cumprod is not supported
         def decimal_cumprod(series):
             result = series.copy()
             for i in range(1, len(series)):
@@ -167,7 +161,6 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
             return result
         cumulative_growth = growth_factor.groupby(block_ids, group_keys=False).apply(decimal_cumprod)
     else:
-        # Fast path for floats
         cumulative_growth = growth_factor.groupby(block_ids).cumprod()
 
     cumulative_ror = (cumulative_growth - one) * hundred
@@ -175,8 +168,6 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
         cumulative_ror *= -one
     leg_ror = cumulative_ror.where(is_leg_day)
 
-    # FIX: Suppress known FutureWarning from pandas on object-dtype Series.
-    # This warning is not an issue for our Decimal implementation.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
         filled_ror = leg_ror.ffill().fillna(zero)
