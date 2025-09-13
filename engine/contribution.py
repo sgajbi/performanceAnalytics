@@ -310,18 +310,30 @@ def calculate_position_contribution(
             c_fx_t = weight_t * fx_ror
             c_p_t = weight_t * pos_ror_t
 
-            smoothed_c, smoothed_local, smoothed_fx = c_p_t, c_local_t, c_fx_t
+            smoothed_c = c_p_t
+            smoothed_local = c_local_t
+            smoothed_fx = c_fx_t
 
             if smoothing.method == "CARINO":
                 ror_port_t = port_daily_ror.iloc[i]
                 k_t = k_daily.iloc[i]
                 adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
-                
-                total_raw_contrib = c_local_t + c_fx_t
-                if total_raw_contrib != 0:
-                    smoothed_local += adjustment * (c_local_t / total_raw_contrib)
-                    smoothed_fx += adjustment * (c_fx_t / total_raw_contrib)
                 smoothed_c += adjustment
+
+                # --- START FIX ---
+                # Distribute the total smoothed contribution proportionally
+                # This correctly handles both the cross-product and smoothing adjustment
+                arithmetic_sum_components = c_local_t + c_fx_t
+                if arithmetic_sum_components != 0:
+                    smoothed_local = smoothed_c * (c_local_t / arithmetic_sum_components)
+                    smoothed_fx = smoothed_c * (c_fx_t / arithmetic_sum_components)
+                elif smoothed_c != 0: # Handle zero arithmetic sum case
+                    smoothed_local = smoothed_c / 2.0
+                    smoothed_fx = smoothed_c / 2.0
+                else:
+                    smoothed_local = 0.0
+                    smoothed_fx = 0.0
+                # --- END FIX ---
 
 
             if port_row[PortfolioColumns.NIP.value] == 1 or port_row[PortfolioColumns.PERF_RESET.value] == 1:
@@ -379,14 +391,14 @@ def calculate_position_contribution(
             residual_for_pos = residual * weight_proportion
             final_results[pos_id]["total_contribution"] += residual_for_pos * 100
             
-            # --- FIX: Apply residual to components ---
             if config and config.currency_mode == "BOTH":
-                total_contrib_unalloc = final_results[pos_id]["total_contribution"] - (residual_for_pos * 100)
-                if total_contrib_unalloc != 0:
-                    local_prop = final_results[pos_id]["local_contribution"] / total_contrib_unalloc
-                    fx_prop = final_results[pos_id]["fx_contribution"] / total_contrib_unalloc
+                component_sum_unalloc = final_results[pos_id]["local_contribution"] + final_results[pos_id]["fx_contribution"]
+                if component_sum_unalloc != 0:
+                    local_prop = final_results[pos_id]["local_contribution"] / component_sum_unalloc
+                    fx_prop = final_results[pos_id]["fx_contribution"] / component_sum_unalloc
                     final_results[pos_id]["local_contribution"] += residual_for_pos * local_prop * 100
                     final_results[pos_id]["fx_contribution"] += residual_for_pos * fx_prop * 100
+
 
     if emit.timeseries:
         final_results["timeseries"] = contrib_df[["date"] + position_ids].to_dict(orient="records")
