@@ -98,13 +98,15 @@ def test_attribution_endpoint_currency_attribution(client):
         "linking": "none", "frequency": "daily", "currency_mode": "BOTH", "report_ccy": "USD",
         "portfolio_data": {
             "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "GROSS",
-            "period_type": "ITD", "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 101.0, "end_mv": 103.02}]
+            "period_type": "ITD",
+            # --- START FIX: Make portfolio total consistent with instrument total ---
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 103.02}]
+            # --- END FIX ---
         },
         "instruments_data": [{
             "instrument_id": "EUR_ASSET", "meta": {"currency": "EUR"},
             "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}] # 2% local return
         }],
-        # --- START MODIFICATION: Update benchmark data to provide decomposed returns ---
         "benchmark_groups_data": [{
             "key": {"currency": "EUR"}, "observations": [{
                 "date": "2025-01-01", "weight_bop": 1.0,
@@ -113,7 +115,6 @@ def test_attribution_endpoint_currency_attribution(client):
                 "return_base": 0.02515 # (1.015 * 1.01) - 1
             }]
         }],
-        # --- END MODIFICATION ---
         "fx": { "rates": [
             {"date": "2024-12-31", "ccy": "EUR", "rate": 1.00},
             {"date": "2025-01-01", "ccy": "EUR", "rate": 1.01} # 1% fx return

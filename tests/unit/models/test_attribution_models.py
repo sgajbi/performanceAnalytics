@@ -24,7 +24,9 @@ def test_attribution_request_by_instrument_validation():
             {
                 "key": {"assetClass": "Equity"},
                 "observations": [
-                    {"date": "2025-01-31", "return": 0.05, "weight_bop": 1.0}
+                    # --- START FIX: Use new BenchmarkObservation model fields ---
+                    {"date": "2025-01-31", "return_base": 0.05, "weight_bop": 1.0}
+                    # --- END FIX ---
                 ],
             }
         ],
