@@ -41,19 +41,23 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
     is_after_start = df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
     safe_division_mask = (denominator != zero) & is_after_start
 
-    # --- START FIX: Suppress expected division warnings ---
     with np.errstate(divide='ignore', invalid='ignore'):
         if is_decimal_mode:
             if safe_division_mask.any():
                 local_ror.loc[safe_division_mask] = numerator[safe_division_mask] / denominator[safe_division_mask]
         else:
             np.divide(numerator, denominator, out=local_ror, where=safe_division_mask)
-    # --- END FIX ---
 
     # --- 2. Handle FX Decomposition if Activated ---
     result_df = pd.DataFrame(index=df.index)
     if config and config.currency_mode and config.currency_mode != "BASE_ONLY" and config.fx:
         fx_rates_df = pd.DataFrame([rate.model_dump() for rate in config.fx.rates])
+        
+        # --- START FIX: Handle duplicate FX rate entries ---
+        if "date" in fx_rates_df.columns and "ccy" in fx_rates_df.columns:
+            fx_rates_df.drop_duplicates(subset=['date', 'ccy'], keep='last', inplace=True)
+        # --- END FIX ---
+
         fx_rates_df['date'] = pd.to_datetime(fx_rates_df['date'])
         fx_rates_df = fx_rates_df.set_index('date')['rate'].sort_index()
 

@@ -39,6 +39,11 @@ def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
         return pd.DataFrame()
     try:
         df = pd.DataFrame(daily_data)
+        # --- START FIX: Handle duplicate dates in input data ---
+        if "perf_date" in df.columns:
+            # Keep the last entry for any given date to allow for corrections
+            df.drop_duplicates(subset=['perf_date'], keep='last', inplace=True)
+        # --- END FIX ---
         return df
     except Exception as e:
         logger.exception("Failed to create DataFrame from daily data.")
