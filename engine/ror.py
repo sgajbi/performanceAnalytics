@@ -5,7 +5,7 @@ from decimal import Decimal
 import numpy as np
 import pandas as pd
 from engine.config import EngineConfig
-from engine.rules import calculate_initial_resets, calculate_nctrl4_reset
+from engine.rules import calculate_initial_resets, calculate_nctrl4_reset, calculate_sign
 from engine.schema import PortfolioColumns
 
 
@@ -70,6 +70,17 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
         # Calculate FX return
         fx_ror = (df['end_rate'] / df['start_rate']) - 1
         fx_ror = fx_ror.fillna(0.0)
+
+        # --- START FIX: Apply Hedging ---
+        if config.hedging and config.hedging.mode == "RATIO" and config.hedging.series:
+            hedge_series_df = pd.DataFrame([s.model_dump() for s in config.hedging.series])
+            if not hedge_series_df.empty:
+                hedge_series_df['date'] = pd.to_datetime(hedge_series_df['date'])
+                # Create a lookup map for hedge ratios by date (assuming single currency context for now)
+                hedge_map = hedge_series_df.set_index('date')['hedge_ratio']
+                hedge_ratios = df[PortfolioColumns.PERF_DATE.value].map(hedge_map).fillna(0.0)
+                fx_ror = fx_ror * (1.0 - hedge_ratios)
+        # --- END FIX ---
 
         result_df["local_ror"] = local_ror * hundred
         result_df["fx_ror"] = fx_ror.values * hundred
