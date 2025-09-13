@@ -28,11 +28,21 @@ The performance engine's behavior is controlled by a comprehensive and immutable
 ### Period Type
 
 The `period_type` defines how the engine resolves the effective start date for calculations. This is handled by `core/periods.py`.
-
 -   **`MTD`/`QTD`/`YTD`**: Standard calendar month-to-date, quarter-to-date, and year-to-date.
 -   **`ITD`**: Inception-to-date, starting from `performance_start_date`.
 -   **`Y1`/`Y3`/`Y5`**: Rolling 1, 3, or 5-year periods ending on `report_end_date`.
 -   **`EXPLICIT`**: Uses the `report_start_date` provided in the request.
+
+---
+
+## Multi-Currency Parameters
+
+These parameters activate and control the FX-aware analytics.
+
+-   **`currency_mode`**: A string that can be `"BASE_ONLY"` (default), `"LOCAL_ONLY"`, or `"BOTH"`. Setting to `"BOTH"` enables the full local/fx/base return decomposition.
+-   **`report_ccy`**: The three-letter ISO code for the portfolio's base reporting currency (e.g., `"USD"`). Required when `currency_mode` is not `"BASE_ONLY"`.
+-   **`fx`**: An object containing the client-supplied FX rates. The engine uses this data to calculate daily FX returns.
+-   **`hedging`**: An optional object containing the client-supplied hedging strategy, such as a daily `hedge_ratio` to model the net effect of currency hedges.
 
 ---
 
@@ -66,7 +76,6 @@ These parameters are part of the unified API envelope and influence engine behav
 ## Diagnostics & Audit
 
 All engine calculations are designed to emit diagnostic and audit information, which is surfaced in the final API response.
-
 -   **Diagnostics**:
     -   `nip_days`: Count of days flagged as No-Investment-Periods.
     -   `reset_days`: Count of days where performance compounding was reset.
@@ -74,3 +83,4 @@ All engine calculations are designed to emit diagnostic and audit information, w
 -   **Audit**:
     -   `sum_of_parts_vs_total_bp`: For contribution and attribution, this shows the residual between the sum of component effects and the total portfolio effect, measured in basis points.
     -   `counts`: Key metrics about the input data, such as the number of rows processed or positions analyzed.
+````
