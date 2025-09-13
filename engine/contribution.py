@@ -58,10 +58,14 @@ def _calculate_daily_instrument_contributions(
         
         adjustment_factor = df["daily_weight"] * (df["R_port_t"] * ((df["K_total"] / df["k_t"]) - 1))
         
-        # Apply smoothing to all components
-        df["smoothed_local_contribution"] = df["raw_local_contribution"]
-        df["smoothed_fx_contribution"] = df["raw_fx_contribution"]
+        # --- START FIX ---
+        # Calculate total smoothed contribution first
         df["smoothed_contribution"] = df["raw_contribution"] + adjustment_factor.fillna(0.0)
+        # Local contribution is the pure, unadjusted raw local contribution
+        df["smoothed_local_contribution"] = df["raw_local_contribution"]
+        # FX contribution is the residual, absorbing the cross-product and smoothing effects
+        df["smoothed_fx_contribution"] = df["smoothed_contribution"] - df["smoothed_local_contribution"]
+        # --- END FIX ---
     else:
         df["smoothed_local_contribution"] = df["raw_local_contribution"]
         df["smoothed_fx_contribution"] = df["raw_fx_contribution"]
@@ -169,7 +173,14 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[D
 
     if total_avg_weight != 0 and request.smoothing.method == "CARINO":
         totals["weight_proportion"] = totals["weight_avg"] / total_avg_weight
+        # Distribute residual to all components proportionally to maintain additivity
+        residual_local = residual * (totals["local_contribution"].sum() / sum_of_contributions if sum_of_contributions != 0 else 0)
+        residual_fx = residual * (totals["fx_contribution"].sum() / sum_of_contributions if sum_of_contributions != 0 else 0)
+        
         totals["contribution"] += residual * totals["weight_proportion"]
+        totals["local_contribution"] += residual_local * totals["weight_proportion"]
+        totals["fx_contribution"] += residual_fx * totals["weight_proportion"]
+
 
     # Merge metadata back in for grouping, ensuring columns are unique
     temp_meta_cols = ["position_id"] + request.hierarchy
@@ -303,38 +314,25 @@ def calculate_position_contribution(
             pos_ror_t = position_results_map[pos_id].iloc[i][PortfolioColumns.DAILY_ROR.value] / 100
             weight_t = daily_weights.get(pos_id, 0.0)
             
-            # Decomposed contributions
             local_ror = position_results_map[pos_id].iloc[i].get("local_ror", pos_ror_t * 100) / 100
-            fx_ror = position_results_map[pos_id].iloc[i].get("fx_ror", 0.0) / 100
             c_local_t = weight_t * local_ror
-            c_fx_t = weight_t * fx_ror
             c_p_t = weight_t * pos_ror_t
 
             smoothed_c = c_p_t
             smoothed_local = c_local_t
-            smoothed_fx = c_fx_t
-
+            
             if smoothing.method == "CARINO":
                 ror_port_t = port_daily_ror.iloc[i]
                 k_t = k_daily.iloc[i]
                 adjustment = weight_t * (ror_port_t * ((K_total / k_t) - 1)) if k_t != 0 else 0.0
                 smoothed_c += adjustment
 
-                # --- START FIX ---
-                # Distribute the total smoothed contribution proportionally
-                # This correctly handles both the cross-product and smoothing adjustment
-                arithmetic_sum_components = c_local_t + c_fx_t
-                if arithmetic_sum_components != 0:
-                    smoothed_local = smoothed_c * (c_local_t / arithmetic_sum_components)
-                    smoothed_fx = smoothed_c * (c_fx_t / arithmetic_sum_components)
-                elif smoothed_c != 0: # Handle zero arithmetic sum case
-                    smoothed_local = smoothed_c / 2.0
-                    smoothed_fx = smoothed_c / 2.0
-                else:
-                    smoothed_local = 0.0
-                    smoothed_fx = 0.0
-                # --- END FIX ---
-
+            # --- START FIX ---
+            # Local contribution is the pure, unadjusted raw local contribution.
+            smoothed_local = c_local_t
+            # FX contribution is the residual, absorbing the cross-product and smoothing effects.
+            smoothed_fx = smoothed_c - smoothed_local
+            # --- END FIX ---
 
             if port_row[PortfolioColumns.NIP.value] == 1 or port_row[PortfolioColumns.PERF_RESET.value] == 1:
                 smoothed_c, smoothed_local, smoothed_fx = 0.0, 0.0, 0.0
@@ -389,16 +387,16 @@ def calculate_position_contribution(
         for pos_id in position_ids:
             weight_proportion = final_results[pos_id]["average_weight"] / sum_of_weights
             residual_for_pos = residual * weight_proportion
+            
+            # Distribute residual to all components proportionally to maintain additivity
+            total_contrib_unalloc = final_results[pos_id]["total_contribution"]
             final_results[pos_id]["total_contribution"] += residual_for_pos * 100
             
-            if config and config.currency_mode == "BOTH":
-                component_sum_unalloc = final_results[pos_id]["local_contribution"] + final_results[pos_id]["fx_contribution"]
-                if component_sum_unalloc != 0:
-                    local_prop = final_results[pos_id]["local_contribution"] / component_sum_unalloc
-                    fx_prop = final_results[pos_id]["fx_contribution"] / component_sum_unalloc
-                    final_results[pos_id]["local_contribution"] += residual_for_pos * local_prop * 100
-                    final_results[pos_id]["fx_contribution"] += residual_for_pos * fx_prop * 100
-
+            if config and config.currency_mode == "BOTH" and total_contrib_unalloc != 0:
+                local_prop = final_results[pos_id]["local_contribution"] / total_contrib_unalloc
+                fx_prop = final_results[pos_id]["fx_contribution"] / total_contrib_unalloc
+                final_results[pos_id]["local_contribution"] += residual_for_pos * local_prop * 100
+                final_results[pos_id]["fx_contribution"] += residual_for_pos * fx_prop * 100
 
     if emit.timeseries:
         final_results["timeseries"] = contrib_df[["date"] + position_ids].to_dict(orient="records")
