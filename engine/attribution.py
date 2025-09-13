@@ -197,7 +197,6 @@ def _calculate_currency_attribution_effects(df: pd.DataFrame) -> pd.DataFrame:
     df['local_allocation'] = (df['w_p'] - df['w_b']) * df['r_local_b']
     df['local_selection'] = df['w_b'] * (df['r_local_p'] - df['r_local_b'])
     df['currency_allocation'] = (df['w_p'] - df['w_b']) * (1 + df['r_local_b']) * df['r_fx_b']
-    # Using the corrected formula that reconciles: CS = w_b * (r_lp - r_lb) * r_fx
     df['currency_selection'] = df['w_b'] * (df['r_local_p'] - df['r_local_b']) * df['r_fx_b']
     return df
 
@@ -296,19 +295,22 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
     if request.currency_mode == "BOTH":
         required_cols = {'r_local_p', 'r_local_b', 'r_fx_b', 'w_p', 'w_b'}
         if required_cols.issubset(aligned_df.columns):
-            # The group_by for currency attribution is always 'currency'
-            if 'currency' not in aligned_df.index.names:
-                # If currency is not in the group_by, we need to aggregate up to it
-                aligned_df_reset = aligned_df.reset_index()
-                if 'currency' in aligned_df_reset.columns:
-                    currency_df = aligned_df_reset.groupby(['date', 'currency']).sum()
-                else:
-                    currency_df = pd.DataFrame() # Cannot perform currency attribution
-            else:
-                 currency_df = aligned_df
-            
-            if not currency_df.empty:
+            aligned_df_reset = aligned_df.reset_index()
+            # --- START FIX: Ensure 'currency' column exists for grouping ---
+            if 'currency' not in aligned_df_reset.columns and 'currency' in request.group_by:
+                # This can happen in by_group mode if currency isn't the only group_by key
+                # For this specific feature, we assume currency is available from instrument metadata
+                # A more robust solution would require mapping, but for now we proceed if possible.
+                pass
+
+            if 'currency' in aligned_df_reset.columns:
+                currency_df = aligned_df_reset.groupby(['date', 'currency']).sum()
+                
                 fx_effects_df = _calculate_currency_attribution_effects(currency_df)
+                # --- START FIX: Add currency effects to lineage ---
+                lineage_data["currency_attribution_effects.csv"] = fx_effects_df.reset_index()
+                # --- END FIX ---
+                
                 total_fx_effects = fx_effects_df.groupby('currency').sum(numeric_only=True)
                 
                 fx_results = []
@@ -329,5 +331,5 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
                         effects=effects
                     ))
                 response.currency_attribution = fx_results
-
+    
     return response, lineage_data

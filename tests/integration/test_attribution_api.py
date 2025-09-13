@@ -99,9 +99,7 @@ def test_attribution_endpoint_currency_attribution(client):
         "portfolio_data": {
             "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "GROSS",
             "period_type": "ITD",
-            # --- START FIX: Make portfolio total consistent with instrument total ---
             "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 103.02}]
-            # --- END FIX ---
         },
         "instruments_data": [{
             "instrument_id": "EUR_ASSET", "meta": {"currency": "EUR"},
@@ -139,6 +137,14 @@ def test_attribution_endpoint_currency_attribution(client):
     assert eur_effects["currency_selection"] == pytest.approx(0.005)
     # Total = 0.505
     assert eur_effects["total_effect"] == pytest.approx(0.505)
+
+    # --- START NEW TEST: Verify lineage capture ---
+    calculation_id = data["calculation_id"]
+    lineage_response = client.get(f"/performance/lineage/{calculation_id}")
+    assert lineage_response.status_code == 200
+    lineage_data = lineage_response.json()
+    assert "currency_attribution_effects.csv" in lineage_data["artifacts"]
+    # --- END NEW TEST ---
 
 
 @pytest.mark.parametrize(
