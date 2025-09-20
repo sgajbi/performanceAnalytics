@@ -1,25 +1,28 @@
 # adapters/api_adapter.py
 import logging
 from typing import Any, Dict, List
+from datetime import date
 
 import pandas as pd
 from app.models.requests import PerformanceRequest
-from app.models.responses import PerformanceBreakdown, PerformanceResultItem, PerformanceSummary
-from common.enums import Frequency
+from app.models.responses import PerformanceBreakdown, PerformanceResultItem, PerformanceSummary, SinglePeriodPerformanceResult
+from common.enums import Frequency, PeriodType
 from engine.config import EngineConfig, PrecisionMode
 from engine.schema import PortfolioColumns
 
 logger = logging.getLogger(__name__)
 
 
-def create_engine_config(request: PerformanceRequest) -> EngineConfig:
-    """Creates an EngineConfig object from an API PerformanceRequest."""
+def create_engine_config(
+    request: PerformanceRequest, effective_start_date: date, effective_end_date: date
+) -> EngineConfig:
+    """Creates an EngineConfig object from an API PerformanceRequest and an effective date range."""
     return EngineConfig(
         performance_start_date=request.performance_start_date,
-        report_start_date=request.report_start_date,
-        report_end_date=request.report_end_date,
+        report_start_date=effective_start_date,
+        report_end_date=effective_end_date,
         metric_basis=request.metric_basis,
-        period_type=request.period_type,
+        period_type=PeriodType.EXPLICIT,  # The engine now always runs on an explicit range
         rounding_precision=request.rounding_precision,
         precision_mode=PrecisionMode(request.precision_mode),
         data_policy=request.data_policy,
@@ -42,7 +45,7 @@ def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
         # --- START FIX: Handle duplicate dates in input data ---
         if "perf_date" in df.columns:
             # Keep the last entry for any given date to allow for corrections
-            df.drop_duplicates(subset=['perf_date'], keep='last', inplace=True)
+            df.drop_duplicates(subset=["perf_date"], keep="last", inplace=True)
         # --- END FIX ---
         return df
     except Exception as e:

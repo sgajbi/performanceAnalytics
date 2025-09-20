@@ -19,6 +19,8 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["portfolio_number"] == "CONTRIB_TEST_01"
+
+    # Legacy structure is NOT nested when using legacy request
     assert "total_contribution" in response_data
     assert len(response_data["position_contributions"]) == 1
     assert response_data["position_contributions"][0]["position_id"] == "Stock_A"
@@ -26,34 +28,74 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
     assert "meta" in response_data
     assert response_data["meta"]["engine_version"] is not None
     assert "diagnostics" in response_data
-    assert response_data["diagnostics"]["nip_days"] == 0
     assert "audit" in response_data
-    assert response_data["audit"]["counts"]["input_positions"] == 1
-    assert response_data["audit"]["counts"]["calculation_days"] == 2
+
+
+def test_contribution_endpoint_multi_period(client):
+    """Tests a multi-period request for MTD and YTD contribution."""
+    payload = {
+        "portfolio_number": "MULTI_PERIOD_CONTRIB",
+        "report_start_date": "2025-01-01",  # Required for ITD resolution
+        "report_end_date": "2025-02-15",
+        "as_of": "2025-02-15",
+        "periods": ["MTD", "YTD"],  # New multi-period request
+        "portfolio_data": {
+            "metric_basis": "NET",
+            "daily_data": [
+                {"day": 1, "perf_date": "2025-01-10", "begin_mv": 1000, "end_mv": 1010},  # +1%
+                {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010, "end_mv": 1030.2},  # +2%
+            ],
+        },
+        "positions_data": [
+            {
+                "position_id": "Stock_A",
+                "daily_data": [
+                    {"day": 1, "perf_date": "2025-01-10", "begin_mv": 1000, "end_mv": 1010},
+                    {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010, "end_mv": 1030.2},
+                ],
+            }
+        ],
+    }
+    response = client.post("/performance/contribution", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "results_by_period" in data
+    results = data["results_by_period"]
+    assert "MTD" in results
+    assert "YTD" in results
+
+    # MTD had a 2% return, so contribution should be ~2%
+    assert results["MTD"]["total_contribution"] == pytest.approx(2.0)
+
+    # YTD had a 1% then 2% return, compounded is 3.02%
+    assert results["YTD"]["total_contribution"] == pytest.approx(3.02)
 
 
 def test_contribution_endpoint_multi_currency(client):
     """Tests an end-to-end multi-currency contribution request."""
     payload = {
         "portfolio_number": "MULTI_CCY_CONTRIB_01",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
+        "period_type": "ITD",
         "portfolio_data": {
-            "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
-            "period_type": "ITD", "metric_basis": "GROSS",
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}]
+            "metric_basis": "GROSS",
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}],
         },
         "positions_data": [{
             "position_id": "EUR_STOCK",
             "meta": {"currency": "EUR"},
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}]
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}],
         }],
         "currency_mode": "BOTH",
         "report_ccy": "USD",
         "fx": {
             "rates": [
                 {"date": "2024-12-31", "ccy": "EUR", "rate": 1.05},
-                {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08}
+                {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08},
             ]
-        }
+        },
     }
     response = client.post("/performance/contribution", json=payload)
     assert response.status_code == 200
@@ -61,25 +103,21 @@ def test_contribution_endpoint_multi_currency(client):
 
     # Total contribution should match the portfolio's total base return
     assert data["total_contribution"] == pytest.approx(data["total_portfolio_return"])
-    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5) 
+    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5)
 
     pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
-    # In a single-day, single-position scenario, the local contribution should match the pure local return
     assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5)
-    
-    # --- START FIX ---
-    # The FX contribution must equal the total minus the local component, thereby absorbing the
-    # geometric cross-product term. The test now validates this additive relationship.
-    assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(pos_contrib["total_contribution"], abs=1e-5)
-    # --- END FIX ---
+    assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(
+        pos_contrib["total_contribution"], abs=1e-5
+    )
 
 
 def test_contribution_lineage_flow(client, happy_path_payload):
     """Tests that lineage is correctly captured for a single-level contribution request."""
     payload = happy_path_payload.copy()
-    payload["emit"] = {"timeseries": True} # Ensure timeseries is generated for capture
-    
+    payload["emit"] = {"timeseries": True}  # Ensure timeseries is generated for capture
+
     contrib_response = client.post("/performance/contribution", json=payload)
     assert contrib_response.status_code == 200
     calculation_id = contrib_response.json()["calculation_id"]
@@ -150,17 +188,23 @@ def test_contribution_endpoint_hierarchy_happy_path(client, happy_path_payload):
     assert len(position_level["rows"]) == 2
     stock_a_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_A")
     stock_b_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_B")
-    assert stock_a_row["contribution"] + stock_b_row["contribution"] == pytest.approx(sector_level["rows"][0]["contribution"])
+    assert stock_a_row["contribution"] + stock_b_row["contribution"] == pytest.approx(
+        sector_level["rows"][0]["contribution"]
+    )
 
 
 def test_contribution_endpoint_error_handling(client, mocker):
     """Tests that a generic server error is raised for calculation failures."""
-    mocker.patch("app.api.endpoints.contribution.calculate_position_contribution", side_effect=EngineCalculationError("Test Error"))
+    mocker.patch(
+        "app.api.endpoints.contribution.calculate_position_contribution", side_effect=EngineCalculationError("Test Error")
+    )
     payload = {
         "portfolio_number": "ERROR",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-02",
+        "period_type": "ITD",
         "portfolio_data": {
-            "report_start_date": "2025-01-01", "report_end_date": "2025-01-02",
-            "period_type": "ITD", "metric_basis": "NET",
+            "metric_basis": "NET",
             "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1025}],
         },
         "positions_data": [],

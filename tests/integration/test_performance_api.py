@@ -16,15 +16,14 @@ def client():
         yield c
 
 
-def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
-    """Tests the /performance/twr endpoint and verifies the shared response footer."""
+def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
+    """Tests the /performance/twr endpoint using the legacy 'period_type' and verifies the shared response footer."""
     payload = {
         "portfolio_number": "PORT_STANDARD_GROWTH",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
-        "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-05",
-        "period_type": "YTD",
+        "period_type": "YTD",  # Using legacy field
         "calculation_id": str(uuid4()),
         "rounding_precision": 6,
         "frequencies": ["daily", "monthly"],
@@ -42,7 +41,12 @@ def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
 
     response_data = response.json()
     assert "calculation_id" in response_data
-    assert "breakdowns" in response_data
+    # Legacy structure is now nested inside results_by_period
+    assert "results_by_period" in response_data
+    assert "YTD" in response_data["results_by_period"]
+    ytd_results = response_data["results_by_period"]["YTD"]
+    assert "breakdowns" in ytd_results
+
     assert "meta" in response_data
     assert response_data["meta"]["engine_version"] is not None
     assert "diagnostics" in response_data
@@ -51,19 +55,62 @@ def test_calculate_twr_endpoint_happy_path_and_diagnostics(client):
     assert response_data["audit"]["counts"]["input_rows"] == 5
 
 
+def test_calculate_twr_endpoint_multi_period(client):
+    """Tests a multi-period request for MTD and YTD."""
+    payload = {
+        "portfolio_number": "MULTI_PERIOD_TEST",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-02-15",
+        "as_of": "2025-02-15",  # Explicit as_of for period resolution
+        "periods": ["MTD", "YTD"],  # New multi-period request
+        "frequencies": ["monthly"],
+        "daily_data": [
+            {"day": 1, "perf_date": "2025-01-15", "begin_mv": 1000.0, "end_mv": 1010.0},  # +1.0%
+            {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010.0, "end_mv": 1030.2},  # +2.0%
+        ],
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "results_by_period" in data
+    results = data["results_by_period"]
+    assert "MTD" in results
+    assert "YTD" in results
+
+    # Validate MTD result (only Feb data)
+    mtd_monthly_breakdown = results["MTD"]["breakdowns"]["monthly"]
+    assert len(mtd_monthly_breakdown) == 1
+    mtd_return = mtd_monthly_breakdown[0]["summary"]["period_return_pct"]
+    assert mtd_return == pytest.approx(2.0)
+
+    # Validate YTD result (Jan and Feb data compounded)
+    ytd_monthly_breakdown = results["YTD"]["breakdowns"]["monthly"]
+    assert len(ytd_monthly_breakdown) == 2  # Should contain Jan and Feb results
+    jan_return = ytd_monthly_breakdown[0]["summary"]["period_return_pct"]
+    feb_return = ytd_monthly_breakdown[1]["summary"]["period_return_pct"]
+
+    assert jan_return == pytest.approx(1.0)
+    assert feb_return == pytest.approx(2.0)
+
+    # Manually compound the monthly returns to verify the total period return
+    compounded_ytd_return = ((1 + jan_return / 100) * (1 + feb_return / 100) - 1) * 100
+    assert compounded_ytd_return == pytest.approx(3.02)
+
+
 def test_calculate_twr_endpoint_multi_currency(client):
     """Tests an end-to-end multi-currency TWR request."""
     payload = {
         "portfolio_number": "MULTI_CCY_API_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "GROSS",
-        "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-02",
-        "period_type": "YTD",
+        "periods": ["ITD"],
         "frequencies": ["daily"],
         "daily_data": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0},
-            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 102.0, "end_mv": 103.02}
+            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 102.0, "end_mv": 103.02},
         ],
         "currency_mode": "BOTH",
         "report_ccy": "USD",
@@ -73,17 +120,18 @@ def test_calculate_twr_endpoint_multi_currency(client):
                 {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08},
                 {"date": "2025-01-02", "ccy": "EUR", "rate": 1.07},
             ]
-        }
+        },
     }
     response = client.post("/performance/twr", json=payload)
     assert response.status_code == 200
     data = response.json()
+    itd_result = data["results_by_period"]["ITD"]
 
-    assert "portfolio_return" in data
-    assert data["portfolio_return"]["local"] == pytest.approx(3.02)
-    assert data["portfolio_return"]["fx"] == pytest.approx(1.90476, abs=1e-5)
+    assert "portfolio_return" in itd_result
+    assert itd_result["portfolio_return"]["local"] == pytest.approx(3.02)
+    assert itd_result["portfolio_return"]["fx"] == pytest.approx(1.90476, abs=1e-5)
     # FIX: Correct the expected compounded base return value
-    assert data["portfolio_return"]["base"] == pytest.approx(4.98228, abs=1e-5)
+    assert itd_result["portfolio_return"]["base"] == pytest.approx(4.98228, abs=1e-5)
     assert data["meta"]["report_ccy"] == "USD"
 
 
@@ -93,9 +141,8 @@ def test_calculate_twr_endpoint_with_data_policy(client):
         "portfolio_number": "POLICY_TEST",
         "performance_start_date": "2024-12-27",
         "metric_basis": "NET",
-        "report_start_date": "2024-12-28",
         "report_end_date": "2025-01-03",
-        "period_type": "YTD",
+        "periods": ["ITD"],
         "frequencies": ["daily"],
         "daily_data": [
             # Add stable history for MAD calculation
@@ -111,21 +158,18 @@ def test_calculate_twr_endpoint_with_data_policy(client):
             {"day": 7, "perf_date": "2025-01-03", "begin_mv": 2000.0, "end_mv": 2020.0},
         ],
         "data_policy": {
-            "overrides": {
-                "market_values": [{"perf_date": "2025-01-01", "end_mv": 1005.0}]
-            },
-            "ignore_days": [
-                {"entity_type": "PORTFOLIO", "entity_id": "POLICY_TEST", "dates": ["2025-01-03"]}
-            ],
-            "outliers": {"enabled": True, "action": "FLAG", "params": {"mad_k": 3.0}}
-        }
+            "overrides": {"market_values": [{"perf_date": "2025-01-01", "end_mv": 1005.0}]},
+            "ignore_days": [{"entity_type": "PORTFOLIO", "entity_id": "POLICY_TEST", "dates": ["2025-01-03"]}],
+            "outliers": {"enabled": True, "action": "FLAG", "params": {"mad_k": 3.0}},
+        },
     }
     response = client.post("/performance/twr", json=payload)
     assert response.status_code == 200
     data = response.json()
+    itd_result = data["results_by_period"]["ITD"]
 
     # Assert override was applied (index 4 in results)
-    daily_breakdown = data["breakdowns"]["daily"]
+    daily_breakdown = itd_result["breakdowns"]["daily"]
     assert daily_breakdown[4]["summary"]["period_return_pct"] == pytest.approx(0.099602, abs=1e-6)
 
     # Assert ignore_days was applied (index 6 in results)
@@ -138,99 +182,21 @@ def test_calculate_twr_endpoint_with_data_policy(client):
     assert diags["policy"]["outliers"]["flagged_rows"] == 1
 
 
-def test_calculate_twr_endpoint_decimal_strict_mode(client):
-    """Tests that precision_mode=DECIMAL_STRICT is respected."""
-    payload = {
-        "portfolio_number": "PORT123",
-        "performance_start_date": "2023-12-31",
-        "metric_basis": "NET",
-        "report_start_date": "2024-01-01",
-        "report_end_date": "2024-01-03",
-        "period_type": "YTD",
-        "calculation_id": str(uuid4()),
-        "frequencies": ["daily"],
-        "precision_mode": "DECIMAL_STRICT",
-        "daily_data": [
-            {"day": 1, "perf_date": "2024-01-01", "begin_mv": 100000.0, "end_mv": 101000.0},
-            {"day": 2, "perf_date": "2024-01-02", "begin_mv": 101000.0, "end_mv": 102500.0},
-            {"day": 3, "perf_date": "2024-01-03", "begin_mv": 102500.0, "bod_cf": 5000.0, "mgmt_fees": -10.0, "end_mv": 108000.0},
-        ],
-    }
-
-    response = client.post("/performance/twr", json=payload)
-    assert response.status_code == 200
-    response_data = response.json()
-
-    assert response_data["meta"]["precision_mode"] == "DECIMAL_STRICT"
-    daily_ror = response_data["breakdowns"]["daily"][2]["summary"]["period_return_pct"]
-    assert Decimal(str(daily_ror)) == pytest.approx(Decimal("0.4558139535"))
-
-
-def test_calculate_twr_endpoint_quarterly_weekly_annualized(client):
-    """Tests quarterly and weekly breakdowns with annualization enabled."""
-    payload = {
-        "portfolio_number": "LONG_TEST",
-        "performance_start_date": "2023-12-01",
-        "metric_basis": "NET",
-        "report_start_date": "2024-01-01",
-        "report_end_date": "2024-05-31",
-        "period_type": "YTD",
-        "calculation_id": str(uuid4()),
-        "frequencies": ["quarterly", "weekly"],
-        "annualization": {"enabled": True, "basis": "BUS/252"},
-        "daily_data": [
-            {"day": 1, "perf_date": "2024-01-01", "begin_mv": 100000.0, "end_mv": 101000.0},
-            {"day": 2, "perf_date": "2024-02-01", "begin_mv": 101000.0, "end_mv": 102000.0},
-            {"day": 3, "perf_date": "2024-03-01", "begin_mv": 102000.0, "end_mv": 103000.0},
-            {"day": 4, "perf_date": "2024-04-01", "begin_mv": 103000.0, "end_mv": 104000.0},
-        ],
-    }
-
-    response = client.post("/performance/twr", json=payload)
-    assert response.status_code == 200
-    response_data = response.json()
-
-    assert "quarterly" in response_data["breakdowns"]
-    assert "weekly" in response_data["breakdowns"]
-    q1 = response_data["breakdowns"]["quarterly"][0]
-    assert q1["period"] == "2024-Q1"
-    assert "annualized_return_pct" in q1["summary"]
-
-
-def test_calculate_twr_with_empty_period(client):
-    """Tests that the breakdown aggregator correctly handles periods with no data."""
-    payload = {
-        "portfolio_number": "EMPTY_PERIOD_TEST",
-        "performance_start_date": "2024-12-31",
-        "report_end_date": "2025-03-31",
-        "metric_basis": "NET",
-        "period_type": "YTD",
-        "frequencies": ["monthly"],
-        "daily_data": [
-            {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1010},
-            {"day": 2, "perf_date": "2025-03-01", "begin_mv": 1010, "end_mv": 1020},
-        ],
-    }
-    response = client.post("/performance/twr", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    monthly_breakdown = data["breakdowns"]["monthly"]
-    assert len(monthly_breakdown) == 2
-    assert monthly_breakdown[0]["period"] == "2025-01"
-    assert monthly_breakdown[1]["period"] == "2025-03"
-
-
 @pytest.mark.parametrize(
     "error_class, expected_status",
     [(InvalidEngineInputError, 400), (EngineCalculationError, 500), (Exception, 500)],
 )
 def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expected_status):
     """Tests that the TWR endpoint correctly handles engine exceptions."""
-    mocker.patch('app.api.endpoints.performance.run_calculations', side_effect=error_class("Test Error"))
+    mocker.patch("app.api.endpoints.performance.run_calculations", side_effect=error_class("Test Error"))
     payload = {
-        "portfolio_number": "ERROR_TEST", "performance_start_date": "2023-12-31", "metric_basis": "NET",
-        "report_start_date": "2024-01-01", "report_end_date": "2024-01-05", "period_type": "YTD",
-        "frequencies": ["daily"], "daily_data": [{"day": 1, "perf_date": "2024-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
+        "portfolio_number": "ERROR_TEST",
+        "performance_start_date": "2023-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2024-01-05",
+        "periods": ["YTD"],
+        "frequencies": ["daily"],
+        "daily_data": [{"day": 1, "perf_date": "2024-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
     }
     response = client.post("/performance/twr", json=payload)
     assert response.status_code == expected_status

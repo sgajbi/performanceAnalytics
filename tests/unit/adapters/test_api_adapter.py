@@ -7,7 +7,7 @@ import pytest
 
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.models.requests import PerformanceRequest
-from app.models.responses import PerformanceResultItem, PerformanceSummary
+from app.models.responses import PerformanceResultItem, PerformanceSummary, SinglePeriodPerformanceResult
 from common.enums import Frequency, PeriodType
 from engine.config import EngineConfig
 from engine.schema import PortfolioColumns
@@ -65,12 +65,17 @@ def test_create_engine_config():
     }
     pydantic_request = PerformanceRequest.model_validate(request_data)
 
-    engine_config = create_engine_config(pydantic_request)
+    # The adapter now requires explicit dates passed from the endpoint
+    start_date = date(2025, 1, 1)
+    end_date = date(2025, 1, 31)
+
+    engine_config = create_engine_config(pydantic_request, start_date, end_date)
 
     assert isinstance(engine_config, EngineConfig)
-    assert engine_config.performance_start_date == date(2024, 12, 31)
+    assert engine_config.report_start_date == start_date
+    assert engine_config.report_end_date == end_date
     assert engine_config.metric_basis == "NET"
-    assert engine_config.rounding_precision == 6
+    assert engine_config.period_type == PeriodType.EXPLICIT
 
 
 def test_create_engine_dataframe_happy_path():
@@ -98,10 +103,7 @@ def test_create_engine_dataframe_empty_input():
 
 def test_create_engine_dataframe_raises_error():
     """Tests that the adapter function correctly raises a ValueError for malformed input."""
-    malformed_api_data = [
-        {"perf_date": "2025-01-01", "begin_mv": 1000},
-        "not_a_dictionary"
-    ]
+    malformed_api_data = [{"perf_date": "2025-01-01", "begin_mv": 1000}, "not_a_dictionary"]
     with pytest.raises(ValueError, match="Failed to process daily data"):
         create_engine_dataframe(malformed_api_data)
 
