@@ -13,11 +13,9 @@ from app.models.attribution_responses import (
     AttributionGroupResult,
     AttributionLevelResult,
     AttributionLevelTotals,
-    AttributionResponse,
     Reconciliation,
     CurrencyAttributionResult,
     CurrencyAttributionEffects,
-    CurrencyAttributionTotals,
     SinglePeriodAttributionResult,
 )
 from common.enums import AttributionMode, LinkingMethod
@@ -262,16 +260,43 @@ def aggregate_attribution_results(
     levels.reverse() 
     final_totals = levels[0].totals if levels else AttributionLevelTotals(allocation=0, selection=0, interaction=0, total_effect=0)
 
-    reconciliation = Reconciliation(
-        total_active_return=active_return * 100,
-        sum_of_effects=final_totals.total_effect,
-        residual=(active_return * 100) - final_totals.total_effect
-    )
-    
     period_result = SinglePeriodAttributionResult(
         levels=levels,
-        reconciliation=reconciliation
+        reconciliation=Reconciliation(
+            total_active_return=active_return * 100,
+            sum_of_effects=final_totals.total_effect,
+            residual=(active_return * 100) - final_totals.total_effect
+        )
     )
+    
+    # --- FIX START: Move currency attribution logic here ---
+    if request.currency_mode == "BOTH":
+        required_cols = {'r_local_p', 'r_local_b', 'r_fx_b', 'w_p', 'w_b'}
+        effects_df_reset = effects_df.reset_index()
+        if required_cols.issubset(effects_df.columns) and 'currency' in effects_df_reset.columns:
+            currency_df = effects_df_reset.groupby(['date', 'currency']).sum(numeric_only=True)
+            fx_effects_df = _calculate_currency_attribution_effects(currency_df)
+            total_fx_effects = fx_effects_df.groupby('currency').sum(numeric_only=True)
+            
+            fx_results = []
+            for currency, row in total_fx_effects.iterrows():
+                avg_weights = currency_df.loc[currency_df.index.get_level_values('currency') == currency][['w_p', 'w_b']].mean()
+                effects_sum = row['local_allocation'] + row['local_selection'] + row['currency_allocation'] + row['currency_selection']
+                effects = CurrencyAttributionEffects(
+                    local_allocation=row['local_allocation'] * 100,
+                    local_selection=row['local_selection'] * 100,
+                    currency_allocation=row['currency_allocation'] * 100,
+                    currency_selection=row['currency_selection'] * 100,
+                    total_effect=effects_sum * 100
+                )
+                fx_results.append(CurrencyAttributionResult(
+                    currency=currency,
+                    weight_portfolio_avg=avg_weights['w_p'] * 100,
+                    weight_benchmark_avg=avg_weights['w_b'] * 100,
+                    effects=effects
+                ))
+            period_result.currency_attribution = fx_results
+    # --- FIX END ---
 
     return period_result
 

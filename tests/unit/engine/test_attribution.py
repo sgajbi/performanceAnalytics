@@ -9,7 +9,7 @@ from engine.attribution import (
     _align_and_prepare_data,
     run_attribution_calculations,
     _prepare_data_from_instruments,
-    _link_effects_top_down,
+    aggregate_attribution_results,
 )
 from app.models.attribution_requests import AttributionRequest
 
@@ -30,12 +30,12 @@ def by_group_request_data():
         "portfolio_number": "ATTRIB_UNIT_TEST_01", "mode": "by_group", "group_by": ["sector"], "model": "BF", "linking": "carino", "frequency": "monthly",
         "report_start_date": "2025-01-01", "report_end_date": "2025-02-28", "period_type": "ITD",
         "portfolio_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-15", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.01, "weight_bop": 0.6}]},
-            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-15", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-10", "return": 0.005, "weight_bop": 0.4}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-28", "return": 0.01, "weight_bop": 0.6}]},
+            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-28", "return": 0.005, "weight_bop": 0.4}]}
         ],
         "benchmark_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-10", "return_base": 0.01, "weight_bop": 0.4}, {"date": "2025-02-12", "return_base": -0.01, "weight_bop": 0.45}]},
-            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-10", "return_base": 0.005, "weight_bop": 0.6}, {"date": "2025-02-12", "return_base": 0.002, "weight_bop": 0.55}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 0.4}, {"date": "2025-02-28", "return_base": -0.01, "weight_bop": 0.45}]},
+            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return_base": 0.005, "weight_bop": 0.6}, {"date": "2025-02-28", "return_base": 0.002, "weight_bop": 0.55}]}
         ],
     }
 
@@ -62,20 +62,29 @@ def test_calculate_single_period_brinson_hood_beebower(single_period_data):
     assert total_effects == pytest.approx(0.021)
 
 
-def test_run_attribution_calculations_arithmetic_linking(by_group_request_data):
-    """Tests the main orchestrator with simple arithmetic linking."""
+def test_run_attribution_calculations_and_aggregation(by_group_request_data):
+    """Tests the two-stage process: first calculate daily effects, then aggregate."""
     by_group_request_data['linking'] = 'none'
     request = AttributionRequest.model_validate(by_group_request_data)
-    response, _ = run_attribution_calculations(request)
-    assert abs(response.reconciliation.residual) < 1e-9
+    
+    # Stage 1: Calculate daily effects
+    effects_df, _ = run_attribution_calculations(request)
+    assert isinstance(effects_df, pd.DataFrame)
+    assert 'allocation' in effects_df.columns
+    
+    # Stage 2: Aggregate results
+    final_result = aggregate_attribution_results(effects_df, request)
+    assert abs(final_result.reconciliation.residual) < 1e-9
 
 
 def test_run_attribution_calculations_geometric_linking(by_group_request_data):
     """Tests the main orchestrator with top-down geometric linking enabled."""
     request = AttributionRequest.model_validate(by_group_request_data)
-    response, _ = run_attribution_calculations(request)
-    assert abs(response.reconciliation.residual) < 1e-9
-    assert response.reconciliation.sum_of_effects == pytest.approx(response.reconciliation.total_active_return)
+    effects_df, _ = run_attribution_calculations(request)
+    final_result = aggregate_attribution_results(effects_df, request)
+
+    assert abs(final_result.reconciliation.residual) < 1e-9
+    assert final_result.reconciliation.sum_of_effects == pytest.approx(final_result.reconciliation.total_active_return)
 
 
 def test_prepare_data_from_instruments():
