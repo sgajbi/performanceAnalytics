@@ -35,13 +35,14 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     if not request.portfolio_data or not request.instruments_data:
         raise ValueError("'portfolio_data' and 'instruments_data' are required for 'by_instrument' mode.")
 
-    # FIX: Source dates and period from the top-level request, not the nested portfolio_data
+    period_type_to_use = request.period_type or (request.periods[0] if request.periods else "ITD")
+
     twr_config = EngineConfig(
         performance_start_date=request.report_start_date,
         report_start_date=request.report_start_date,
         report_end_date=request.report_end_date,
         metric_basis=request.portfolio_data.metric_basis,
-        period_type=request.period_type or request.periods[0], # Use the resolved period
+        period_type=period_type_to_use,
         currency_mode=request.currency_mode,
         report_ccy=request.report_ccy,
         fx=request.fx,
@@ -215,46 +216,24 @@ def _link_effects_top_down(effects_df: pd.DataFrame, geometric_total_ar: float, 
         
     return linked_effects
 
-
-def run_attribution_calculations(request: AttributionRequest) -> Tuple[AttributionResponse, Dict[str, pd.DataFrame]]:
-    """
-    Orchestrates the full multi-level performance attribution calculation.
-    Returns a tuple of (AttributionResponse, lineage_data_dictionary).
-    """
-    lineage_data = {}
-    if request.mode == AttributionMode.BY_INSTRUMENT:
-        portfolio_groups_data = _prepare_data_from_instruments(request)
-    elif request.mode == AttributionMode.BY_GROUP:
-        portfolio_groups_data = request.portfolio_groups_data
-    else:
-        raise ValueError("Invalid attribution mode specified.")
-
-    aligned_df = _align_and_prepare_data(request, portfolio_groups_data)
-    lineage_data["aligned_panel.csv"] = aligned_df.reset_index()
-
-    if aligned_df.empty:
-        dummy_level = AttributionLevelResult(dimension=request.group_by[0], groups=[], totals=AttributionLevelTotals(allocation=0.0, selection=0.0, interaction=0.0, total_effect=0.0))
-        # This part will be updated to return a SinglePeriodAttributionResult
-        response = AttributionResponse(calculation_id=request.calculation_id, portfolio_number=request.portfolio_number, model=request.model, linking=request.linking, levels=[dummy_level], reconciliation=Reconciliation(total_active_return=0.0, sum_of_effects=0.0, residual=0.0))
-        return response, lineage_data
-
-    effects_df = _calculate_single_period_effects(aligned_df.reset_index(), request.model)
-    lineage_data["single_period_effects.csv"] = effects_df.copy()
-
-    per_period_p_return = (effects_df.set_index('date')['w_p'] * effects_df.set_index('date')['r_base_p']).groupby(level='date').sum()
-    per_period_b_return = effects_df.groupby('date')['r_b_total'].first()
+def aggregate_attribution_results(
+    effects_df: pd.DataFrame, request: AttributionRequest
+) -> SinglePeriodAttributionResult:
+    """Aggregates a DataFrame of daily effects into the final response model for a single period."""
+    per_period_p_return = (effects_df['w_p'] * effects_df['r_base_p']).groupby(level='date').sum()
+    per_period_b_return = effects_df.groupby(level='date')['r_b_total'].first()
     per_period_active_return = per_period_p_return - per_period_b_return
 
     if request.linking != LinkingMethod.NONE:
         geometric_active_return = (1 + per_period_p_return).prod() - 1 - ((1 + per_period_b_return).prod() - 1)
         arithmetic_active_return = per_period_active_return.sum()
-        scaled_effects = _link_effects_top_down(effects_df, geometric_active_return, arithmetic_active_return)
+        scaled_effects = _link_effects_top_down(effects_df.reset_index(), geometric_active_return, arithmetic_active_return)
         granular_totals = scaled_effects.groupby(request.group_by)[['allocation', 'selection', 'interaction']].sum()
         active_return = geometric_active_return
     else:
         granular_totals = effects_df.groupby(request.group_by)[['allocation', 'selection', 'interaction']].sum()
         active_return = per_period_active_return.sum()
-
+    
     levels = []
     granular_totals_df = granular_totals.reset_index()
     
@@ -281,52 +260,42 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
         ))
     
     levels.reverse() 
-    final_totals = levels[0].totals
+    final_totals = levels[0].totals if levels else AttributionLevelTotals(allocation=0, selection=0, interaction=0, total_effect=0)
 
-    # This response object creation will need to be updated for multi-period
-    response = AttributionResponse(
-        calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
-        model=request.model, linking=request.linking, levels=levels,
-        reconciliation=Reconciliation(
-            total_active_return=active_return * 100,
-            sum_of_effects=final_totals.total_effect,
-            residual=(active_return * 100) - final_totals.total_effect
-        ),
+    reconciliation = Reconciliation(
+        total_active_return=active_return * 100,
+        sum_of_effects=final_totals.total_effect,
+        residual=(active_return * 100) - final_totals.total_effect
+    )
+    
+    period_result = SinglePeriodAttributionResult(
+        levels=levels,
+        reconciliation=reconciliation
     )
 
-    if request.currency_mode == "BOTH":
-        required_cols = {'r_local_p', 'r_local_b', 'r_fx_b', 'w_p', 'w_b'}
-        if required_cols.issubset(aligned_df.columns):
-            aligned_df_reset = aligned_df.reset_index()
-            if 'currency' not in aligned_df_reset.columns and 'currency' in request.group_by:
-                pass
+    return period_result
 
-            if 'currency' in aligned_df_reset.columns:
-                currency_df = aligned_df_reset.groupby(['date', 'currency']).sum()
-                
-                fx_effects_df = _calculate_currency_attribution_effects(currency_df)
-                lineage_data["currency_attribution_effects.csv"] = fx_effects_df.reset_index()
-                
-                total_fx_effects = fx_effects_df.groupby('currency').sum(numeric_only=True)
-                
-                fx_results = []
-                for currency, row in total_fx_effects.iterrows():
-                    avg_weights = currency_df.loc[currency_df.index.get_level_values('currency') == currency][['w_p', 'w_b']].mean()
-                    effects_sum = row['local_allocation'] + row['local_selection'] + row['currency_allocation'] + row['currency_selection']
-                    effects = CurrencyAttributionEffects(
-                        local_allocation=row['local_allocation'] * 100,
-                        local_selection=row['local_selection'] * 100,
-                        currency_allocation=row['currency_allocation'] * 100,
-                        currency_selection=row['currency_selection'] * 100,
-                        total_effect=effects_sum * 100
-                    )
-                    fx_results.append(CurrencyAttributionResult(
-                        currency=currency,
-                        weight_portfolio_avg=avg_weights['w_p'] * 100,
-                        weight_benchmark_avg=avg_weights['w_b'] * 100,
-                        effects=effects
-                    ))
-                
-                response.currency_attribution = fx_results
+
+def run_attribution_calculations(request: AttributionRequest) -> Tuple[pd.DataFrame, Dict[str, pd.DataFrame]]:
+    """
+    Orchestrates the calculation of daily attribution effects over a master period.
+    Returns a tuple of (daily_effects_df, lineage_data_dictionary).
+    """
+    lineage_data = {}
+    if request.mode == AttributionMode.BY_INSTRUMENT:
+        portfolio_groups_data = _prepare_data_from_instruments(request)
+    elif request.mode == AttributionMode.BY_GROUP:
+        portfolio_groups_data = request.portfolio_groups_data or []
+    else:
+        raise ValueError("Invalid attribution mode specified.")
+
+    aligned_df = _align_and_prepare_data(request, portfolio_groups_data)
+    lineage_data["aligned_panel.csv"] = aligned_df.reset_index()
+
+    if aligned_df.empty:
+        return pd.DataFrame(), lineage_data
+
+    effects_df = _calculate_single_period_effects(aligned_df, request.model)
+    lineage_data["single_period_effects.csv"] = effects_df.reset_index().copy()
     
-    return response, lineage_data
+    return effects_df, lineage_data

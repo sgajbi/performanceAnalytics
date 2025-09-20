@@ -5,7 +5,7 @@ import pandas as pd
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
-from app.models.attribution_responses import AttributionResponse
+from app.models.attribution_responses import AttributionResponse, SinglePeriodAttributionResult
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
@@ -14,7 +14,7 @@ from app.services.lineage_service import lineage_service
 from core.envelope import Audit, Diagnostics, Meta
 from core.periods import resolve_periods
 from core.repro import generate_canonical_hash
-from engine.attribution import run_attribution_calculations
+from engine.attribution import run_attribution_calculations, aggregate_attribution_results
 from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
@@ -76,7 +76,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
                 local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
                 fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
-                base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR] / 100).prod() - 1
+                base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=local_total * 100, fx=fx_total * 100, base=base_total * 100
                 )
@@ -223,24 +223,66 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     try:
-        # This endpoint is not yet refactored for multi-period.
-        # This logic will be replaced with the "calculate once, slice, aggregate" pattern.
-        response, lineage_data = run_attribution_calculations(request)
-
-        # Add hash to meta if it exists, otherwise create it
-        if response.meta:
-            response.meta.input_fingerprint = input_fingerprint
-            response.meta.calculation_hash = calculation_hash
+        if request.period_type:
+            periods_to_resolve = [request.period_type]
         else:
-            response.meta = Meta(
-                calculation_id=request.calculation_id,
-                engine_version=settings.APP_VERSION,
-                precision_mode=request.precision_mode,
-                annualization=request.annualization,
-                calendar=request.calendar,
-                periods={},
-                input_fingerprint=input_fingerprint,
-                calculation_hash=calculation_hash,
+            periods_to_resolve = request.periods
+        
+        resolved_periods = resolve_periods(periods_to_resolve, request.report_end_date, request.report_start_date)
+
+        if not resolved_periods:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid periods could be resolved.")
+        
+        master_start_date = min(p.start_date for p in resolved_periods)
+        master_end_date = max(p.end_date for p in resolved_periods)
+        
+        master_request = request.model_copy(update={
+            "report_start_date": master_start_date,
+            "report_end_date": master_end_date,
+            "period_type": "EXPLICIT",
+            "periods": None,
+        })
+
+        effects_df, lineage_data = run_attribution_calculations(master_request)
+
+        results_by_period = {}
+        for period in resolved_periods:
+            period_slice_df = effects_df[
+                (effects_df.index.get_level_values('date') >= pd.to_datetime(period.start_date)) &
+                (effects_df.index.get_level_values('date') <= pd.to_datetime(period.end_date))
+            ].copy()
+
+            if period_slice_df.empty:
+                continue
+            
+            period_result = aggregate_attribution_results(period_slice_df, request)
+            results_by_period[period.name] = period_result
+
+        meta = Meta(
+            calculation_id=request.calculation_id,
+            engine_version=settings.APP_VERSION,
+            precision_mode=request.precision_mode,
+            annualization=request.annualization,
+            calendar=request.calendar,
+            periods={"requested": [p.value for p in periods_to_resolve], "master_start": str(master_start_date), "master_end": str(master_end_date)},
+            input_fingerprint=input_fingerprint,
+            calculation_hash=calculation_hash,
+        )
+
+        if request.period_type and len(resolved_periods) == 1:
+            single_result = list(results_by_period.values())[0]
+            response_model = AttributionResponse(
+                calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
+                model=request.model, linking=request.linking,
+                **single_result.model_dump(exclude_none=True),
+                meta=meta,
+            )
+        else:
+             response_model = AttributionResponse(
+                calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
+                model=request.model, linking=request.linking,
+                results_by_period=results_by_period,
+                meta=meta
             )
 
         background_tasks.add_task(
@@ -248,10 +290,10 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             calculation_id=request.calculation_id,
             calculation_type="Attribution",
             request_model=request,
-            response_model=response,
+            response_model=response_model,
             calculation_details=lineage_data,
         )
-        return response
+        return response_model
     except (InvalidEngineInputError, ValueError, NotImplementedError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except EngineCalculationError as e:
