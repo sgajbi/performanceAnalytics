@@ -93,8 +93,8 @@ class AttributionResponse(BaseModel):
     @classmethod
     def check_result_structure(cls, values):
         """Ensures that exactly one result structure is used."""
-        has_new_structure = "results_by_period" in values and values.get("results_by_period")
-        has_legacy_structure = "levels" in values and values.get("levels")
+        has_new_structure = "results_by_period" in values and values.get("results_by_period") is not None
+        has_legacy_structure = "levels" in values and values.get("levels") is not None
 
         if not (has_new_structure ^ has_legacy_structure):
             raise ValueError("Provide either 'results_by_period' or legacy 'levels' field, but not both.")

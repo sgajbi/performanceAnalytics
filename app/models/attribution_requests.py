@@ -13,21 +13,20 @@ from common.enums import (
     PeriodType,
 )
 from core.envelope import Annualization, Calendar, Flags, Output, FXRequestBlock, HedgingRequestBlock
+from app.models.requests import DailyInputData
 
 
 class AttributionPortfolioData(BaseModel):
     """Contains the full time series and config for the total portfolio for attribution."""
-    report_start_date: date
-    report_end_date: date
     metric_basis: Literal["NET", "GROSS"]
-    daily_data: List['DailyInputData']
+    daily_data: List[DailyInputData]
 
 
 class InstrumentData(BaseModel):
     """Time series and metadata for a single instrument."""
     instrument_id: str
     meta: Dict[str, Any]
-    daily_data: List['DailyInputData']
+    daily_data: List[DailyInputData]
 
 
 class BenchmarkObservation(BaseModel):
@@ -98,7 +97,3 @@ class AttributionRequest(BaseModel):
             raise ValueError("The 'periods' list cannot be empty.")
 
         return values
-
-from app.models.requests import DailyInputData
-AttributionPortfolioData.model_rebuild()
-InstrumentData.model_rebuild()
