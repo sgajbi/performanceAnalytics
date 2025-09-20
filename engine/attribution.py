@@ -216,8 +216,9 @@ def _link_effects_top_down(effects_df: pd.DataFrame, geometric_total_ar: float, 
 
 def aggregate_attribution_results(
     effects_df: pd.DataFrame, request: AttributionRequest
-) -> SinglePeriodAttributionResult:
+) -> Tuple[SinglePeriodAttributionResult, Dict[str, pd.DataFrame]]:
     """Aggregates a DataFrame of daily effects into the final response model for a single period."""
+    aggregation_lineage = {}
     per_period_p_return = (effects_df['w_p'] * effects_df['r_base_p']).groupby(level='date').sum()
     per_period_b_return = effects_df.groupby(level='date')['r_b_total'].first()
     per_period_active_return = per_period_p_return - per_period_b_return
@@ -269,13 +270,13 @@ def aggregate_attribution_results(
         )
     )
     
-    # --- FIX START: Move currency attribution logic here ---
     if request.currency_mode == "BOTH":
         required_cols = {'r_local_p', 'r_local_b', 'r_fx_b', 'w_p', 'w_b'}
         effects_df_reset = effects_df.reset_index()
         if required_cols.issubset(effects_df.columns) and 'currency' in effects_df_reset.columns:
             currency_df = effects_df_reset.groupby(['date', 'currency']).sum(numeric_only=True)
             fx_effects_df = _calculate_currency_attribution_effects(currency_df)
+            aggregation_lineage["currency_attribution_effects.csv"] = fx_effects_df.reset_index()
             total_fx_effects = fx_effects_df.groupby('currency').sum(numeric_only=True)
             
             fx_results = []
@@ -290,15 +291,14 @@ def aggregate_attribution_results(
                     total_effect=effects_sum * 100
                 )
                 fx_results.append(CurrencyAttributionResult(
-                    currency=currency,
+                    currency=str(currency),
                     weight_portfolio_avg=avg_weights['w_p'] * 100,
                     weight_benchmark_avg=avg_weights['w_b'] * 100,
                     effects=effects
                 ))
             period_result.currency_attribution = fx_results
-    # --- FIX END ---
 
-    return period_result
+    return period_result, aggregation_lineage
 
 
 def run_attribution_calculations(request: AttributionRequest) -> Tuple[pd.DataFrame, Dict[str, pd.DataFrame]]:

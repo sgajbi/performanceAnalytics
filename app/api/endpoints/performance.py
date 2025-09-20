@@ -5,7 +5,7 @@ import pandas as pd
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
-from app.models.attribution_responses import AttributionResponse, SinglePeriodAttributionResult
+from app.models.attribution_responses import AttributionResponse
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
@@ -236,7 +236,7 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
         master_start_date = min(p.start_date for p in resolved_periods)
         master_end_date = max(p.end_date for p in resolved_periods)
         
-        master_request = request.model_copy(update={
+        master_request = request.model_copy(deep=True, update={
             "report_start_date": master_start_date,
             "report_end_date": master_end_date,
             "period_type": "EXPLICIT",
@@ -255,7 +255,8 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             if period_slice_df.empty:
                 continue
             
-            period_result = aggregate_attribution_results(period_slice_df, request)
+            period_result, aggregation_lineage = aggregate_attribution_results(period_slice_df, request)
+            lineage_data.update(aggregation_lineage)
             results_by_period[period.name] = period_result
 
         meta = Meta(

@@ -67,13 +67,11 @@ def test_run_attribution_calculations_and_aggregation(by_group_request_data):
     by_group_request_data['linking'] = 'none'
     request = AttributionRequest.model_validate(by_group_request_data)
     
-    # Stage 1: Calculate daily effects
     effects_df, _ = run_attribution_calculations(request)
     assert isinstance(effects_df, pd.DataFrame)
     assert 'allocation' in effects_df.columns
     
-    # Stage 2: Aggregate results
-    final_result = aggregate_attribution_results(effects_df, request)
+    final_result, _ = aggregate_attribution_results(effects_df, request)
     assert abs(final_result.reconciliation.residual) < 1e-9
 
 
@@ -81,7 +79,7 @@ def test_run_attribution_calculations_geometric_linking(by_group_request_data):
     """Tests the main orchestrator with top-down geometric linking enabled."""
     request = AttributionRequest.model_validate(by_group_request_data)
     effects_df, _ = run_attribution_calculations(request)
-    final_result = aggregate_attribution_results(effects_df, request)
+    final_result, _ = aggregate_attribution_results(effects_df, request)
 
     assert abs(final_result.reconciliation.residual) < 1e-9
     assert final_result.reconciliation.sum_of_effects == pytest.approx(final_result.reconciliation.total_active_return)
