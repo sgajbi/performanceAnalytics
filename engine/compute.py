@@ -50,16 +50,17 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 
         calculate_cumulative_ror(df, config)
 
-        # --- FIX START: Add a neutral state for the long_short flag ---
         df[PortfolioColumns.LONG_SHORT.value] = np.select(
             [df[PortfolioColumns.SIGN.value] == -1, df[PortfolioColumns.SIGN.value] == 1],
             ["S", "L"],
-            default="N" # Neutral for sign == 0
+            default="N"
         )
-        # --- FIX END ---
 
         reset_events = []
+        # --- FIX START: Ensure PERF_RESET is int before filtering ---
+        df[PortfolioColumns.PERF_RESET.value] = df[PortfolioColumns.PERF_RESET.value].astype(int)
         reset_rows = df[df[PortfolioColumns.PERF_RESET.value] == 1]
+        # --- FIX END ---
         for _, row in reset_rows.iterrows():
             reason_codes = []
             if row[PortfolioColumns.NCTRL_1.value]: reason_codes.append("NCTRL_1")

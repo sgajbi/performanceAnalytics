@@ -75,25 +75,30 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
 
-            base_total = period_slice_df[PortfolioColumns.FINAL_CUM_ROR.value].iloc[-1]
+            # --- FIX START: Use the correct reset-aware cumulative columns from the engine ---
+            last_day = period_slice_df.iloc[-1]
+            base_total = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
+
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
-                local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
-                fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
+                local_total_cum_ror = (1 + last_day["local_ror_long_cum_ror"] / 100) * (1 + last_day["local_ror_short_cum_ror"] / 100) - 1
+                fx_total_cum_ror = (1 + last_day["fx_ror_long_cum_ror"] / 100) * (1 + last_day["fx_ror_short_cum_ror"] / 100) - 1
+                
                 period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=local_total * 100, fx=fx_total * 100, base=base_total
+                    local=local_total_cum_ror * 100,
+                    fx=fx_total_cum_ror * 100,
+                    base=base_total
                 )
             else:
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=base_total, fx=0.0, base=base_total
                 )
+            # --- FIX END ---
 
             if request.reset_policy.emit and diagnostics_data.get("resets"):
-                # --- FIX START: Explicitly create ResetEvent models ---
                 period_result.reset_events = [
                     ResetEvent(**event) for event in diagnostics_data["resets"] 
                     if period.start_date <= event["date"] <= period.end_date
                 ]
-                # --- FIX END ---
             
             results_by_period[period.name] = period_result
 

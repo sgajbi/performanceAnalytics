@@ -48,15 +48,12 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
         else:
             np.divide(numerator, denominator, out=local_ror, where=safe_division_mask)
 
-    # --- 2. Handle FX Decomposition if Activated ---
     result_df = pd.DataFrame(index=df.index)
     if config and config.currency_mode and config.currency_mode != "BASE_ONLY" and config.fx:
         fx_rates_df = pd.DataFrame([rate.model_dump() for rate in config.fx.rates])
         
-        # --- START FIX: Handle duplicate FX rate entries ---
         if "date" in fx_rates_df.columns and "ccy" in fx_rates_df.columns:
             fx_rates_df.drop_duplicates(subset=['date', 'ccy'], keep='last', inplace=True)
-        # --- END FIX ---
 
         fx_rates_df['date'] = pd.to_datetime(fx_rates_df['date'])
         fx_rates_df = fx_rates_df.set_index('date')['rate'].sort_index()
@@ -94,44 +91,61 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
 def calculate_cumulative_ror(df: pd.DataFrame, config):
     """Orchestrates all cumulative return calculations, supporting both float and Decimal."""
     is_decimal_mode = df[PortfolioColumns.DAILY_ROR.value].dtype == "object"
-    zero = Decimal(0) if is_decimal_mode else 0.0
-    hundred = Decimal(100) if is_decimal_mode else 100.0
     one = Decimal(1) if is_decimal_mode else 1.0
+    hundred = Decimal(100) if is_decimal_mode else 100.0
 
-    df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "long", use_resets=False)
-    df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "short", use_resets=False)
+    # --- FIX START: Calculate cumulative for all components (local, fx, base) ---
+    components = [PortfolioColumns.DAILY_ROR.value]
+    if "local_ror" in df.columns:
+        components.append("local_ror")
+    if "fx_ror" in df.columns:
+        components.append("fx_ror")
+    
+    for component in components:
+        comp_prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        
+        df[f"temp_{comp_prefix}long_cum_ror"] = _compound_ror(df, df[component], "long", use_resets=False)
+        df[f"temp_{comp_prefix}short_cum_ror"] = _compound_ror(df, df[component], "short", use_resets=False)
 
     report_end_ts = pd.to_datetime(config.report_end_date)
-    initial_resets = calculate_initial_resets(df, report_end_ts)
+    initial_resets = calculate_initial_resets(df)
     df[PortfolioColumns.PERF_RESET.value] = initial_resets.astype(int)
 
-    final_long_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "long", use_resets=True)
-    final_short_ror = _compound_ror(df, df[PortfolioColumns.DAILY_ROR.value], "short", use_resets=True)
+    for component in components:
+        comp_prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        
+        final_long_ror = _compound_ror(df, df[component], "long", use_resets=True)
+        final_short_ror = _compound_ror(df, df[component], "short", use_resets=True)
 
-    df[PortfolioColumns.LONG_CUM_ROR.value] = final_long_ror
-    df[PortfolioColumns.SHORT_CUM_ROR.value] = final_short_ror
+        df[f"{comp_prefix}long_cum_ror"] = final_long_ror
+        df[f"{comp_prefix}short_cum_ror"] = final_short_ror
+    
     is_initial_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
-    df.loc[is_initial_reset_day, [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = zero
+    for component in components:
+        comp_prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        df.loc[is_initial_reset_day, [f"{comp_prefix}long_cum_ror", f"{comp_prefix}short_cum_ror"]] = 0.0
 
     nctrl4_resets = calculate_nctrl4_reset(df)
     df[PortfolioColumns.PERF_RESET.value] |= nctrl4_resets
     is_final_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
-    df.loc[is_final_reset_day, [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = zero
-
-    df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] = final_long_ror
-    df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] = final_short_ror
+    for component in components:
+        comp_prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        df.loc[is_final_reset_day, [f"{comp_prefix}long_cum_ror", f"{comp_prefix}short_cum_ror"]] = 0.0
 
     is_nip = df[PortfolioColumns.NIP.value] == 1
-    df.loc[is_nip, [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = np.nan
-    df[[PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]] = df[
-        [PortfolioColumns.LONG_CUM_ROR.value, PortfolioColumns.SHORT_CUM_ROR.value]
-    ].ffill().fillna(zero)
+    for component in components:
+        comp_prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        df.loc[is_nip, [f"{comp_prefix}long_cum_ror", f"{comp_prefix}short_cum_ror"]] = np.nan
+        df[[f"{comp_prefix}long_cum_ror", f"{comp_prefix}short_cum_ror"]] = df[
+            [f"{comp_prefix}long_cum_ror", f"{comp_prefix}short_cum_ror"]
+        ].ffill().fillna(0.0)
 
     df[PortfolioColumns.FINAL_CUM_ROR.value] = (
         (one + df[PortfolioColumns.LONG_CUM_ROR.value] / hundred)
         * (one + df[PortfolioColumns.SHORT_CUM_ROR.value] / hundred)
         - one
     ) * hundred
+    # --- FIX END ---
 
 
 def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=False) -> pd.Series:
