@@ -2,37 +2,58 @@
 import pytest
 from pydantic import ValidationError
 from app.models.attribution_requests import AttributionRequest
+from common.enums import PeriodType
 
 
-def test_attribution_request_by_instrument_validation():
-    """Tests that a valid 'by_instrument' payload is correctly parsed by the AttributionRequest model."""
-    payload = {
+@pytest.fixture
+def base_attribution_payload():
+    """Provides a base payload for attribution requests, excluding period definitions."""
+    return {
         "portfolio_number": "ATTRIB_001",
-        "mode": "by_instrument",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-31",
+        "mode": "by_group",
         "group_by": ["assetClass"],
-        "portfolio_data": {
-            "report_start_date": "2025-01-01",
-            "report_end_date": "2025-01-31",
-            "metric_basis": "NET",
-            "period_type": "ITD",
-            "daily_data": [],
-        },
-        "instruments_data": [
-            {"instrument_id": "AAPL", "meta": {"assetClass": "Equity"}, "daily_data": []}
-        ],
+        "portfolio_groups_data": [],
         "benchmark_groups_data": [
             {
                 "key": {"assetClass": "Equity"},
-                "observations": [
-                    # --- START FIX: Use new BenchmarkObservation model fields ---
-                    {"date": "2025-01-31", "return_base": 0.05, "weight_bop": 1.0}
-                    # --- END FIX ---
-                ],
+                "observations": [{"date": "2025-01-31", "return_base": 0.05, "weight_bop": 1.0}],
             }
         ],
     }
 
+
+def test_attribution_request_with_periods_passes(base_attribution_payload):
+    """Tests that a request using the new 'periods' array is valid."""
+    payload = base_attribution_payload.copy()
+    payload["periods"] = [PeriodType.YTD, PeriodType.MTD]
     try:
         AttributionRequest.model_validate(payload)
     except ValidationError as e:
-        pytest.fail(f"Pydantic model validation failed unexpectedly: {e}")
+        pytest.fail(f"Validation failed unexpectedly with 'periods': {e}")
+
+
+def test_attribution_request_with_legacy_period_type_passes(base_attribution_payload):
+    """Tests that a request using the legacy 'period_type' field is valid."""
+    payload = base_attribution_payload.copy()
+    payload["period_type"] = PeriodType.ITD
+    try:
+        AttributionRequest.model_validate(payload)
+    except ValidationError as e:
+        pytest.fail(f"Validation failed unexpectedly with legacy 'period_type': {e}")
+
+
+def test_attribution_request_with_both_fails(base_attribution_payload):
+    """Tests that validation fails if both 'periods' and 'period_type' are provided."""
+    payload = base_attribution_payload.copy()
+    payload["periods"] = [PeriodType.YTD]
+    payload["period_type"] = PeriodType.YTD
+    with pytest.raises(ValidationError, match="Exactly one of 'periods' or 'period_type' must be provided"):
+        AttributionRequest.model_validate(payload)
+
+
+def test_attribution_request_with_neither_fails(base_attribution_payload):
+    """Tests that validation fails if neither 'periods' nor 'period_type' is provided."""
+    with pytest.raises(ValidationError, match="Exactly one of 'periods' or 'period_type' must be provided"):
+        AttributionRequest.model_validate(base_attribution_payload)

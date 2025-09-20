@@ -1,7 +1,7 @@
 # app/models/attribution_responses.py
 from typing import Dict, List, Any, Optional
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from common.enums import AttributionModel, LinkingMethod
 from core.envelope import Meta, Diagnostics, Audit
 
@@ -61,18 +61,42 @@ class CurrencyAttributionTotals(BaseModel):
     reconciliation_residual_bp: float
 
 
+class SinglePeriodAttributionResult(BaseModel):
+    """Contains the full set of attribution results for a single, resolved period."""
+    levels: List[AttributionLevelResult]
+    reconciliation: Reconciliation
+    currency_attribution: Optional[List[CurrencyAttributionResult]] = None
+    currency_attribution_totals: Optional[CurrencyAttributionTotals] = None
+
+
 class AttributionResponse(BaseModel):
     """Response model for the Attribution engine."""
     calculation_id: UUID
     portfolio_number: str
     model: AttributionModel
     linking: LinkingMethod
-    levels: List[AttributionLevelResult]
-    reconciliation: Reconciliation
 
+    # New multi-period structure
+    results_by_period: Optional[Dict[str, SinglePeriodAttributionResult]] = None
+
+    # Legacy single-period fields
+    levels: Optional[List[AttributionLevelResult]] = None
+    reconciliation: Optional[Reconciliation] = None
     currency_attribution: Optional[List[CurrencyAttributionResult]] = None
     currency_attribution_totals: Optional[CurrencyAttributionTotals] = None
 
     meta: Optional[Meta] = None
     diagnostics: Optional[Diagnostics] = None
     audit: Optional[Audit] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_result_structure(cls, values):
+        """Ensures that exactly one result structure is used."""
+        has_new_structure = "results_by_period" in values and values.get("results_by_period")
+        has_legacy_structure = "levels" in values and values.get("levels")
+
+        if not (has_new_structure ^ has_legacy_structure):
+            raise ValueError("Provide either 'results_by_period' or legacy 'levels' field, but not both.")
+
+        return values
