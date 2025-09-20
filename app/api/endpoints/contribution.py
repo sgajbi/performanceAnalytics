@@ -37,10 +37,10 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         perf_start_date = request.portfolio_data.daily_data[0].perf_date
         twr_config = EngineConfig(
             performance_start_date=perf_start_date,
-            report_start_date=request.portfolio_data.report_start_date,
-            report_end_date=request.portfolio_data.report_end_date,
+            report_start_date=request.report_start_date,
+            report_end_date=request.report_end_date,
             metric_basis=request.portfolio_data.metric_basis,
-            period_type=request.portfolio_data.period_type,
+            period_type=request.period_type,
             precision_mode=request.precision_mode,
             rounding_precision=request.rounding_precision,
             data_policy=request.data_policy,
@@ -50,7 +50,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             hedging=request.hedging,
         )
     except IndexError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="portfolio_data.daily_data cannot be empty.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="portfolio_data.daily_data cannot be empty."
+        )
 
     # 2. Route to the correct engine based on whether a hierarchy is requested
     if request.hierarchy:
@@ -64,7 +66,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             calendar=request.calendar,
             annualization=request.annualization,
             periods={
-                "type": request.portfolio_data.period_type.value,
+                "type": request.period_type.value,
                 "start": str(twr_config.report_start_date or twr_config.performance_start_date),
                 "end": str(twr_config.report_end_date),
             },
@@ -73,14 +75,19 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             report_ccy=request.report_ccy,
         )
         # TODO: Plumb diagnostics from hierarchical path
-        diagnostics = Diagnostics(nip_days=0, reset_days=0, effective_period_start=twr_config.report_start_date or twr_config.performance_start_date, notes=[])
+        diagnostics = Diagnostics(
+            nip_days=0,
+            reset_days=0,
+            effective_period_start=twr_config.report_start_date or twr_config.performance_start_date,
+            notes=[],
+        )
         audit = Audit(counts={"input_positions": len(request.positions_data)})
-        
+
         response_model = ContributionResponse(
             calculation_id=request.calculation_id,
             portfolio_number=request.portfolio_number,
-            report_start_date=request.portfolio_data.report_start_date,
-            report_end_date=request.portfolio_data.report_end_date,
+            report_start_date=request.report_start_date,
+            report_end_date=request.report_end_date,
             summary=results["summary"],
             levels=results["levels"],
             meta=meta,
@@ -94,7 +101,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             calculation_type="ContributionHierarchy",
             request_model=request,
             response_model=response_model,
-            calculation_details=lineage_data
+            calculation_details=lineage_data,
         )
         return response_model
 
@@ -109,10 +116,12 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 report_end_date=twr_config.report_end_date,
                 metric_basis=twr_config.metric_basis,
                 period_type=twr_config.period_type,
-                currency_mode="BASE_ONLY" # Ensure no decomposition for base ccy assets
+                currency_mode="BASE_ONLY",  # Ensure no decomposition for base ccy assets
             )
-            
-        portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
+
+        portfolio_df = create_engine_dataframe(
+            [item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data]
+        )
         portfolio_results, portfolio_diags = run_calculations(portfolio_df, portfolio_twr_config)
 
         position_results_map = {}
@@ -120,13 +129,13 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             pos_twr_config = twr_config
             # Create a specific config for this position if it's in a foreign currency
             if request.currency_mode != "BOTH" or position.meta.get("currency") == request.report_ccy:
-                 pos_twr_config = EngineConfig(
+                pos_twr_config = EngineConfig(
                     performance_start_date=twr_config.performance_start_date,
                     report_start_date=twr_config.report_start_date,
                     report_end_date=twr_config.report_end_date,
                     metric_basis=twr_config.metric_basis,
                     period_type=twr_config.period_type,
-                    currency_mode="BASE_ONLY"
+                    currency_mode="BASE_ONLY",
                 )
 
             position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.daily_data])
@@ -166,7 +175,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         calendar=request.calendar,
         annualization=request.annualization,
         periods={
-            "type": request.portfolio_data.period_type.value,
+            "type": request.period_type.value,
             "start": str(twr_config.report_start_date or twr_config.performance_start_date),
             "end": str(twr_config.report_end_date),
         },
@@ -190,8 +199,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     response_payload = {
         "calculation_id": request.calculation_id,
         "portfolio_number": request.portfolio_number,
-        "report_start_date": request.portfolio_data.report_start_date,
-        "report_end_date": request.portfolio_data.report_end_date,
+        "report_start_date": request.report_start_date,
+        "report_end_date": request.report_end_date,
         "total_portfolio_return": total_portfolio_return,
         "total_contribution": total_contribution_sum,
         "position_contributions": position_contributions,
