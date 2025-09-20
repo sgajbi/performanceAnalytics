@@ -63,7 +63,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         )
         
         try:
-            # For now, we recalculate for each period. This can be optimized later.
             if period_request.hierarchy:
                 results, period_lineage = calculate_hierarchical_contribution(period_request)
                 period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
@@ -81,8 +80,22 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                     hedging=period_request.hedging,
                 )
                 
+                # FIX: When in multi-currency mode, the top-level portfolio TWR must be calculated
+                # using BASE_ONLY, as its inputs are already in the base currency.
+                portfolio_twr_config = twr_config
+                if twr_config.currency_mode == "BOTH":
+                    portfolio_twr_config = EngineConfig(
+                        performance_start_date=twr_config.performance_start_date,
+                        report_start_date=twr_config.report_start_date,
+                        report_end_date=twr_config.report_end_date,
+                        metric_basis=twr_config.metric_basis,
+                        period_type=twr_config.period_type,
+                        currency_mode="BASE_ONLY"
+                    )
+
                 portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in period_request.portfolio_data.daily_data])
-                portfolio_results, diags = run_calculations(portfolio_df, twr_config)
+                portfolio_results, diags = run_calculations(portfolio_df, portfolio_twr_config)
+
                 if i == 0: 
                     diagnostics_data = diags
                     lineage_details["portfolio_twr.csv"] = portfolio_results
