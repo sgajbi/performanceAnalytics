@@ -34,29 +34,24 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     try:
-        # --- 1. Handle backward compatibility for period_type ---
         if request.period_type:
             periods_to_resolve = [request.period_type]
         else:
             periods_to_resolve = request.periods
 
-        # --- 2. Resolve all requested periods into concrete date ranges ---
         as_of_date = request.as_of or request.report_end_date
         resolved_periods = resolve_periods(periods_to_resolve, as_of_date, request.performance_start_date)
 
         if not resolved_periods:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid periods could be resolved.")
 
-        # --- 3. Determine the master date range for a single engine run ---
         master_start_date = min(p.start_date for p in resolved_periods)
         master_end_date = max(p.end_date for p in resolved_periods)
 
-        # --- 4. Prepare and run the core engine ONCE ---
         engine_config = create_engine_config(request, master_start_date, master_end_date)
         engine_df = create_engine_dataframe([item.model_dump() for item in request.daily_data])
         daily_results_df, diagnostics_data = run_calculations(engine_df, engine_config)
 
-        # --- 5. Slice and aggregate results for EACH requested period ---
         results_by_period = {}
         daily_results_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(
             daily_results_df[PortfolioColumns.PERF_DATE.value]
@@ -78,7 +73,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
 
-            # --- Add FX decomposition to the period result if applicable ---
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
                 local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
                 fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
@@ -87,7 +81,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                     local=local_total * 100, fx=fx_total * 100, base=base_total * 100
                 )
 
-            # --- Add reset events to the period result if applicable ---
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
                     event for event in diagnostics_data["resets"] if period.start_date <= event["date"] <= period.end_date
@@ -105,7 +98,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             detail=f"An unexpected server error occurred: {str(e)}",
         )
 
-    # --- 6. Assemble the final response ---
     meta = Meta(
         calculation_id=request.calculation_id,
         engine_version=settings.APP_VERSION,
@@ -203,7 +195,6 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest, background
 
     response_model = MoneyWeightedReturnResponse.model_validate(response_payload)
 
-    # Create DataFrame for lineage capture
     lineage_df_data = [{"date": str(request.as_of), "type": "begin_mv", "amount": request.begin_mv}]
     lineage_df_data.extend(
         [{"date": str(cf.date), "type": "cash_flow", "amount": cf.amount} for cf in request.cash_flows]
@@ -232,6 +223,8 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     try:
+        # This endpoint is not yet refactored for multi-period.
+        # This logic will be replaced with the "calculate once, slice, aggregate" pattern.
         response, lineage_data = run_attribution_calculations(request)
 
         # Add hash to meta if it exists, otherwise create it
@@ -239,7 +232,6 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             response.meta.input_fingerprint = input_fingerprint
             response.meta.calculation_hash = calculation_hash
         else:
-            # Placeholder meta if engine doesn't create one
             response.meta = Meta(
                 calculation_id=request.calculation_id,
                 engine_version=settings.APP_VERSION,

@@ -8,8 +8,6 @@ from app.models.attribution_requests import (
     AttributionModel,
     PortfolioGroup,
     BenchmarkGroup,
-    InstrumentData,
-    BenchmarkObservation,
 )
 from app.models.attribution_responses import (
     AttributionGroupResult,
@@ -20,8 +18,9 @@ from app.models.attribution_responses import (
     CurrencyAttributionResult,
     CurrencyAttributionEffects,
     CurrencyAttributionTotals,
+    SinglePeriodAttributionResult,
 )
-from common.enums import AttributionMode, LinkingMethod, PeriodType
+from common.enums import AttributionMode, LinkingMethod
 from engine.config import EngineConfig
 from engine.compute import run_calculations
 from engine.schema import PortfolioColumns
@@ -36,12 +35,13 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
     if not request.portfolio_data or not request.instruments_data:
         raise ValueError("'portfolio_data' and 'instruments_data' are required for 'by_instrument' mode.")
 
+    # FIX: Source dates and period from the top-level request, not the nested portfolio_data
     twr_config = EngineConfig(
-        performance_start_date=request.portfolio_data.report_start_date,
-        report_start_date=request.portfolio_data.report_start_date,
-        report_end_date=request.portfolio_data.report_end_date,
+        performance_start_date=request.report_start_date,
+        report_start_date=request.report_start_date,
+        report_end_date=request.report_end_date,
         metric_basis=request.portfolio_data.metric_basis,
-        period_type=PeriodType.ITD,
+        period_type=request.period_type or request.periods[0], # Use the resolved period
         currency_mode=request.currency_mode,
         report_ccy=request.report_ccy,
         fx=request.fx,
@@ -234,6 +234,7 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
 
     if aligned_df.empty:
         dummy_level = AttributionLevelResult(dimension=request.group_by[0], groups=[], totals=AttributionLevelTotals(allocation=0.0, selection=0.0, interaction=0.0, total_effect=0.0))
+        # This part will be updated to return a SinglePeriodAttributionResult
         response = AttributionResponse(calculation_id=request.calculation_id, portfolio_number=request.portfolio_number, model=request.model, linking=request.linking, levels=[dummy_level], reconciliation=Reconciliation(total_active_return=0.0, sum_of_effects=0.0, residual=0.0))
         return response, lineage_data
 
@@ -282,6 +283,7 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
     levels.reverse() 
     final_totals = levels[0].totals
 
+    # This response object creation will need to be updated for multi-period
     response = AttributionResponse(
         calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
         model=request.model, linking=request.linking, levels=levels,
@@ -296,20 +298,14 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
         required_cols = {'r_local_p', 'r_local_b', 'r_fx_b', 'w_p', 'w_b'}
         if required_cols.issubset(aligned_df.columns):
             aligned_df_reset = aligned_df.reset_index()
-            # --- START FIX: Ensure 'currency' column exists for grouping ---
             if 'currency' not in aligned_df_reset.columns and 'currency' in request.group_by:
-                # This can happen in by_group mode if currency isn't the only group_by key
-                # For this specific feature, we assume currency is available from instrument metadata
-                # A more robust solution would require mapping, but for now we proceed if possible.
                 pass
 
             if 'currency' in aligned_df_reset.columns:
                 currency_df = aligned_df_reset.groupby(['date', 'currency']).sum()
                 
                 fx_effects_df = _calculate_currency_attribution_effects(currency_df)
-                # --- START FIX: Add currency effects to lineage ---
                 lineage_data["currency_attribution_effects.csv"] = fx_effects_df.reset_index()
-                # --- END FIX ---
                 
                 total_fx_effects = fx_effects_df.groupby('currency').sum(numeric_only=True)
                 
@@ -330,6 +326,7 @@ def run_attribution_calculations(request: AttributionRequest) -> Tuple[Attributi
                         weight_benchmark_avg=avg_weights['w_b'] * 100,
                         effects=effects
                     ))
+                
                 response.currency_attribution = fx_results
     
     return response, lineage_data
