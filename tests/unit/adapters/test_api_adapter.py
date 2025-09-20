@@ -25,7 +25,7 @@ def sample_engine_outputs():
                     PortfolioColumns.END_MV: 1010.0,
                     "net_cash_flow": 0.0,
                     "period_return_pct": 1.0,
-                    "final_cum_ror": 1.0, # Add cumulative data from engine
+                    "final_cum_ror": 1.0, 
                 },
             }
         ],
@@ -37,7 +37,7 @@ def sample_engine_outputs():
                     PortfolioColumns.END_MV: 1010.0,
                     "net_cash_flow": 0.0,
                     "period_return_pct": 1.0,
-                    "cumulative_return_pct_to_date": 1.0, # Aggregated periods already have this
+                    "cumulative_return_pct_to_date": 1.0, 
                 },
             }
         ],
@@ -112,7 +112,7 @@ def test_create_engine_dataframe_raises_error():
 def test_format_breakdowns_for_response_daily(sample_engine_outputs):
     """Tests that the daily breakdown is formatted correctly with snake_case keys."""
     breakdowns_data, daily_results_df = sample_engine_outputs
-    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, include_timeseries=True)
 
     assert Frequency.DAILY in formatted_response
     daily_breakdown = formatted_response[Frequency.DAILY]
@@ -129,7 +129,7 @@ def test_format_breakdowns_for_response_daily(sample_engine_outputs):
 def test_format_breakdowns_for_response_monthly(sample_engine_outputs):
     """Tests that aggregated breakdowns are formatted correctly, with daily_data being None."""
     breakdowns_data, daily_results_df = sample_engine_outputs
-    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, include_timeseries=False)
 
     assert Frequency.MONTHLY in formatted_response
     monthly_breakdown = formatted_response[Frequency.MONTHLY]
@@ -143,7 +143,7 @@ def test_format_breakdowns_for_response_empty_input():
     """Tests that the formatter handles empty engine output gracefully."""
     empty_breakdowns = {}
     empty_df = pd.DataFrame()
-    formatted_response = format_breakdowns_for_response(empty_breakdowns, empty_df)
+    formatted_response = format_breakdowns_for_response(empty_breakdowns, empty_df, include_timeseries=False)
     assert formatted_response == {}
 
 
@@ -151,10 +151,9 @@ def test_format_breakdowns_populates_daily_cumulative_return(sample_engine_outpu
     """Tests that the cumulative return is correctly populated for daily summaries."""
     breakdowns_data, daily_results_df = sample_engine_outputs
     
-    # Simulate a request where cumulative is desired but not pre-calculated for daily
     breakdowns_data[Frequency.DAILY][0]['summary'].pop('cumulative_return_pct_to_date', None)
 
-    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, include_timeseries=True)
     
     daily_summary = formatted_response[Frequency.DAILY][0].summary
     assert daily_summary.cumulative_return_pct_to_date == 1.0
