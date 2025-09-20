@@ -52,15 +52,12 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
 
     try:
         if request.hierarchy:
-            # Hierarchical path remains as-is for now (iterative)
-            # This will be refactored in a subsequent step
             results, lineage_details = calculate_hierarchical_contribution(request)
             period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
             results_by_period = {resolved_periods[0].name: period_result}
             daily_contributions_df = lineage_details.get("daily_contributions.csv", pd.DataFrame())
             portfolio_results_df = lineage_details.get("portfolio_twr.csv", pd.DataFrame())
         else:
-            # Single-level path: "Calculate Once, Slice & Aggregate"
             master_request = request.model_copy(
                 update={
                     "report_start_date": master_start_date,
@@ -90,6 +87,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
 
                 totals = period_slice_df.groupby("position_id").agg(
                     total_contribution=("smoothed_contribution", "sum"),
+                    local_contribution=("smoothed_local_contribution", "sum"),
+                    fx_contribution=("smoothed_fx_contribution", "sum"),
                     average_weight=("daily_weight", "mean"),
                 ).reset_index()
 
@@ -111,7 +110,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                         position_id=row["position_id"],
                         total_contribution=row["total_contribution"] * 100,
                         average_weight=row["average_weight"] * 100,
-                        total_return=0,  # Note: Per-position total return is complex to slice
+                        total_return=0,
+                        local_contribution=row.get("local_contribution", 0.0) * 100,
+                        fx_contribution=row.get("fx_contribution", 0.0) * 100,
                     )
                     for _, row in totals.iterrows()
                 ]
@@ -140,7 +141,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     )
     audit = Audit(counts={"input_positions": len(request.positions_data)})
 
-    # --- FIX START: Handle backward compatibility for response shape ---
     if request.period_type and len(resolved_periods) == 1:
         single_result = list(results_by_period.values())[0]
         response_model = ContributionResponse(
@@ -155,7 +155,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             results_by_period=results_by_period,
             meta=meta, diagnostics=diagnostics, audit=audit,
         )
-    # --- FIX END ---
 
     background_tasks.add_task(
         lineage_service.capture,

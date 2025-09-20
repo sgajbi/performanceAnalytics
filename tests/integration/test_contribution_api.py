@@ -107,11 +107,10 @@ def test_contribution_endpoint_multi_currency(client):
 
     pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
-    # This test is now single-level, so local/fx contribution is not returned from this path yet
-    # assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5)
-    # assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(
-    #     pos_contrib["total_contribution"], abs=1e-5
-    # )
+    assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5)
+    assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(
+        pos_contrib["total_contribution"], abs=1e-5
+    )
 
 
 def test_contribution_lineage_flow(client, happy_path_payload):
