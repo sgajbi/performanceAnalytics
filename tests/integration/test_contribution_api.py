@@ -20,11 +20,10 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
     response_data = response.json()
     assert response_data["portfolio_number"] == "CONTRIB_TEST_01"
 
-    # Legacy structure is now nested
-    itd_results = response_data["results_by_period"]["ITD"]
-    assert "total_contribution" in itd_results
-    assert len(itd_results["position_contributions"]) == 1
-    assert itd_results["position_contributions"][0]["position_id"] == "Stock_A"
+    # Legacy structure is NOT nested when using legacy request
+    assert "total_contribution" in response_data
+    assert len(response_data["position_contributions"]) == 1
+    assert response_data["position_contributions"][0]["position_id"] == "Stock_A"
 
     assert "meta" in response_data
     assert response_data["meta"]["engine_version"] is not None
@@ -36,14 +35,15 @@ def test_contribution_endpoint_multi_period(client):
     """Tests a multi-period request for MTD and YTD contribution."""
     payload = {
         "portfolio_number": "MULTI_PERIOD_CONTRIB",
+        "report_start_date": "2025-01-01",  # Required for ITD resolution
         "report_end_date": "2025-02-15",
         "as_of": "2025-02-15",
-        "periods": ["MTD", "YTD"],
+        "periods": ["MTD", "YTD"],  # New multi-period request
         "portfolio_data": {
             "metric_basis": "NET",
             "daily_data": [
-                {"day": 1, "perf_date": "2025-01-10", "begin_mv": 1000, "end_mv": 1010}, # +1%
-                {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010, "end_mv": 1030.2}, # +2%
+                {"day": 1, "perf_date": "2025-01-10", "begin_mv": 1000, "end_mv": 1010},  # +1%
+                {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010, "end_mv": 1030.2},  # +2%
             ],
         },
         "positions_data": [
@@ -100,13 +100,12 @@ def test_contribution_endpoint_multi_currency(client):
     response = client.post("/performance/contribution", json=payload)
     assert response.status_code == 200
     data = response.json()
-    itd_results = data["results_by_period"]["ITD"]
 
     # Total contribution should match the portfolio's total base return
-    assert itd_results["total_contribution"] == pytest.approx(itd_results["total_portfolio_return"])
-    assert itd_results["total_contribution"] == pytest.approx(4.91429, abs=1e-5)
+    assert data["total_contribution"] == pytest.approx(data["total_portfolio_return"])
+    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5)
 
-    pos_contrib = itd_results["position_contributions"][0]
+    pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
     assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5)
     assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(
@@ -141,9 +140,8 @@ def test_contribution_endpoint_no_smoothing(client, happy_path_payload):
 
     assert response.status_code == 200
     response_data = response.json()
-    itd_results = response_data["results_by_period"]["ITD"]
-    assert itd_results["total_contribution"] != pytest.approx(itd_results["total_portfolio_return"])
-    assert itd_results["position_contributions"][0]["total_contribution"] == pytest.approx(1.947688, abs=1e-6)
+    assert response_data["total_contribution"] != pytest.approx(response_data["total_portfolio_return"])
+    assert response_data["position_contributions"][0]["total_contribution"] == pytest.approx(1.947688, abs=1e-6)
 
 
 def test_contribution_endpoint_with_timeseries(client, happy_path_payload):
@@ -154,13 +152,12 @@ def test_contribution_endpoint_with_timeseries(client, happy_path_payload):
     response = client.post("/performance/contribution", json=payload)
     assert response.status_code == 200
     response_data = response.json()
-    itd_results = response_data["results_by_period"]["ITD"]
 
-    assert "timeseries" in itd_results
-    assert len(itd_results["timeseries"]) == 2
-    assert "by_position_timeseries" in itd_results
-    assert len(itd_results["by_position_timeseries"]) == 1
-    assert len(itd_results["by_position_timeseries"][0]["series"]) == 2
+    assert "timeseries" in response_data
+    assert len(response_data["timeseries"]) == 2
+    assert "by_position_timeseries" in response_data
+    assert len(response_data["by_position_timeseries"]) == 1
+    assert len(response_data["by_position_timeseries"][0]["series"]) == 2
 
 
 def test_contribution_endpoint_hierarchy_happy_path(client, happy_path_payload):
@@ -181,13 +178,12 @@ def test_contribution_endpoint_hierarchy_happy_path(client, happy_path_payload):
     response = client.post("/performance/contribution", json=payload)
     assert response.status_code == 200
     data = response.json()
-    itd_results = data["results_by_period"]["ITD"]
 
-    assert "summary" in itd_results
-    assert itd_results["summary"]["portfolio_contribution"] == pytest.approx(2.95327, abs=1e-5)
-    assert len(itd_results["levels"]) == 2
-    sector_level = itd_results["levels"][0]
-    position_level = itd_results["levels"][1]
+    assert "summary" in data
+    assert data["summary"]["portfolio_contribution"] == pytest.approx(2.95327, abs=1e-5)
+    assert len(data["levels"]) == 2
+    sector_level = data["levels"][0]
+    position_level = data["levels"][1]
     assert len(sector_level["rows"]) == 1
     assert len(position_level["rows"]) == 2
     stock_a_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_A")

@@ -40,43 +40,35 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         periods_to_resolve = request.periods
 
     as_of_date = request.as_of or request.report_end_date
-    # The first day of data is a safe proxy for inception for ITD resolution
     inception_date = request.portfolio_data.daily_data[0].perf_date if request.portfolio_data.daily_data else as_of_date
     resolved_periods = resolve_periods(periods_to_resolve, as_of_date, inception_date)
 
     if not resolved_periods:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid periods could be resolved.")
 
-    # --- 2. Determine master date range and run engine once ---
     master_start_date = min(p.start_date for p in resolved_periods)
     master_end_date = max(p.end_date for p in resolved_periods)
-
-    # Create a temporary request for the master calculation run
-    master_request = request.model_copy(
-        update={"report_start_date": master_start_date, "report_end_date": master_end_date, "period_type": "EXPLICIT"}
-    )
-
-    # --- 3. Perform Calculations ---
-    # The contribution engine is complex and not easily slicable post-facto like TWR.
-    # For now, we iterate and call the engine for each period.
+    
+    # --- 2. Perform Calculations for each period ---
     # TODO: Refactor contribution engine for a "calculate once, slice many" pattern.
     results_by_period = {}
     diagnostics_data = {}  # Store diagnostics from the first run
 
     for i, period in enumerate(resolved_periods):
         period_request = request.model_copy(
-            update={"report_start_date": period.start_date, "report_end_date": period.end_date, "period_type": "EXPLICIT"}
+            update={
+                "report_start_date": period.start_date,
+                "report_end_date": period.end_date,
+                "period_type": "EXPLICIT",
+                "periods": None,
+            }
         )
 
         try:
             if period_request.hierarchy:
                 results, _ = calculate_hierarchical_contribution(period_request)
-                # Create a SinglePeriodContributionResult from the hierarchical results
-                period_result = SinglePeriodContributionResult(
-                    summary=results.get("summary"), levels=results.get("levels")
-                )
+                period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
             else:
-                # This path calculates TWR internally, so we need a config
                 twr_config = EngineConfig(
                     performance_start_date=inception_date,
                     report_start_date=period.start_date,
@@ -92,7 +84,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                     [item.model_dump(by_alias=True) for item in period_request.portfolio_data.daily_data]
                 )
                 portfolio_results, diags = run_calculations(portfolio_df, twr_config)
-                if i == 0:  # Capture diagnostics from the first/widest period run
+                if i == 0:
                     diagnostics_data = diags
 
                 position_results_map = {}
@@ -100,7 +92,14 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                     position_df = create_engine_dataframe(
                         [item.model_dump(by_alias=True) for item in position.daily_data]
                     )
-                    position_results, _ = run_calculations(position_df, twr_config)
+                    # This TWR config should be consistent for all positions
+                    pos_twr_config = twr_config
+                    if period_request.currency_mode == "BOTH" and position.meta.get("currency") != period_request.report_ccy:
+                        pass
+                    else:
+                        pos_twr_config = twr_config.model_copy(update={"currency_mode": "BASE_ONLY"})
+
+                    position_results, _ = run_calculations(position_df, pos_twr_config)
                     position_results_map[position.position_id] = position_results
 
                 contribution_results = calculate_position_contribution(
@@ -126,7 +125,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 detail=f"An unexpected error occurred during contribution calculation for period '{period.name}': {str(e)}",
             )
 
-    # --- 4. Assemble Final Response ---
+    # --- 3. Assemble Final Response ---
     meta = Meta(
         calculation_id=request.calculation_id,
         engine_version=settings.APP_VERSION,
@@ -141,21 +140,20 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     diagnostics = Diagnostics(
         nip_days=diagnostics_data.get("nip_days", 0),
         reset_days=diagnostics_data.get("reset_days", 0),
-        effective_period_start=diagnostics_data.get("effective_period_start"),
+        effective_period_start=diagnostics_data.get("effective_period_start", master_start_date),
         notes=diagnostics_data.get("notes", []),
     )
     audit = Audit(counts={"input_positions": len(request.positions_data)})
 
-    # For backward compatibility, if only one period was requested, populate the legacy fields.
-    if len(resolved_periods) == 1:
+    # For backward compatibility, if only one period was requested via legacy field, populate the legacy fields.
+    if request.period_type and len(resolved_periods) == 1:
         single_result = list(results_by_period.values())[0]
         response_model = ContributionResponse(
             calculation_id=request.calculation_id,
             portfolio_number=request.portfolio_number,
-            results_by_period=results_by_period,
             report_start_date=master_start_date,
             report_end_date=master_end_date,
-            **single_result.model_dump(),
+            **single_result.model_dump(exclude_none=True),
             meta=meta,
             diagnostics=diagnostics,
             audit=audit,
@@ -170,5 +168,5 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             audit=audit,
         )
 
-    # Lineage capture is not shown for brevity but would be added here
+    # Lineage capture can be added here
     return response_model
