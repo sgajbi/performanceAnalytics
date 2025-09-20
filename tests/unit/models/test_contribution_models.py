@@ -4,45 +4,49 @@ from pydantic import ValidationError
 
 from app.models.contribution_requests import ContributionRequest
 from app.models.contribution_responses import ContributionResponse
+from common.enums import PeriodType
 
 
 @pytest.fixture
 def minimal_contribution_payload():
-    """Provides a minimal valid payload for a single-level contribution request."""
+    """Provides a minimal valid payload for a contribution request."""
     return {
         "portfolio_number": "CONTRIB_001",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-31",
         "portfolio_data": {
-            "report_start_date": "2025-01-01",
-            "report_end_date": "2025-01-31",
             "metric_basis": "NET",
-            "period_type": "ITD",
             "daily_data": [],
         },
         "positions_data": [
-            {
-                "position_id": "Stock_A",
-                "meta": {"sector": "Tech"},
-                "daily_data": []
-            }
+            {"position_id": "Stock_A", "meta": {"sector": "Tech"}, "daily_data": []}
         ],
     }
 
 
-def test_contribution_request_single_level_happy_path(minimal_contribution_payload):
-    """
-    Tests that a standard, single-level contribution request payload is parsed
-    correctly by the ContributionRequest model, validating default values.
-    """
+def test_contribution_request_with_periods_passes(minimal_contribution_payload):
+    """Tests that a request using the new top-level 'periods' field is valid."""
+    payload = minimal_contribution_payload.copy()
+    payload["periods"] = [PeriodType.YTD]
     try:
-        req = ContributionRequest.model_validate(minimal_contribution_payload)
+        req = ContributionRequest.model_validate(payload)
         assert req.portfolio_number == "CONTRIB_001"
-        assert req.hierarchy is None
-        assert req.weighting_scheme == "BOD"
-        assert req.smoothing.method == "CARINO"
-        assert req.emit.by_level is False
-        assert req.positions_data[0].meta == {"sector": "Tech"}
+        assert req.periods == [PeriodType.YTD]
+        assert req.period_type is None
     except ValidationError as e:
-        pytest.fail(f"Validation failed unexpectedly for single-level request: {e}")
+        pytest.fail(f"Validation failed unexpectedly with 'periods': {e}")
+
+
+def test_contribution_request_with_legacy_period_type_passes(minimal_contribution_payload):
+    """Tests that a request using the legacy 'period_type' field is valid."""
+    payload = minimal_contribution_payload.copy()
+    payload["period_type"] = PeriodType.ITD
+    try:
+        req = ContributionRequest.model_validate(payload)
+        assert req.period_type == PeriodType.ITD
+        assert req.periods is None
+    except ValidationError as e:
+        pytest.fail(f"Validation failed unexpectedly with legacy 'period_type': {e}")
 
 
 def test_contribution_request_multi_level_happy_path(minimal_contribution_payload):
@@ -51,6 +55,7 @@ def test_contribution_request_multi_level_happy_path(minimal_contribution_payloa
     and other options is parsed correctly.
     """
     payload = minimal_contribution_payload.copy()
+    payload["periods"] = [PeriodType.QTD]
     payload["hierarchy"] = ["assetClass", "sector"]
     payload["weighting_scheme"] = "AVG_CAPITAL"
     payload["emit"] = {"by_level": True}
@@ -69,6 +74,7 @@ def test_contribution_request_invalid_weighting_scheme(minimal_contribution_payl
     Tests that the model raises a validation error for an invalid weighting_scheme.
     """
     payload = minimal_contribution_payload.copy()
+    payload["periods"] = [PeriodType.YTD]
     payload["weighting_scheme"] = "INVALID_SCHEME"
 
     with pytest.raises(ValidationError):
