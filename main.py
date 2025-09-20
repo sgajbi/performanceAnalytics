@@ -4,8 +4,8 @@ import os
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from starlette.responses import JSONResponse
 import orjson
 
@@ -14,12 +14,50 @@ from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
 from app.core.handlers import performance_calculator_exception_handler
 
-# --- FIX START: Create a custom JSON response class to exclude nulls ---
+# --- FIX START: Create a robust custom JSON response class ---
+def _clean_none_from_dict(d: dict) -> dict:
+    """Recursively removes keys with None values from a dictionary."""
+    out = {}
+    for k, v in d.items():
+        if v is not None:
+            if isinstance(v, dict):
+                out[k] = _clean_none_from_dict(v)
+            elif isinstance(v, list):
+                out[k] = _clean_none_from_list(v)
+            else:
+                out[k] = v
+    return out
+
+def _clean_none_from_list(l: list) -> list:
+    """Recursively removes None values from lists and dicts within lists."""
+    out = []
+    for v in l:
+        if v is not None:
+            if isinstance(v, dict):
+                out.append(_clean_none_from_dict(v))
+            elif isinstance(v, list):
+                out.append(_clean_none_from_list(v))
+            else:
+                out.append(v)
+    return out
+
 class ORJSONResponseExcludeNull(JSONResponse):
     def render(self, content: Any) -> bytes:
-        # Use orjson for high-performance JSON serialization
-        # option=orjson.OPT_OMIT_NULL removes keys with None values.
-        return orjson.dumps(content, option=orjson.OPT_OMIT_NULL)
+        """
+        Serializes content to JSON using orjson, after removing null values.
+        """
+        # jsonable_encoder handles Pydantic models, datetimes, etc.
+        encoded_content = jsonable_encoder(content)
+        
+        # Recursively remove None values
+        if isinstance(encoded_content, dict):
+            cleaned_content = _clean_none_from_dict(encoded_content)
+        elif isinstance(encoded_content, list):
+            cleaned_content = _clean_none_from_list(encoded_content)
+        else:
+            cleaned_content = encoded_content
+
+        return orjson.dumps(cleaned_content)
 # --- FIX END ---
 
 
