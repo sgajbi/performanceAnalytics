@@ -63,9 +63,9 @@ class Calendar(BaseModel):
 
 
 class Annualization(BaseModel):
-    enabled: bool = False
-    basis: Literal["BUS/252", "ACT/365", "ACT/ACT"] = "BUS/252"
-    periods_per_year: Optional[float] = None
+    enabled: bool = Field(False, description="Whether to enable the calculation of annualized returns for applicable periods.")
+    basis: Literal["BUS/252", "ACT/365", "ACT/ACT"] = Field("BUS/252", description="The day-count convention to use. BUS/252 for business days; ACT/365 for actual days over 365; ACT/ACT for actual days over actual days in year.")
+    periods_per_year: Optional[float] = Field(None, description="Optional override for the annualization factor (e.g., 252 or 365). If provided, this value is used instead of the 'basis'.")
 
 
 class ExplicitPeriod(BaseModel):
@@ -135,10 +135,9 @@ class Meta(BaseModel):
     periods: Dict
     input_fingerprint: Optional[str] = None
     calculation_hash: Optional[str] = None
-    report_ccy: Optional[str] = None  # ADDED for FX
+    report_ccy: Optional[str] = None
 
 
-# --- MODIFIED Diagnostics Model ---
 class PolicyDiagnostics(BaseModel):
     overrides: Dict[str, int] = {"applied_mv_count": 0, "applied_cf_count": 0}
     ignored_days_count: int = 0
