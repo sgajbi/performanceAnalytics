@@ -27,11 +27,10 @@ def calculate_sign(df: pd.DataFrame) -> pd.Series:
         initial_sign = np.sign(df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value])
 
     prev_eod_cf = df[PortfolioColumns.EOD_CF.value].shift(1, fill_value=zero)
-    prev_perf_reset = df[PortfolioColumns.PERF_RESET.value].shift(1, fill_value=zero)
+    prev_perf_reset = df[PortfolioColumns.PERF_RESET.value].shift(1, fill_value=0)
     is_flip_event = ((df[PortfolioColumns.BOD_CF.value] != zero) |
                      (prev_eod_cf != zero) | (prev_perf_reset == 1))
     
-    # Ensure is_flip_event is aligned with the DataFrame index before modification
     if not df.empty:
         is_flip_event.iloc[0] = True
 
@@ -70,20 +69,19 @@ def calculate_nip(df: pd.DataFrame, config: EngineConfig) -> pd.Series:
     return (is_zero_value & is_offsetting_cf).astype(int)
 
 
-def calculate_initial_resets(df: pd.DataFrame) -> pd.Series:
+def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) -> pd.Series:
     """Calculates resets based on NCTRL 1, 2, and 3, which use preliminary RoR."""
     is_decimal_mode = df[PortfolioColumns.BOD_CF.value].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
-
-    # FIX: Use a non-existent date far in the future to handle the last day correctly
-    report_end_date_ts = pd.Timestamp.max.normalize()
-
+    
     eom_mask = df[PortfolioColumns.PERF_DATE.value].dt.is_month_end
     next_day_bod_cf = df[PortfolioColumns.BOD_CF.value].shift(-1).fillna(zero)
     
-    # Handle the last day of the series by ensuring it doesn't compare to a non-existent next day
-    next_date_is_after_end = df[PortfolioColumns.PERF_DATE.value].shift(-1, fill_value=report_end_date_ts) > report_end_date_ts
-    next_date_is_after_end.iloc[-1] = True # Always treat the last day as an event boundary
+    # Use a fixed future date for comparison to handle the last row gracefully
+    future_date = pd.Timestamp.max.normalize()
+    next_date_is_after_end = df[PortfolioColumns.PERF_DATE.value].shift(-1, fill_value=future_date) > report_end_date
+    if not df.empty:
+        next_date_is_after_end.iloc[-1] = True
 
     cond_common = (
         (df[PortfolioColumns.BOD_CF.value] != zero)
@@ -93,9 +91,9 @@ def calculate_initial_resets(df: pd.DataFrame) -> pd.Series:
         | next_date_is_after_end
     )
 
-    cond_nctrl1 = df[f"temp_{PortfolioColumns.DAILY_ROR.value}_long_cum_ror"] < -100
-    cond_nctrl2 = df[f"temp_{PortfolioColumns.DAILY_ROR.value}_short_cum_ror"] > 100
-    cond_nctrl3 = (df[f"temp_{PortfolioColumns.DAILY_ROR.value}_short_cum_ror"] < -100) & (df[f"temp_{PortfolioColumns.DAILY_ROR.value}_long_cum_ror"] != 0)
+    cond_nctrl1 = df["temp_daily_ror_long_cum_ror"] < -100
+    cond_nctrl2 = df["temp_daily_ror_short_cum_ror"] > 100
+    cond_nctrl3 = (df["temp_daily_ror_short_cum_ror"] < -100) & (df["temp_daily_ror_long_cum_ror"] != 0)
 
     nctrl1 = (cond_nctrl1 & ~cond_nctrl1.shift(1, fill_value=False)) & cond_common
     nctrl2 = (cond_nctrl2 & ~cond_nctrl2.shift(1, fill_value=False)) & cond_common

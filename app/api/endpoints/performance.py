@@ -74,14 +74,18 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             )
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
-
-            # --- FIX START: Use the correct reset-aware cumulative columns from the engine ---
+            
             last_day = period_slice_df.iloc[-1]
             base_total = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
 
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
-                local_total_cum_ror = (1 + last_day["local_ror_long_cum_ror"] / 100) * (1 + last_day["local_ror_short_cum_ror"] / 100) - 1
-                fx_total_cum_ror = (1 + last_day["fx_ror_long_cum_ror"] / 100) * (1 + last_day["fx_ror_short_cum_ror"] / 100) - 1
+                local_long_cum = last_day.get("local_ror_long_cum_ror", 0.0)
+                local_short_cum = last_day.get("local_ror_short_cum_ror", 0.0)
+                local_total_cum_ror = (1 + local_long_cum / 100) * (1 + local_short_cum / 100) - 1
+
+                fx_long_cum = last_day.get("fx_ror_long_cum_ror", 0.0)
+                fx_short_cum = last_day.get("fx_ror_short_cum_ror", 0.0)
+                fx_total_cum_ror = (1 + fx_long_cum / 100) * (1 + fx_short_cum / 100) - 1
                 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=local_total_cum_ror * 100,
@@ -92,7 +96,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=base_total, fx=0.0, base=base_total
                 )
-            # --- FIX END ---
 
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
