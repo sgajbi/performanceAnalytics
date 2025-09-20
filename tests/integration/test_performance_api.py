@@ -200,6 +200,31 @@ def test_twr_respects_include_timeseries_flag(client):
     assert daily_breakdown_without["daily_data"] is None
 
 
+def test_twr_response_includes_portfolio_return_summary(client):
+    """Tests that the top-level portfolio_return object is present for single-currency requests."""
+    payload = {
+        "portfolio_number": "PORTFOLIO_RETURN_TEST",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-01-02",
+        "periods": ["YTD"],
+        "frequencies": ["daily"],
+        "daily_data": [
+            {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0},
+            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1010.0, "end_mv": 1020.1},
+        ],
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    ytd_result = data["results_by_period"]["YTD"]
+
+    assert "portfolio_return" in ytd_result
+    assert ytd_result["portfolio_return"] is not None
+    assert ytd_result["portfolio_return"]["base"] == pytest.approx(2.01)
+    assert ytd_result["portfolio_return"]["fx"] == 0.0
+
+
 @pytest.mark.parametrize(
     "error_class, expected_status",
     [(InvalidEngineInputError, 400), (EngineCalculationError, 500), (Exception, 500)],

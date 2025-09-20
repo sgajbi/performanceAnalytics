@@ -69,21 +69,25 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             breakdowns_data = generate_performance_breakdowns(
                 period_slice_df, request.frequencies, request.annualization, request.output.include_cumulative
             )
-            # --- FIX START: Pass include_timeseries flag to the formatter ---
             formatted_breakdowns = format_breakdowns_for_response(
                 breakdowns_data, period_slice_df, request.output.include_timeseries
             )
-            # --- FIX END ---
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
 
+            # --- FIX START: Always populate portfolio_return for consistency ---
+            base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
                 local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
                 fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
-                base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=local_total * 100, fx=fx_total * 100, base=base_total * 100
                 )
+            else:
+                period_result.portfolio_return = PortfolioReturnDecomposition(
+                    local=base_total * 100, fx=0.0, base=base_total * 100
+                )
+            # --- FIX END ---
 
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
