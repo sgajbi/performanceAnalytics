@@ -10,6 +10,7 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 ## Key Features
 
 -   **High-Performance TWR Engine:** Core daily calculations are vectorized using Pandas and NumPy.
+-   **Multi-Period Analysis:** Request multiple time horizons (e.g., MTD, YTD, 1Y) in a single, efficient API call.
 -   **Flexible TWR Breakdowns:** Aggregate daily performance into monthly, quarterly, or yearly summaries.
 -   **Standard MWR Calculation:** Provides a money-weighted return for analyzing investor performance.
 -   **Advanced Contribution Engine:** Uses the Carino smoothing algorithm to accurately link multi-period position contributions. Supports multi-level hierarchical aggregation (e.g., by sector, then by security).
@@ -89,11 +90,23 @@ pytest --cov=engine --cov=app --cov-report term-missing
 ### 1\. Time-Weighted Return (TWR)
 
   - **Endpoint:** `POST /performance/twr`
+  - **Description:** Calculates TWR for multiple periods (e.g., MTD and YTD) in a single request.
   - **Example `curl` command:**
     ```bash
     curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
     -H "Content-Type: application/json" \
-    -d @docs/examples/twr_request.json
+    -d '{
+      "portfolio_number": "MULTI_PERIOD_01",
+      "performance_start_date": "2024-12-31",
+      "as_of": "2025-02-28",
+      "metric_basis": "NET",
+      "periods": ["MTD", "YTD"],
+      "frequencies": ["monthly"],
+      "daily_data": [
+        { "day": 1, "perf_date": "2025-01-15", "begin_mv": 100000, "end_mv": 102000 },
+        { "day": 2, "perf_date": "2025-02-15", "begin_mv": 102000, "end_mv": 105060 }
+      ]
+    }'
     ```
 
 ### 2\. Money-Weighted Return (MWR)
@@ -122,3 +135,4 @@ The core calculation logic is a standalone library. For instructions on how to u
   - **[Using the Performance Engine as a Standalone Library](https://www.google.com/search?q=docs/guides/standalone_engine_usage.md)**
 
 <!-- end list -->
+
