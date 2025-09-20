@@ -20,7 +20,6 @@ def _calculate_daily_instrument_contributions(
     if instruments_df.empty:
         return instruments_df
 
-    # Merge portfolio totals needed for weight calculation
     df = pd.merge(
         instruments_df,
         portfolio_df[[PortfolioColumns.PERF_DATE.value, PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]],
@@ -28,7 +27,6 @@ def _calculate_daily_instrument_contributions(
         suffixes=("", "_port"),
     )
 
-    # 1. Calculate Daily Weights based on the selected scheme
     if weighting_scheme == WeightingScheme.BOD:
         df["capital_inst"] = df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]
         df["capital_port"] = df[f"{PortfolioColumns.BEGIN_MV.value}_port"] + df[f"{PortfolioColumns.BOD_CF.value}_port"]
@@ -36,12 +34,10 @@ def _calculate_daily_instrument_contributions(
     with np.errstate(divide="ignore", invalid="ignore"):
         df["daily_weight"] = (df["capital_inst"] / df["capital_port"]).fillna(0.0)
 
-    # 2. Calculate Raw Daily Contribution (distinguishing local and fx)
     df["raw_local_contribution"] = df["daily_weight"] * (df.get("local_ror", 0.0) / 100)
     df["raw_fx_contribution"] = df["daily_weight"] * (df.get("fx_ror", 0.0) / 100)
     df["raw_contribution"] = df["daily_weight"] * (df[PortfolioColumns.DAILY_ROR.value] / 100)
 
-    # 3. Apply Carino Smoothing if requested
     if smoothing.method == "CARINO":
         portfolio_df_indexed = portfolio_df.set_index(PortfolioColumns.PERF_DATE.value)
         port_ror_series = portfolio_df_indexed[PortfolioColumns.DAILY_ROR.value] / 100
@@ -65,7 +61,6 @@ def _calculate_daily_instrument_contributions(
         df["smoothed_fx_contribution"] = df["raw_fx_contribution"]
         df["smoothed_contribution"] = df["raw_contribution"]
 
-    # 4. Handle NIP and Reset days
     nip_reset_dates = portfolio_df[
         (portfolio_df[PortfolioColumns.NIP.value] == 1) | (portfolio_df[PortfolioColumns.PERF_RESET.value] == 1)
     ][PortfolioColumns.PERF_DATE.value]
@@ -103,13 +98,13 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         portfolio_results_df[PortfolioColumns.PERF_DATE.value]
     )
 
-    # --- FIX START: Prepare FX rate map for currency conversion ---
-    fx_map = {}
+    fx_rates_df = pd.DataFrame()
     if request.currency_mode == "BOTH" and request.fx:
         fx_rates_df = pd.DataFrame([rate.model_dump() for rate in request.fx.rates])
         fx_rates_df["date"] = pd.to_datetime(fx_rates_df["date"])
-        fx_map = fx_rates_df.set_index(["date", "ccy"])["rate"].to_dict()
-    # --- FIX END ---
+        fx_rates_df.drop_duplicates(subset=['date', 'ccy'], keep='last', inplace=True)
+        fx_rates_df['prior_date'] = fx_rates_df['date'] - pd.Timedelta(days=1)
+
 
     all_positions_data = []
     for position in request.positions_data:
@@ -120,7 +115,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         pos_twr_config = twr_config
         position_ccy = position.meta.get("currency")
         if request.currency_mode == "BOTH" and position_ccy != request.report_ccy:
-            pass  # Use the full multi-currency config
+            pass
         else:
             pos_twr_config = EngineConfig(
                 performance_start_date=twr_config.performance_start_date,
@@ -139,18 +134,12 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         for key, value in position.meta.items():
             position_results_df[key] = value
 
-        # --- FIX START: Convert monetary values to base currency for weighting ---
-        if request.currency_mode == "BOTH" and position_ccy != request.report_ccy:
-            # We need the prior day's FX rate for Begin MV and BOD CF
-            def get_prior_day_rate(row_date):
-                prior_day = row_date - pd.Timedelta(days=1)
-                return fx_map.get((prior_day, position_ccy), 1.0)
+        if request.currency_mode == "BOTH" and position_ccy != request.report_ccy and not fx_rates_df.empty:
+            pos_fx_rates = fx_rates_df[fx_rates_df['ccy'] == position_ccy][['prior_date', 'rate']].rename(columns={'prior_date': PortfolioColumns.PERF_DATE.value, 'rate': 'fx_rate'})
+            position_results_df = pd.merge(position_results_df, pos_fx_rates, on=PortfolioColumns.PERF_DATE.value, how='left').ffill()
 
-            prior_day_rates = position_results_df[PortfolioColumns.PERF_DATE.value].apply(get_prior_day_rate)
-            monetary_cols = [PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]
-            for col in monetary_cols:
-                position_results_df[col] = position_results_df[col] * prior_day_rates
-        # --- FIX END ---
+            for col in [PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]:
+                position_results_df[col] *= position_results_df['fx_rate']
 
         all_positions_data.append(position_results_df)
 
@@ -162,10 +151,6 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
 
 
 def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[Dict, Dict]:
-    """
-    Orchestrates the full multi-level, hierarchical position contribution calculation.
-    Returns a tuple: (results_dict, lineage_data_dict)
-    """
     instruments_df, portfolio_results_df = _prepare_hierarchical_data(request)
 
     daily_contributions_df = _calculate_daily_instrument_contributions(
@@ -254,24 +239,6 @@ def calculate_hierarchical_contribution(request: ContributionRequest) -> Tuple[D
     return results, lineage_data
 
 
-def _calculate_single_period_weights(
-    portfolio_row: pd.Series, positions_df_map: Dict[str, pd.DataFrame], day_index: int
-) -> Dict[str, float]:
-    """Calculates the weight of each position for a single time period (a day)."""
-    weights = {}
-    portfolio_avg_capital = portfolio_row[PortfolioColumns.BEGIN_MV.value] + portfolio_row[PortfolioColumns.BOD_CF.value]
-
-    if portfolio_avg_capital == 0:
-        return {pos_id: 0.0 for pos_id in positions_df_map}
-
-    for pos_id, pos_df in positions_df_map.items():
-        pos_row = pos_df.iloc[day_index]
-        pos_avg_capital = pos_row[PortfolioColumns.BEGIN_MV.value] + pos_row[PortfolioColumns.BOD_CF.value]
-        weights[pos_id] = pos_avg_capital / portfolio_avg_capital
-
-    return weights
-
-
 def _calculate_carino_factors(ror_series: pd.Series) -> pd.Series:
     """Calculates the Carino smoothing factor k for a series of returns."""
     if not isinstance(ror_series.index, pd.DatetimeIndex):
@@ -280,20 +247,3 @@ def _calculate_carino_factors(ror_series: pd.Series) -> pd.Series:
     return pd.Series(
         np.where(ror_series == 0, 1.0, np.log(1 + ror_series) / ror_series), index=ror_series.index
     )
-
-
-def calculate_position_contribution(
-    portfolio_results: pd.DataFrame,
-    position_results_map: Dict[str, pd.DataFrame],
-    smoothing: Smoothing,
-    emit: Emit,
-    config: EngineConfig = None,
-) -> Dict[str, Dict]:
-    """
-    Orchestrates the original single-level position contribution calculation.
-    """
-    # This function is now superseded by the hierarchical path and can be deprecated/removed later.
-    # For now, it remains for legacy single-level calls.
-    # The logic here would need the same FX conversion fix as the hierarchical path.
-    # Since the main fix is in `_prepare_hierarchical_data`, this path is now implicitly fixed.
-    pass
