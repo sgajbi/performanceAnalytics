@@ -50,86 +50,83 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     master_start_date = min(p.start_date for p in resolved_periods)
     master_end_date = max(p.end_date for p in resolved_periods)
 
-    # --- Refactor Start: Calculate Once, Slice & Aggregate ---
     try:
-        # 1. Run the expensive daily calculations ONCE on the master date range
-        master_request = request.model_copy(
-            update={
-                "report_start_date": master_start_date,
-                "report_end_date": master_end_date,
-                "period_type": "EXPLICIT",
-                "periods": None,
-            }
-        )
+        if request.hierarchy:
+            # Hierarchical path remains as-is for now (iterative)
+            # This will be refactored in a subsequent step
+            results, lineage_details = calculate_hierarchical_contribution(request)
+            period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
+            results_by_period = {resolved_periods[0].name: period_result}
+            daily_contributions_df = lineage_details.get("daily_contributions.csv", pd.DataFrame())
+            portfolio_results_df = lineage_details.get("portfolio_twr.csv", pd.DataFrame())
+        else:
+            # Single-level path: "Calculate Once, Slice & Aggregate"
+            master_request = request.model_copy(
+                update={
+                    "report_start_date": master_start_date,
+                    "report_end_date": master_end_date,
+                    "period_type": "EXPLICIT",
+                    "periods": None,
+                }
+            )
 
-        instruments_df, portfolio_results_df = _prepare_hierarchical_data(master_request)
-        daily_contributions_df = _calculate_daily_instrument_contributions(
-            instruments_df, portfolio_results_df, master_request.weighting_scheme, master_request.smoothing
-        )
-        daily_contributions_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(
-            daily_contributions_df[PortfolioColumns.PERF_DATE.value]
-        ).dt.date
+            instruments_df, portfolio_results_df = _prepare_hierarchical_data(master_request)
+            daily_contributions_df = _calculate_daily_instrument_contributions(
+                instruments_df, portfolio_results_df, master_request.weighting_scheme, master_request.smoothing
+            )
+            daily_contributions_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(
+                daily_contributions_df[PortfolioColumns.PERF_DATE.value]
+            ).dt.date
 
-        results_by_period = {}
+            results_by_period = {}
+            for period in resolved_periods:
+                period_slice_df = daily_contributions_df[
+                    (daily_contributions_df[PortfolioColumns.PERF_DATE.value] >= period.start_date)
+                    & (daily_contributions_df[PortfolioColumns.PERF_DATE.value] <= period.end_date)
+                ].copy()
 
-        # 2. Loop through requested periods to SLICE and AGGREGATE the results
-        for period in resolved_periods:
-            period_slice_df = daily_contributions_df[
-                (daily_contributions_df[PortfolioColumns.PERF_DATE.value] >= period.start_date)
-                & (daily_contributions_df[PortfolioColumns.PERF_DATE.value] <= period.end_date)
-            ].copy()
+                if period_slice_df.empty:
+                    continue
 
-            if period_slice_df.empty:
-                continue
-
-            # This logic is now simplified to just aggregation
-            totals = (
-                period_slice_df.groupby("position_id")
-                .agg(
+                totals = period_slice_df.groupby("position_id").agg(
                     total_contribution=("smoothed_contribution", "sum"),
                     average_weight=("daily_weight", "mean"),
+                ).reset_index()
+
+                portfolio_period_slice_df = portfolio_results_df[
+                    (pd.to_datetime(portfolio_results_df[PortfolioColumns.PERF_DATE.value]).dt.date >= period.start_date)
+                    & (pd.to_datetime(portfolio_results_df[PortfolioColumns.PERF_DATE.value]).dt.date <= period.end_date)
+                ]
+
+                total_portfolio_return = (1 + portfolio_period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
+                sum_of_contributions = totals["total_contribution"].sum()
+                residual = total_portfolio_return - sum_of_contributions
+                total_avg_weight = totals["average_weight"].sum()
+
+                if total_avg_weight > 0 and master_request.smoothing.method == "CARINO":
+                    totals["total_contribution"] += residual * (totals["average_weight"] / total_avg_weight)
+
+                position_contributions = [
+                    PositionContribution(
+                        position_id=row["position_id"],
+                        total_contribution=row["total_contribution"] * 100,
+                        average_weight=row["average_weight"] * 100,
+                        total_return=0,  # Note: Per-position total return is complex to slice
+                    )
+                    for _, row in totals.iterrows()
+                ]
+
+                results_by_period[period.name] = SinglePeriodContributionResult(
+                    total_portfolio_return=total_portfolio_return * 100,
+                    total_contribution=sum(pc.total_contribution for pc in position_contributions),
+                    position_contributions=position_contributions,
                 )
-                .reset_index()
-            )
-
-            portfolio_period_slice_df = portfolio_results_df[
-                (pd.to_datetime(portfolio_results_df[PortfolioColumns.PERF_DATE.value]).dt.date >= period.start_date)
-                & (pd.to_datetime(portfolio_results_df[PortfolioColumns.PERF_DATE.value]).dt.date <= period.end_date)
-            ]
-
-            total_portfolio_return = (1 + portfolio_period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
-
-            # Simple residual allocation for the period slice
-            sum_of_contributions = totals["total_contribution"].sum()
-            residual = total_portfolio_return - sum_of_contributions
-            total_avg_weight = totals["average_weight"].sum()
-
-            if total_avg_weight > 0:
-                totals["total_contribution"] += residual * (totals["average_weight"] / total_avg_weight)
-
-            position_contributions = [
-                PositionContribution(
-                    position_id=row["position_id"],
-                    total_contribution=row["total_contribution"] * 100,
-                    average_weight=row["average_weight"] * 100,
-                    total_return=0,  # Note: Per-position total return is complex to slice, omitting for now
-                )
-                for _, row in totals.iterrows()
-            ]
-
-            period_result = SinglePeriodContributionResult(
-                total_portfolio_return=total_portfolio_return * 100,
-                total_contribution=sum(pc.total_contribution for pc in position_contributions),
-                position_contributions=position_contributions,
-            )
-            results_by_period[period.name] = period_result
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred during contribution calculation: {str(e)}",
         )
-    # --- Refactor End ---
 
     meta = Meta(
         calculation_id=request.calculation_id, engine_version=settings.APP_VERSION,
@@ -138,19 +135,27 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         periods={"requested": [p.value for p in periods_to_resolve], "master_start": str(master_start_date), "master_end": str(master_end_date)},
         input_fingerprint=input_fingerprint, calculation_hash=calculation_hash, report_ccy=request.report_ccy,
     )
-    # Note: Diagnostics and Audit are simplified as they were tied to the complex loop
     diagnostics = Diagnostics(
-        nip_days=0, reset_days=0,
-        effective_period_start=master_start_date,
-        notes=[],
+        nip_days=0, reset_days=0, effective_period_start=master_start_date, notes=[]
     )
     audit = Audit(counts={"input_positions": len(request.positions_data)})
 
-    response_model = ContributionResponse(
-        calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
-        results_by_period=results_by_period,
-        meta=meta, diagnostics=diagnostics, audit=audit,
-    )
+    # --- FIX START: Handle backward compatibility for response shape ---
+    if request.period_type and len(resolved_periods) == 1:
+        single_result = list(results_by_period.values())[0]
+        response_model = ContributionResponse(
+            calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
+            report_start_date=master_start_date, report_end_date=master_end_date,
+            **single_result.model_dump(exclude_none=True),
+            meta=meta, diagnostics=diagnostics, audit=audit,
+        )
+    else:
+        response_model = ContributionResponse(
+            calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
+            results_by_period=results_by_period,
+            meta=meta, diagnostics=diagnostics, audit=audit,
+        )
+    # --- FIX END ---
 
     background_tasks.add_task(
         lineage_service.capture,
@@ -158,7 +163,10 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         calculation_type="Contribution",
         request_model=request,
         response_model=response_model,
-        calculation_details={"daily_contributions.csv": daily_contributions_df},
+        calculation_details={
+            "portfolio_twr.csv": portfolio_results_df,
+            "daily_contributions.csv": daily_contributions_df
+        },
     )
 
     return response_model
