@@ -31,19 +31,16 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 
         _prepare_dataframe(df, config)
 
-        # Apply policies that modify base data before calculations
         df, policy_diagnostics = apply_robustness_policies(df, config.data_policy)
 
         df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value] = get_effective_period_start_dates(
             df[PortfolioColumns.PERF_DATE.value], config
         )
 
-        # This now returns a DataFrame which might include local_ror, fx_ror
         ror_df = calculate_daily_ror(df, config.metric_basis, config)
         for col in ror_df.columns:
             df[col] = ror_df[col]
 
-        # Apply outlier flagging now that RoR is calculated
         if config.data_policy:
             _flag_outliers(df, config.data_policy, policy_diagnostics)
 
@@ -53,9 +50,14 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
 
         calculate_cumulative_ror(df, config)
 
-        df[PortfolioColumns.LONG_SHORT.value] = np.where(df[PortfolioColumns.SIGN.value] == -1, "S", "L")
+        # --- FIX START: Add a neutral state for the long_short flag ---
+        df[PortfolioColumns.LONG_SHORT.value] = np.select(
+            [df[PortfolioColumns.SIGN.value] == -1, df[PortfolioColumns.SIGN.value] == 1],
+            ["S", "L"],
+            default="N" # Neutral for sign == 0
+        )
+        # --- FIX END ---
 
-        # Capture reset events before filtering
         reset_events = []
         reset_rows = df[df[PortfolioColumns.PERF_RESET.value] == 1]
         for _, row in reset_rows.iterrows():
