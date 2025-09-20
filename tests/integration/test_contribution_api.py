@@ -36,24 +36,26 @@ def test_contribution_endpoint_multi_currency(client):
     """Tests an end-to-end multi-currency contribution request."""
     payload = {
         "portfolio_number": "MULTI_CCY_CONTRIB_01",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
+        "period_type": "ITD",
         "portfolio_data": {
-            "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
-            "period_type": "ITD", "metric_basis": "GROSS",
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}]
+            "metric_basis": "GROSS",
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}],
         },
         "positions_data": [{
             "position_id": "EUR_STOCK",
             "meta": {"currency": "EUR"},
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}]
+            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}],
         }],
         "currency_mode": "BOTH",
         "report_ccy": "USD",
         "fx": {
             "rates": [
                 {"date": "2024-12-31", "ccy": "EUR", "rate": 1.05},
-                {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08}
+                {"date": "2025-01-01", "ccy": "EUR", "rate": 1.08},
             ]
-        }
+        },
     }
     response = client.post("/performance/contribution", json=payload)
     assert response.status_code == 200
@@ -61,25 +63,25 @@ def test_contribution_endpoint_multi_currency(client):
 
     # Total contribution should match the portfolio's total base return
     assert data["total_contribution"] == pytest.approx(data["total_portfolio_return"])
-    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5) 
+    assert data["total_contribution"] == pytest.approx(4.91429, abs=1e-5)
 
     pos_contrib = data["position_contributions"][0]
     assert pos_contrib["position_id"] == "EUR_STOCK"
     # In a single-day, single-position scenario, the local contribution should match the pure local return
     assert pos_contrib["local_contribution"] == pytest.approx(2.0, abs=1e-5)
-    
-    # --- START FIX ---
+
     # The FX contribution must equal the total minus the local component, thereby absorbing the
     # geometric cross-product term. The test now validates this additive relationship.
-    assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(pos_contrib["total_contribution"], abs=1e-5)
-    # --- END FIX ---
+    assert pos_contrib["local_contribution"] + pos_contrib["fx_contribution"] == pytest.approx(
+        pos_contrib["total_contribution"], abs=1e-5
+    )
 
 
 def test_contribution_lineage_flow(client, happy_path_payload):
     """Tests that lineage is correctly captured for a single-level contribution request."""
     payload = happy_path_payload.copy()
-    payload["emit"] = {"timeseries": True} # Ensure timeseries is generated for capture
-    
+    payload["emit"] = {"timeseries": True}  # Ensure timeseries is generated for capture
+
     contrib_response = client.post("/performance/contribution", json=payload)
     assert contrib_response.status_code == 200
     calculation_id = contrib_response.json()["calculation_id"]
@@ -150,7 +152,9 @@ def test_contribution_endpoint_hierarchy_happy_path(client, happy_path_payload):
     assert len(position_level["rows"]) == 2
     stock_a_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_A")
     stock_b_row = next(r for r in position_level["rows"] if r["key"]["position_id"] == "Stock_B")
-    assert stock_a_row["contribution"] + stock_b_row["contribution"] == pytest.approx(sector_level["rows"][0]["contribution"])
+    assert stock_a_row["contribution"] + stock_b_row["contribution"] == pytest.approx(
+        sector_level["rows"][0]["contribution"]
+    )
 
 
 def test_contribution_endpoint_error_handling(client, mocker):
@@ -158,9 +162,11 @@ def test_contribution_endpoint_error_handling(client, mocker):
     mocker.patch("app.api.endpoints.contribution.calculate_position_contribution", side_effect=EngineCalculationError("Test Error"))
     payload = {
         "portfolio_number": "ERROR",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-02",
+        "period_type": "ITD",
         "portfolio_data": {
-            "report_start_date": "2025-01-01", "report_end_date": "2025-01-02",
-            "period_type": "ITD", "metric_basis": "NET",
+            "metric_basis": "NET",
             "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1025}],
         },
         "positions_data": [],

@@ -7,10 +7,10 @@ def happy_path_payload():
     """Provides a standard, valid snake_case payload for contribution tests."""
     return {
         "portfolio_number": "CONTRIB_TEST_01",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-02",
+        "period_type": "ITD",
         "portfolio_data": {
-            "report_start_date": "2025-01-01",
-            "report_end_date": "2025-01-02",
-            "period_type": "ITD",
             "metric_basis": "NET",
             "daily_data": [
                 {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1020, "bod_cf": 0, "eod_cf": 0, "mgmt_fees": 0},

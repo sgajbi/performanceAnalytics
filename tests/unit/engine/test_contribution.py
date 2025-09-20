@@ -35,9 +35,9 @@ def sample_contribution_inputs():
 def portfolio_results_fixture() -> pd.DataFrame:
     """Provides a fixture for a processed portfolio DataFrame."""
     twr_config = EngineConfig(
-        performance_start_date="2025-01-01",
-        report_start_date="2025-01-01",
-        report_end_date="2025-01-02",
+        performance_start_date=date(2025, 1, 1),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 2),
         metric_basis="NET",
         period_type=PeriodType.ITD,
     )
@@ -60,9 +60,9 @@ def portfolio_results_fixture() -> pd.DataFrame:
 def position_results_map_fixture() -> dict:
     """Provides a fixture for a map of processed position DataFrames."""
     twr_config = EngineConfig(
-        performance_start_date="2025-01-01",
-        report_start_date="2025-01-01",
-        report_end_date="2025-01-02",
+        performance_start_date=date(2025, 1, 1),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 2),
         metric_basis="NET",
         period_type=PeriodType.ITD,
     )
@@ -94,9 +94,9 @@ def position_results_map_fixture() -> dict:
 def robust_nip_day_scenario():
     """A scenario with a NIP day to test average weight calculations."""
     config = EngineConfig(
-        performance_start_date="2025-01-01",
-        report_start_date="2025-01-01",
-        report_end_date="2025-01-03",
+        performance_start_date=date(2025, 1, 1),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 3),
         metric_basis="NET",
         period_type=PeriodType.ITD,
         feature_flags=FeatureFlags(use_nip_v2_rule=True)
@@ -139,6 +139,9 @@ def hierarchical_request_fixture(happy_path_payload):
         ]
     })
     payload["positions_data"][0]["meta"]["region"] = "US"
+    # This fixture was failing because it didn't define a period.
+    # We add it here to fix the test setup.
+    payload["period_type"] = "ITD"
     return ContributionRequest.model_validate(payload)
 
 
