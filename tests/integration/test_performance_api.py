@@ -181,6 +181,7 @@ def test_twr_respects_include_timeseries_flag(client):
         "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
     }
 
+    # Case 1: Flag is true
     payload_with = base_payload.copy()
     payload_with["output"] = {"include_timeseries": True}
     response_with = client.post("/performance/twr", json=payload_with)
@@ -189,13 +190,15 @@ def test_twr_respects_include_timeseries_flag(client):
     assert "daily_data" in daily_breakdown_with
     assert daily_breakdown_with["daily_data"] is not None
 
+    # Case 2: Flag is false
     payload_without = base_payload.copy()
     payload_without["output"] = {"include_timeseries": False}
     response_without = client.post("/performance/twr", json=payload_without)
     assert response_without.status_code == 200
     daily_breakdown_without = response_without.json()["results_by_period"]["YTD"]["breakdowns"]["daily"][0]
-    assert "daily_data" in daily_breakdown_without
-    assert daily_breakdown_without["daily_data"] is None
+    # --- FIX START: Assert that the key is now absent from the response ---
+    assert "daily_data" not in daily_breakdown_without
+    # --- FIX END ---
 
 
 def test_twr_response_includes_portfolio_return_summary(client):
@@ -218,7 +221,6 @@ def test_twr_response_includes_portfolio_return_summary(client):
     ytd_result = data["results_by_period"]["YTD"]
 
     assert "portfolio_return" in ytd_result
-    assert ytd_result["portfolio_return"] is not None
     assert ytd_result["portfolio_return"]["base"] == pytest.approx(2.01)
     assert ytd_result["portfolio_return"]["fx"] == 0.0
 
