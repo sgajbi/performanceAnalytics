@@ -15,7 +15,8 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
     """Tests the /performance/attribution endpoint end-to-end with a valid 'by_instrument' payload."""
     payload = {
         "portfolio_number": "ATTRIB_BY_INST_01", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
-        "portfolio_data": {"report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "NET", "period_type": "YTD", "daily_data": [
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
+        "portfolio_data": {"metric_basis": "NET", "daily_data": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1018.5}
         ]},
         "instruments_data": [
@@ -42,6 +43,7 @@ def test_attribution_lineage_flow(client):
     """Tests that lineage is correctly captured for an attribution request."""
     payload = {
         "portfolio_number": "ATTRIB_LINEAGE_01", "mode": "by_group", "group_by": ["sector"], "linking": "none", "frequency": "monthly",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", "period_type": "ITD",
         "portfolio_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 1.0}]}],
         "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 1.0}]}],
     }
@@ -62,7 +64,8 @@ def test_attribution_endpoint_hierarchical(client):
     """Tests multi-level hierarchical attribution, ensuring bottom-up aggregation is correct."""
     payload = {
         "portfolio_number": "HIERARCHY_01", "mode": "by_instrument", "group_by": ["assetClass", "sector"], "linking": "none", "frequency": "daily",
-        "portfolio_data": {"report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "NET", "period_type": "YTD", "daily_data": [
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
+        "portfolio_data": {"metric_basis": "NET", "daily_data": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1020}
         ]},
         "instruments_data": [
@@ -91,14 +94,12 @@ def test_attribution_endpoint_hierarchical(client):
 
 def test_attribution_endpoint_currency_attribution(client):
     """Tests the Karnosky-Singer currency attribution model end-to-end."""
-    # This test uses a simplified scenario to isolate the currency effects.
-    # Portfolio and Benchmark are 100% in a single EUR asset.
     payload = {
         "portfolio_number": "FX_ATTRIB_01", "mode": "by_instrument", "group_by": ["currency"],
         "linking": "none", "frequency": "daily", "currency_mode": "BOTH", "report_ccy": "USD",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
         "portfolio_data": {
-            "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "metric_basis": "GROSS",
-            "period_type": "ITD",
+            "metric_basis": "GROSS",
             "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 103.02}]
         },
         "instruments_data": [{
@@ -126,25 +127,17 @@ def test_attribution_endpoint_currency_attribution(client):
     assert data["currency_attribution"] is not None
     eur_effects = data["currency_attribution"][0]["effects"]
 
-    # Expected values based on Karnosky-Singer (where active local return is 0.5%)
-    # LA = (1-1) * 0.015 = 0
     assert eur_effects["local_allocation"] == pytest.approx(0.0)
-    # LS = 1 * (0.02 - 0.015) = 0.005
     assert eur_effects["local_selection"] == pytest.approx(0.5)
-    # CA = (1-1) * (1+0.015) * 0.01 = 0
     assert eur_effects["currency_allocation"] == pytest.approx(0.0)
-    # CS = 1 * (0.02 - 0.015) * 0.01 = 0.00005
     assert eur_effects["currency_selection"] == pytest.approx(0.005)
-    # Total = 0.505
     assert eur_effects["total_effect"] == pytest.approx(0.505)
 
-    # --- START NEW TEST: Verify lineage capture ---
     calculation_id = data["calculation_id"]
     lineage_response = client.get(f"/performance/lineage/{calculation_id}")
     assert lineage_response.status_code == 200
     lineage_data = lineage_response.json()
     assert "currency_attribution_effects.csv" in lineage_data["artifacts"]
-    # --- END NEW TEST ---
 
 
 @pytest.mark.parametrize(
@@ -154,7 +147,10 @@ def test_attribution_endpoint_currency_attribution(client):
 def test_attribution_endpoint_error_handling(client, mocker, error_class, expected_status):
     """Tests that the attribution endpoint correctly handles engine exceptions."""
     mocker.patch('app.api.endpoints.performance.run_attribution_calculations', side_effect=error_class("Test Error"))
-    payload = {"portfolio_number": "ERROR", "mode": "by_group", "group_by": ["sector"], "benchmark_groups_data": [], "linking": "none"}
+    payload = {
+        "portfolio_number": "ERROR", "mode": "by_group", "group_by": ["sector"], "benchmark_groups_data": [], "linking": "none",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", "period_type": "ITD",
+    }
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == expected_status
     assert "detail" in response.json()
