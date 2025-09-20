@@ -233,6 +233,7 @@ def test_twr_reset_scenario_has_correct_summary(client):
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-04",
         "periods": ["ITD"],
+        "metric_basis": "GROSS",
         "frequencies": ["daily"],
         "daily_data": [
             { "day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 500.0 },
