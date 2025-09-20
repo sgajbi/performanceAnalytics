@@ -33,7 +33,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     """
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
-    # --- 1. Handle backward compatibility and resolve periods ---
     if request.period_type:
         periods_to_resolve = [request.period_type]
     else:
@@ -49,9 +48,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     master_start_date = min(p.start_date for p in resolved_periods)
     master_end_date = max(p.end_date for p in resolved_periods)
 
-    # --- 2. Perform Calculations for each period ---
     results_by_period = {}
     diagnostics_data = {}
+    lineage_details = {}
 
     for i, period in enumerate(resolved_periods):
         period_request = request.model_copy(
@@ -62,11 +61,13 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 "periods": None,
             }
         )
-
+        
         try:
+            # For now, we recalculate for each period. This can be optimized later.
             if period_request.hierarchy:
-                results, _ = calculate_hierarchical_contribution(period_request)
+                results, period_lineage = calculate_hierarchical_contribution(period_request)
                 period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
+                if i == 0: lineage_details = period_lineage
             else: # Single-level path
                 twr_config = EngineConfig(
                     performance_start_date=inception_date,
@@ -80,52 +81,53 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                     hedging=period_request.hedging,
                 )
                 
-                # The portfolio's total TWR is always calculated from the provided portfolio_data,
-                # which is assumed to be in the base currency.
-                portfolio_df = create_engine_dataframe(
-                    [item.model_dump(by_alias=True) for item in period_request.portfolio_data.daily_data]
-                )
+                portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in period_request.portfolio_data.daily_data])
                 portfolio_results, diags = run_calculations(portfolio_df, twr_config)
-                if i == 0:
+                if i == 0: 
                     diagnostics_data = diags
+                    lineage_details["portfolio_twr.csv"] = portfolio_results
 
                 position_results_map = {}
                 for position in period_request.positions_data:
-                    position_df = create_engine_dataframe(
-                        [item.model_dump(by_alias=True) for item in position.daily_data]
-                    )
-                    
-                    pos_twr_config = twr_config # Default to the main config
-                    # If NOT in multi-currency mode OR the position is in the base currency,
-                    # create a specific BASE_ONLY config for the position TWR run.
+                    position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.daily_data])
+                    pos_twr_config = twr_config
                     if period_request.currency_mode != "BOTH" or position.meta.get("currency") == period_request.report_ccy:
                          pos_twr_config = EngineConfig(
-                            performance_start_date=twr_config.performance_start_date,
-                            report_start_date=twr_config.report_start_date,
-                            report_end_date=twr_config.report_end_date,
-                            metric_basis=twr_config.metric_basis,
-                            period_type=twr_config.period_type,
-                            currency_mode="BASE_ONLY"
+                            performance_start_date=twr_config.performance_start_date, report_start_date=twr_config.report_start_date,
+                            report_end_date=twr_config.report_end_date, metric_basis=twr_config.metric_basis,
+                            period_type=twr_config.period_type, currency_mode="BASE_ONLY"
                         )
-
                     position_results, _ = run_calculations(position_df, pos_twr_config)
                     position_results_map[position.position_id] = position_results
 
                 contribution_results = calculate_position_contribution(
                     portfolio_results, position_results_map, period_request.smoothing, period_request.emit, twr_config
                 )
+                
                 raw_timeseries = contribution_results.pop("timeseries", None)
-                total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
-                position_contributions = [
-                    PositionContribution(**data, position_id=pos_id) for pos_id, data in contribution_results.items()
-                ]
-                total_contribution_sum = sum(pc.total_contribution for pc in position_contributions)
+                if i == 0 and raw_timeseries:
+                    lineage_details["positions_daily_contribution.csv"] = pd.DataFrame(raw_timeseries)
 
-                period_result = SinglePeriodContributionResult(
-                    total_portfolio_return=total_portfolio_return,
-                    total_contribution=total_contribution_sum,
-                    position_contributions=position_contributions,
-                )
+                total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
+                position_contributions = [ PositionContribution(**data, position_id=pos_id) for pos_id, data in contribution_results.items() ]
+                total_contribution_sum = sum(pc.total_contribution for pc in position_contributions)
+                
+                period_result_payload = {
+                    "total_portfolio_return": total_portfolio_return,
+                    "total_contribution": total_contribution_sum,
+                    "position_contributions": position_contributions,
+                }
+
+                if period_request.emit.timeseries and raw_timeseries:
+                    timeseries = [DailyContribution(date=row["date"], total_contribution=sum(v for k, v in row.items() if k != "date")) for row in raw_timeseries]
+                    period_result_payload["timeseries"] = timeseries
+
+                if period_request.emit.by_position_timeseries and raw_timeseries:
+                    by_pos_ts = {pos_id: [PositionDailyContribution(date=row["date"], contribution=row.get(pos_id, 0.0)) for row in raw_timeseries] for pos_id in position_results_map.keys()}
+                    period_result_payload["by_position_timeseries"] = [ PositionContributionSeries(position_id=pos_id, series=series) for pos_id, series in by_pos_ts.items() ]
+                
+                period_result = SinglePeriodContributionResult.model_validate(period_result_payload)
+
             results_by_period[period.name] = period_result
 
         except Exception as e:
@@ -134,7 +136,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 detail=f"An unexpected error occurred during contribution calculation for period '{period.name}': {str(e)}",
             )
 
-    # --- 3. Assemble Final Response ---
     meta = Meta(
         calculation_id=request.calculation_id, engine_version=settings.APP_VERSION,
         precision_mode=request.precision_mode, calendar=request.calendar,
@@ -164,5 +165,14 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             results_by_period=results_by_period,
             meta=meta, diagnostics=diagnostics, audit=audit,
         )
+
+    background_tasks.add_task(
+        lineage_service.capture,
+        calculation_id=request.calculation_id,
+        calculation_type="Contribution",
+        request_model=request,
+        response_model=response_model,
+        calculation_details=lineage_details,
+    )
 
     return response_model
