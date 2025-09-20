@@ -62,12 +62,12 @@ def test_calculate_twr_endpoint_multi_period(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-02-15",
-        "as_of": "2025-02-15", # Explicit as_of for period resolution
-        "periods": ["MTD", "YTD"], # New multi-period request
+        "as_of": "2025-02-15",  # Explicit as_of for period resolution
+        "periods": ["MTD", "YTD"],  # New multi-period request
         "frequencies": ["monthly"],
         "daily_data": [
-            {"day": 1, "perf_date": "2025-01-15", "begin_mv": 1000.0, "end_mv": 1010.0}, # +1.0%
-            {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010.0, "end_mv": 1030.2}, # +2.0%
+            {"day": 1, "perf_date": "2025-01-15", "begin_mv": 1000.0, "end_mv": 1010.0},  # +1.0%
+            {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010.0, "end_mv": 1030.2},  # +2.0%
         ],
     }
     response = client.post("/performance/twr", json=payload)
@@ -80,12 +80,23 @@ def test_calculate_twr_endpoint_multi_period(client):
     assert "YTD" in results
 
     # Validate MTD result (only Feb data)
-    mtd_return = results["MTD"]["breakdowns"]["monthly"][0]["summary"]["period_return_pct"]
+    mtd_monthly_breakdown = results["MTD"]["breakdowns"]["monthly"]
+    assert len(mtd_monthly_breakdown) == 1
+    mtd_return = mtd_monthly_breakdown[0]["summary"]["period_return_pct"]
     assert mtd_return == pytest.approx(2.0)
 
     # Validate YTD result (Jan and Feb data compounded)
-    ytd_return = results["YTD"]["breakdowns"]["monthly"][0]["summary"]["period_return_pct"]
-    assert ytd_return == pytest.approx(3.02) # (1.01 * 1.02) - 1
+    ytd_monthly_breakdown = results["YTD"]["breakdowns"]["monthly"]
+    assert len(ytd_monthly_breakdown) == 2  # Should contain Jan and Feb results
+    jan_return = ytd_monthly_breakdown[0]["summary"]["period_return_pct"]
+    feb_return = ytd_monthly_breakdown[1]["summary"]["period_return_pct"]
+
+    assert jan_return == pytest.approx(1.0)
+    assert feb_return == pytest.approx(2.0)
+
+    # Manually compound the monthly returns to verify the total period return
+    compounded_ytd_return = ((1 + jan_return / 100) * (1 + feb_return / 100) - 1) * 100
+    assert compounded_ytd_return == pytest.approx(3.02)
 
 
 def test_calculate_twr_endpoint_multi_currency(client):
