@@ -48,11 +48,10 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
 
     master_start_date = min(p.start_date for p in resolved_periods)
     master_end_date = max(p.end_date for p in resolved_periods)
-    
+
     # --- 2. Perform Calculations for each period ---
-    # TODO: Refactor contribution engine for a "calculate once, slice many" pattern.
     results_by_period = {}
-    diagnostics_data = {}  # Store diagnostics from the first run
+    diagnostics_data = {}
 
     for i, period in enumerate(resolved_periods):
         period_request = request.model_copy(
@@ -68,7 +67,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             if period_request.hierarchy:
                 results, _ = calculate_hierarchical_contribution(period_request)
                 period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
-            else:
+            else: # Single-level path
                 twr_config = EngineConfig(
                     performance_start_date=inception_date,
                     report_start_date=period.start_date,
@@ -80,6 +79,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                     fx=period_request.fx,
                     hedging=period_request.hedging,
                 )
+                
+                # The portfolio's total TWR is always calculated from the provided portfolio_data,
+                # which is assumed to be in the base currency.
                 portfolio_df = create_engine_dataframe(
                     [item.model_dump(by_alias=True) for item in period_request.portfolio_data.daily_data]
                 )
@@ -92,12 +94,19 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                     position_df = create_engine_dataframe(
                         [item.model_dump(by_alias=True) for item in position.daily_data]
                     )
-                    # This TWR config should be consistent for all positions
-                    pos_twr_config = twr_config
-                    if period_request.currency_mode == "BOTH" and position.meta.get("currency") != period_request.report_ccy:
-                        pass
-                    else:
-                        pos_twr_config = twr_config.model_copy(update={"currency_mode": "BASE_ONLY"})
+                    
+                    pos_twr_config = twr_config # Default to the main config
+                    # If NOT in multi-currency mode OR the position is in the base currency,
+                    # create a specific BASE_ONLY config for the position TWR run.
+                    if period_request.currency_mode != "BOTH" or position.meta.get("currency") == period_request.report_ccy:
+                         pos_twr_config = EngineConfig(
+                            performance_start_date=twr_config.performance_start_date,
+                            report_start_date=twr_config.report_start_date,
+                            report_end_date=twr_config.report_end_date,
+                            metric_basis=twr_config.metric_basis,
+                            period_type=twr_config.period_type,
+                            currency_mode="BASE_ONLY"
+                        )
 
                     position_results, _ = run_calculations(position_df, pos_twr_config)
                     position_results_map[position.position_id] = position_results
@@ -127,15 +136,11 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
 
     # --- 3. Assemble Final Response ---
     meta = Meta(
-        calculation_id=request.calculation_id,
-        engine_version=settings.APP_VERSION,
-        precision_mode=request.precision_mode,
-        calendar=request.calendar,
+        calculation_id=request.calculation_id, engine_version=settings.APP_VERSION,
+        precision_mode=request.precision_mode, calendar=request.calendar,
         annualization=request.annualization,
         periods={"requested": [p.value for p in periods_to_resolve], "master_start": str(master_start_date), "master_end": str(master_end_date)},
-        input_fingerprint=input_fingerprint,
-        calculation_hash=calculation_hash,
-        report_ccy=request.report_ccy,
+        input_fingerprint=input_fingerprint, calculation_hash=calculation_hash, report_ccy=request.report_ccy,
     )
     diagnostics = Diagnostics(
         nip_days=diagnostics_data.get("nip_days", 0),
@@ -145,28 +150,19 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     )
     audit = Audit(counts={"input_positions": len(request.positions_data)})
 
-    # For backward compatibility, if only one period was requested via legacy field, populate the legacy fields.
     if request.period_type and len(resolved_periods) == 1:
         single_result = list(results_by_period.values())[0]
         response_model = ContributionResponse(
-            calculation_id=request.calculation_id,
-            portfolio_number=request.portfolio_number,
-            report_start_date=master_start_date,
-            report_end_date=master_end_date,
+            calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
+            report_start_date=master_start_date, report_end_date=master_end_date,
             **single_result.model_dump(exclude_none=True),
-            meta=meta,
-            diagnostics=diagnostics,
-            audit=audit,
+            meta=meta, diagnostics=diagnostics, audit=audit,
         )
     else:
         response_model = ContributionResponse(
-            calculation_id=request.calculation_id,
-            portfolio_number=request.portfolio_number,
+            calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
             results_by_period=results_by_period,
-            meta=meta,
-            diagnostics=diagnostics,
-            audit=audit,
+            meta=meta, diagnostics=diagnostics, audit=audit,
         )
 
-    # Lineage capture can be added here
     return response_model
