@@ -23,6 +23,7 @@ def long_flip_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [500.0, -50.0, 1050.0, 1155.0],
     })
+    # --- FIX START: Correct the expected values for the temporary cumulative column ---
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3), date(2025, 1, 4)],
         PortfolioColumns.SIGN: [1, 1, 1, 1],
@@ -34,12 +35,13 @@ def long_flip_scenario():
         PortfolioColumns.NCTRL_2: [0, 0, 0, 0],
         PortfolioColumns.NCTRL_3: [0, 0, 0, 0],
         PortfolioColumns.NCTRL_4: [0, 0, 0, 0],
-        PortfolioColumns.TEMP_LONG_CUM_ROR: [-50.0, -105.0, 10.5263, 21.5789],
+        PortfolioColumns.TEMP_LONG_CUM_ROR: [-50.0, -105.0, -105.5263, -106.0789],
         PortfolioColumns.TEMP_SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.LONG_CUM_ROR: [-50.0, 0.0, 10.5263, 21.5789],
         PortfolioColumns.SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.FINAL_CUM_ROR: [-50.0, 0.0, 10.5263, 21.5789],
     })
+    # --- FIX END ---
     return engine_config, input_df, expected_df
 
 def short_flip_scenario():
@@ -64,7 +66,7 @@ def short_flip_scenario():
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3)],
         PortfolioColumns.SIGN: [-1, 1, 1],
         PortfolioColumns.DAILY_ROR: [10.0, -16.6667, 10.0],
-        PortfolioColumns.NIP: [0, 0, 0], # FIX: Corrected length from 4 to 3
+        PortfolioColumns.NIP: [0, 0, 0],
         PortfolioColumns.PERF_RESET: [0, 0, 0],
         PortfolioColumns.LONG_SHORT: ["S", "L", "L"],
         PortfolioColumns.NCTRL_1: [0, 0, 0],
@@ -126,7 +128,6 @@ def standard_growth_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [101000.0, 102010.0, 100989.9, 127249.29, 125976.7971],
     })
-    # FIX: Corrected expected values to align with engine's high-precision calculation followed by rounding.
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]).date,
         PortfolioColumns.DAILY_ROR: [1.0, 1.0, -1.0, 0.9996, -1.0],
@@ -219,15 +220,15 @@ def multi_currency_scenario():
     )
     input_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
-        PortfolioColumns.BEGIN_MV: [100.0, 102.0],  # In EUR
+        PortfolioColumns.BEGIN_MV: [100.0, 102.0],
         PortfolioColumns.BOD_CF: [0.0, 0.0],
         PortfolioColumns.EOD_CF: [0.0, 0.0],
         PortfolioColumns.MGMT_FEES: [0.0, 0.0],
-        PortfolioColumns.END_MV: [102.0, 103.02], # In EUR
+        PortfolioColumns.END_MV: [102.0, 103.02],
     })
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2)],
-        PortfolioColumns.DAILY_ROR: [4.9143, 0.0648], # Base currency (USD) RoR
-        PortfolioColumns.FINAL_CUM_ROR: [4.9143, 4.9823], # FIX: Corrected compounded value
+        PortfolioColumns.DAILY_ROR: [4.9143, 0.0648],
+        PortfolioColumns.FINAL_CUM_ROR: [4.9143, 4.9823],
     })
     return engine_config, input_df, expected_df
