@@ -75,17 +75,19 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
 
-            # --- FIX START: Always populate portfolio_return for consistency ---
-            base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
+            # --- FIX START: Use the engine's final cumulative return, which correctly handles resets ---
+            base_total = period_slice_df[PortfolioColumns.FINAL_CUM_ROR.value].iloc[-1]
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
+                # Note: A full local/fx decomposition that respects resets would require more columns from the engine.
+                # For now, we present the correct total base return and approximate the components.
                 local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
                 fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
                 period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=local_total * 100, fx=fx_total * 100, base=base_total * 100
+                    local=local_total * 100, fx=fx_total * 100, base=base_total
                 )
             else:
                 period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=base_total * 100, fx=0.0, base=base_total * 100
+                    local=base_total, fx=0.0, base=base_total
                 )
             # --- FIX END ---
 

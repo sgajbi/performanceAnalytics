@@ -181,7 +181,6 @@ def test_twr_respects_include_timeseries_flag(client):
         "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
     }
 
-    # Case 1: Flag is true (or default from request)
     payload_with = base_payload.copy()
     payload_with["output"] = {"include_timeseries": True}
     response_with = client.post("/performance/twr", json=payload_with)
@@ -190,7 +189,6 @@ def test_twr_respects_include_timeseries_flag(client):
     assert "daily_data" in daily_breakdown_with
     assert daily_breakdown_with["daily_data"] is not None
 
-    # Case 2: Flag is false
     payload_without = base_payload.copy()
     payload_without["output"] = {"include_timeseries": False}
     response_without = client.post("/performance/twr", json=payload_without)
@@ -223,6 +221,34 @@ def test_twr_response_includes_portfolio_return_summary(client):
     assert ytd_result["portfolio_return"] is not None
     assert ytd_result["portfolio_return"]["base"] == pytest.approx(2.01)
     assert ytd_result["portfolio_return"]["fx"] == 0.0
+
+
+def test_twr_reset_scenario_has_correct_summary(client):
+    """
+    Tests that for a period that includes a performance reset, the top-level
+    portfolio_return summary uses the correct final cumulative return from the engine.
+    """
+    payload = {
+        "portfolio_number": "TWR_STRESS_TEST_03",
+        "performance_start_date": "2024-12-31",
+        "report_end_date": "2025-01-04",
+        "periods": ["ITD"],
+        "frequencies": ["daily"],
+        "daily_data": [
+            { "day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 500.0 },
+            { "day": 2, "perf_date": "2025-01-02", "begin_mv": 500.0, "end_mv": -50.0 },
+            { "day": 3, "perf_date": "2025-01-03", "begin_mv": -50.0, "bod_cf": 1000.0, "end_mv": 1050.0 },
+            { "day": 4, "perf_date": "2025-01-04", "begin_mv": 1050.0, "end_mv": 1155.0 }
+        ],
+        "reset_policy": { "emit": True }
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    itd_result = data["results_by_period"]["ITD"]
+
+    assert "portfolio_return" in itd_result
+    assert itd_result["portfolio_return"]["base"] == pytest.approx(21.578947, abs=1e-6)
 
 
 @pytest.mark.parametrize(
