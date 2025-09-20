@@ -65,24 +65,22 @@ def format_breakdowns_for_response(
         for i, result_item in enumerate(results):
             summary_data = result_item["summary"]
 
+            # --- FIX START: Logic simplified as engine now produces correct field names ---
             pydantic_summary_data = {
                 "begin_mv": summary_data.get(PortfolioColumns.BEGIN_MV),
                 "end_mv": summary_data.get(PortfolioColumns.END_MV),
                 "net_cash_flow": summary_data.get("net_cash_flow"),
-                **summary_data,
+                "period_return_pct": summary_data.get("period_return_pct"),
+                "cumulative_return_pct_to_date": summary_data.get("cumulative_return_pct_to_date"),
+                "annualized_return_pct": summary_data.get("annualized_return_pct"),
             }
-
-            if freq == Frequency.DAILY and "cumulative_return_pct_to_date" not in pydantic_summary_data:
-                 if "final_cum_ror" in summary_data:
-                      pydantic_summary_data["cumulative_return_pct_to_date"] = summary_data["final_cum_ror"]
+            # --- FIX END ---
 
             summary_model = PerformanceSummary.model_validate(pydantic_summary_data)
 
             daily_data_for_period = None
-            # --- FIX START: Respect the include_timeseries flag ---
             if freq == Frequency.DAILY and i < len(daily_records) and include_timeseries:
                 daily_data_for_period = [daily_records[i]]
-            # --- FIX END ---
 
             formatted_results.append(
                 PerformanceResultItem(

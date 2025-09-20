@@ -20,7 +20,6 @@ class PerformanceSummary(BaseModel):
     period_return_pct: float
     cumulative_return_pct_to_date: Optional[float] = None
     annualized_return_pct: Optional[float] = None
-    final_cum_ror: Optional[float] = None
 
 
 class PerformanceResultItem(BaseModel):
@@ -57,7 +56,6 @@ class SinglePeriodPerformanceResult(BaseModel):
 class PerformanceResponse(BaseModel):
     """
     The main response model for a TWR calculation.
-
     Can return results for multiple periods in 'results_by_period' or a single
     period's results in the legacy flat structure for backward compatibility.
     """
@@ -65,7 +63,6 @@ class PerformanceResponse(BaseModel):
     calculation_id: UUID
     portfolio_number: str
 
-    # New multi-period structure
     results_by_period: Optional[Dict[str, SinglePeriodPerformanceResult]] = None
 
     # Legacy single-period structure for backward compatibility

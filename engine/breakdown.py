@@ -62,7 +62,9 @@ def generate_performance_breakdowns(
                     "period_return_pct": row[PortfolioColumns.DAILY_ROR.value],
                 }
                 if include_cumulative:
+                    # --- FIX START: Use the correct, public-facing field name directly ---
                     summary["cumulative_return_pct_to_date"] = row[PortfolioColumns.FINAL_CUM_ROR.value]
+                    # --- FIX END ---
                 results.append({"period": row[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"), "summary": summary})
         else:
             freq_map = {Frequency.MONTHLY: "ME", Frequency.QUARTERLY: "QE", Frequency.YEARLY: "YE", Frequency.WEEKLY: "W-FRI"}
