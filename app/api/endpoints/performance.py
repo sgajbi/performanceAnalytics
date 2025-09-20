@@ -9,7 +9,7 @@ from app.models.attribution_responses import AttributionResponse, SinglePeriodAt
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
-from app.models.responses import PerformanceResponse, PortfolioReturnDecomposition, SinglePeriodPerformanceResult
+from app.models.responses import PerformanceResponse, PortfolioReturnDecomposition, SinglePeriodPerformanceResult, ResetEvent
 from app.services.lineage_service import lineage_service
 from core.envelope import Audit, Diagnostics, Meta
 from core.periods import resolve_periods
@@ -75,11 +75,8 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
 
-            # --- FIX START: Use the engine's final cumulative return, which correctly handles resets ---
             base_total = period_slice_df[PortfolioColumns.FINAL_CUM_ROR.value].iloc[-1]
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
-                # Note: A full local/fx decomposition that respects resets would require more columns from the engine.
-                # For now, we present the correct total base return and approximate the components.
                 local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
                 fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
                 period_result.portfolio_return = PortfolioReturnDecomposition(
@@ -89,12 +86,14 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=base_total, fx=0.0, base=base_total
                 )
-            # --- FIX END ---
 
             if request.reset_policy.emit and diagnostics_data.get("resets"):
+                # --- FIX START: Explicitly create ResetEvent models ---
                 period_result.reset_events = [
-                    event for event in diagnostics_data["resets"] if period.start_date <= event["date"] <= period.end_date
+                    ResetEvent(**event) for event in diagnostics_data["resets"] 
+                    if period.start_date <= event["date"] <= period.end_date
                 ]
+                # --- FIX END ---
             
             results_by_period[period.name] = period_result
 
