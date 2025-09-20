@@ -5,7 +5,7 @@ import pandas as pd
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
-from app.models.attribution_responses import AttributionResponse
+from app.models.attribution_responses import AttributionResponse, SinglePeriodAttributionResult
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
@@ -69,7 +69,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             breakdowns_data = generate_performance_breakdowns(
                 period_slice_df, request.frequencies, request.annualization, request.output.include_cumulative
             )
-            formatted_breakdowns = format_breakdowns_for_response(breakdowns_data, period_slice_df)
+            # --- FIX START: Pass include_timeseries flag to the formatter ---
+            formatted_breakdowns = format_breakdowns_for_response(
+                breakdowns_data, period_slice_df, request.output.include_timeseries
+            )
+            # --- FIX END ---
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
 

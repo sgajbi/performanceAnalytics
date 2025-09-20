@@ -51,7 +51,7 @@ def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
 
 
 def format_breakdowns_for_response(
-    breakdowns_data: Dict[Frequency, List[Dict]], daily_results_df: pd.DataFrame
+    breakdowns_data: Dict[Frequency, List[Dict]], daily_results_df: pd.DataFrame, include_timeseries: bool
 ) -> PerformanceBreakdown:
     """
     Takes the pure breakdown dict from the engine and formats it into
@@ -72,17 +72,17 @@ def format_breakdowns_for_response(
                 **summary_data,
             }
 
-            # --- FIX START: Correctly populate cumulative return for daily summaries ---
             if freq == Frequency.DAILY and "cumulative_return_pct_to_date" not in pydantic_summary_data:
                  if "final_cum_ror" in summary_data:
                       pydantic_summary_data["cumulative_return_pct_to_date"] = summary_data["final_cum_ror"]
-            # --- FIX END ---
 
             summary_model = PerformanceSummary.model_validate(pydantic_summary_data)
 
             daily_data_for_period = None
-            if freq == Frequency.DAILY and i < len(daily_records):
+            # --- FIX START: Respect the include_timeseries flag ---
+            if freq == Frequency.DAILY and i < len(daily_records) and include_timeseries:
                 daily_data_for_period = [daily_records[i]]
+            # --- FIX END ---
 
             formatted_results.append(
                 PerformanceResultItem(

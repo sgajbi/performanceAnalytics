@@ -41,7 +41,6 @@ def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
 
     response_data = response.json()
     assert "calculation_id" in response_data
-    # Legacy structure is now nested inside results_by_period
     assert "results_by_period" in response_data
     assert "YTD" in response_data["results_by_period"]
     ytd_results = response_data["results_by_period"]["YTD"]
@@ -62,8 +61,8 @@ def test_calculate_twr_endpoint_multi_period(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-02-15",
-        "as_of": "2025-02-15",  # Explicit as_of for period resolution
-        "periods": ["MTD", "YTD"],  # New multi-period request
+        "as_of": "2025-02-15",
+        "periods": ["MTD", "YTD"],
         "frequencies": ["monthly"],
         "daily_data": [
             {"day": 1, "perf_date": "2025-01-15", "begin_mv": 1000.0, "end_mv": 1010.0},  # +1.0%
@@ -79,22 +78,19 @@ def test_calculate_twr_endpoint_multi_period(client):
     assert "MTD" in results
     assert "YTD" in results
 
-    # Validate MTD result (only Feb data)
     mtd_monthly_breakdown = results["MTD"]["breakdowns"]["monthly"]
     assert len(mtd_monthly_breakdown) == 1
     mtd_return = mtd_monthly_breakdown[0]["summary"]["period_return_pct"]
     assert mtd_return == pytest.approx(2.0)
 
-    # Validate YTD result (Jan and Feb data compounded)
     ytd_monthly_breakdown = results["YTD"]["breakdowns"]["monthly"]
-    assert len(ytd_monthly_breakdown) == 2  # Should contain Jan and Feb results
+    assert len(ytd_monthly_breakdown) == 2
     jan_return = ytd_monthly_breakdown[0]["summary"]["period_return_pct"]
     feb_return = ytd_monthly_breakdown[1]["summary"]["period_return_pct"]
 
     assert jan_return == pytest.approx(1.0)
     assert feb_return == pytest.approx(2.0)
 
-    # Manually compound the monthly returns to verify the total period return
     compounded_ytd_return = ((1 + jan_return / 100) * (1 + feb_return / 100) - 1) * 100
     assert compounded_ytd_return == pytest.approx(3.02)
 
@@ -130,7 +126,6 @@ def test_calculate_twr_endpoint_multi_currency(client):
     assert "portfolio_return" in itd_result
     assert itd_result["portfolio_return"]["local"] == pytest.approx(3.02)
     assert itd_result["portfolio_return"]["fx"] == pytest.approx(1.90476, abs=1e-5)
-    # FIX: Correct the expected compounded base return value
     assert itd_result["portfolio_return"]["base"] == pytest.approx(4.98228, abs=1e-5)
     assert data["meta"]["report_ccy"] == "USD"
 
@@ -145,16 +140,12 @@ def test_calculate_twr_endpoint_with_data_policy(client):
         "periods": ["ITD"],
         "frequencies": ["daily"],
         "daily_data": [
-            # Add stable history for MAD calculation
             {"day": 1, "perf_date": "2024-12-28", "begin_mv": 1000.0, "end_mv": 1001.0},
             {"day": 2, "perf_date": "2024-12-29", "begin_mv": 1001.0, "end_mv": 1002.0},
             {"day": 3, "perf_date": "2024-12-30", "begin_mv": 1002.0, "end_mv": 1003.0},
             {"day": 4, "perf_date": "2024-12-31", "begin_mv": 1003.0, "end_mv": 1004.0},
-            # Day to be overridden
             {"day": 5, "perf_date": "2025-01-01", "begin_mv": 1004.0, "end_mv": 1010.0},
-            # Outlier Day, with corrected begin_mv
             {"day": 6, "perf_date": "2025-01-02", "begin_mv": 1005.0, "end_mv": 2000.0},
-            # Day to be ignored, with corrected begin_mv
             {"day": 7, "perf_date": "2025-01-03", "begin_mv": 2000.0, "end_mv": 2020.0},
         ],
         "data_policy": {
@@ -168,18 +159,45 @@ def test_calculate_twr_endpoint_with_data_policy(client):
     data = response.json()
     itd_result = data["results_by_period"]["ITD"]
 
-    # Assert override was applied (index 4 in results)
     daily_breakdown = itd_result["breakdowns"]["daily"]
     assert daily_breakdown[4]["summary"]["period_return_pct"] == pytest.approx(0.099602, abs=1e-6)
-
-    # Assert ignore_days was applied (index 6 in results)
     assert daily_breakdown[6]["summary"]["period_return_pct"] == 0.0
 
-    # Assert diagnostics are correct
     diags = data["diagnostics"]
     assert diags["policy"]["overrides"]["applied_mv_count"] == 1
     assert diags["policy"]["ignored_days_count"] == 1
     assert diags["policy"]["outliers"]["flagged_rows"] == 1
+
+
+def test_twr_respects_include_timeseries_flag(client):
+    """Tests that the include_timeseries flag correctly includes or excludes the daily_data block."""
+    base_payload = {
+        "portfolio_number": "TIMESERIES_FLAG_TEST",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-01-01",
+        "periods": ["YTD"],
+        "frequencies": ["daily"],
+        "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
+    }
+
+    # Case 1: Flag is true (or default from request)
+    payload_with = base_payload.copy()
+    payload_with["output"] = {"include_timeseries": True}
+    response_with = client.post("/performance/twr", json=payload_with)
+    assert response_with.status_code == 200
+    daily_breakdown_with = response_with.json()["results_by_period"]["YTD"]["breakdowns"]["daily"][0]
+    assert "daily_data" in daily_breakdown_with
+    assert daily_breakdown_with["daily_data"] is not None
+
+    # Case 2: Flag is false
+    payload_without = base_payload.copy()
+    payload_without["output"] = {"include_timeseries": False}
+    response_without = client.post("/performance/twr", json=payload_without)
+    assert response_without.status_code == 200
+    daily_breakdown_without = response_without.json()["results_by_period"]["YTD"]["breakdowns"]["daily"][0]
+    assert "daily_data" in daily_breakdown_without
+    assert daily_breakdown_without["daily_data"] is None
 
 
 @pytest.mark.parametrize(
