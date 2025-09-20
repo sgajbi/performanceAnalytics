@@ -28,7 +28,8 @@ def calculate_sign(df: pd.DataFrame) -> pd.Series:
 
     prev_eod_cf = df[PortfolioColumns.EOD_CF.value].shift(1, fill_value=zero)
     prev_perf_reset = df[PortfolioColumns.PERF_RESET.value].shift(1, fill_value=zero)
-    is_flip_event = ((df[PortfolioColumns.BOD_CF.value] != zero) | (prev_eod_cf != zero) | (prev_perf_reset == 1))
+    is_flip_event = ((df[PortfolioColumns.BOD_CF.value] != zero) |
+                     (prev_eod_cf != zero) | (prev_perf_reset == 1))
     is_flip_event.iloc[0] = True
     flip_group = is_flip_event.cumsum()
     event_signs = initial_sign.where(is_flip_event)

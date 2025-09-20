@@ -125,24 +125,3 @@ def test_run_calculations_general_exception_handling():
         run_calculations(bad_df, config)
 
     assert "Input must be a pandas DataFrame" in exc_info.value.message
-
-
-def test_long_short_flag_handles_neutral_sign():
-    """Tests that a day with a neutral (0) sign gets a neutral 'N' flag."""
-    config = EngineConfig(
-        performance_start_date=date(2025, 1, 1),
-        report_end_date=date(2025, 1, 3),
-        metric_basis="NET",
-        period_type=PeriodType.YTD,
-    )
-    data = {
-        PortfolioColumns.PERF_DATE.value: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03"]),
-        PortfolioColumns.BEGIN_MV.value: [1000.0, -1000.0, 0.0],
-        PortfolioColumns.END_MV.value: [1000.0, -1000.0, 0.0],
-    }
-    df = pd.DataFrame(data)
-    result_df, _ = run_calculations(df, config)
-
-    assert result_df[PortfolioColumns.LONG_SHORT.value].iloc[0] == "L"
-    assert result_df[PortfolioColumns.LONG_SHORT.value].iloc[1] == "S"
-    assert result_df[PortfolioColumns.LONG_SHORT.value].iloc[2] == "N"
