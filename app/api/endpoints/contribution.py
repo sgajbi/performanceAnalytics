@@ -49,7 +49,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     master_end_date = max(p.end_date for p in resolved_periods)
 
     results_by_period = {}
-    diagnostics_data = {}
+    diagnostics_data = {} # Stored from the first/widest run
     lineage_details = {}
 
     for i, period in enumerate(resolved_periods):
@@ -63,83 +63,39 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         )
         
         try:
-            if period_request.hierarchy:
-                results, period_lineage = calculate_hierarchical_contribution(period_request)
+            # UNIFIED PATH: Treat single-level as a special case of hierarchical
+            is_single_level = not period_request.hierarchy
+            if is_single_level:
+                period_request.hierarchy = ["position_id"]
+
+            results, period_lineage = calculate_hierarchical_contribution(period_request)
+            
+            if i == 0:
+                lineage_details = period_lineage
+                # TODO: Plumb diagnostics out of the hierarchical engine
+                diagnostics_data = {"nip_days": 0, "reset_days": 0, "effective_period_start": period.start_date, "notes": []}
+
+            if is_single_level:
+                # Unpack the hierarchical result into the single-level format
+                total_return = results["summary"]["portfolio_contribution"]
+                position_level = results["levels"][0]
+                pos_contribs = [
+                    PositionContribution(
+                        position_id=row["key"]["position_id"],
+                        total_contribution=row["contribution"],
+                        average_weight=row["weight_avg"],
+                        total_return=0, # This requires another engine run; defer for now.
+                        local_contribution=row.get("local_contribution"),
+                        fx_contribution=row.get("fx_contribution")
+                    ) for row in position_level["rows"]
+                ]
+                period_result = SinglePeriodContributionResult(
+                    total_portfolio_return=total_return,
+                    total_contribution=total_return,
+                    position_contributions=pos_contribs
+                )
+            else:
                 period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
-                if i == 0: lineage_details = period_lineage
-            else: # Single-level path
-                twr_config = EngineConfig(
-                    performance_start_date=inception_date,
-                    report_start_date=period.start_date,
-                    report_end_date=period.end_date,
-                    metric_basis=period_request.portfolio_data.metric_basis,
-                    period_type=period_request.period_type,
-                    currency_mode=period_request.currency_mode,
-                    report_ccy=period_request.report_ccy,
-                    fx=period_request.fx,
-                    hedging=period_request.hedging,
-                )
-                
-                # FIX: When in multi-currency mode, the top-level portfolio TWR must be calculated
-                # using BASE_ONLY, as its inputs are already in the base currency.
-                portfolio_twr_config = twr_config
-                if twr_config.currency_mode == "BOTH":
-                    portfolio_twr_config = EngineConfig(
-                        performance_start_date=twr_config.performance_start_date,
-                        report_start_date=twr_config.report_start_date,
-                        report_end_date=twr_config.report_end_date,
-                        metric_basis=twr_config.metric_basis,
-                        period_type=twr_config.period_type,
-                        currency_mode="BASE_ONLY"
-                    )
-
-                portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in period_request.portfolio_data.daily_data])
-                portfolio_results, diags = run_calculations(portfolio_df, portfolio_twr_config)
-
-                if i == 0: 
-                    diagnostics_data = diags
-                    lineage_details["portfolio_twr.csv"] = portfolio_results
-
-                position_results_map = {}
-                for position in period_request.positions_data:
-                    position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.daily_data])
-                    pos_twr_config = twr_config
-                    if period_request.currency_mode != "BOTH" or position.meta.get("currency") == period_request.report_ccy:
-                         pos_twr_config = EngineConfig(
-                            performance_start_date=twr_config.performance_start_date, report_start_date=twr_config.report_start_date,
-                            report_end_date=twr_config.report_end_date, metric_basis=twr_config.metric_basis,
-                            period_type=twr_config.period_type, currency_mode="BASE_ONLY"
-                        )
-                    position_results, _ = run_calculations(position_df, pos_twr_config)
-                    position_results_map[position.position_id] = position_results
-
-                contribution_results = calculate_position_contribution(
-                    portfolio_results, position_results_map, period_request.smoothing, period_request.emit, twr_config
-                )
-                
-                raw_timeseries = contribution_results.pop("timeseries", None)
-                if i == 0 and raw_timeseries:
-                    lineage_details["positions_daily_contribution.csv"] = pd.DataFrame(raw_timeseries)
-
-                total_portfolio_return = ((1 + portfolio_results[PortfolioColumns.DAILY_ROR] / 100).prod() - 1) * 100
-                position_contributions = [ PositionContribution(**data, position_id=pos_id) for pos_id, data in contribution_results.items() ]
-                total_contribution_sum = sum(pc.total_contribution for pc in position_contributions)
-                
-                period_result_payload = {
-                    "total_portfolio_return": total_portfolio_return,
-                    "total_contribution": total_contribution_sum,
-                    "position_contributions": position_contributions,
-                }
-
-                if period_request.emit.timeseries and raw_timeseries:
-                    timeseries = [DailyContribution(date=row["date"], total_contribution=sum(v for k, v in row.items() if k != "date")) for row in raw_timeseries]
-                    period_result_payload["timeseries"] = timeseries
-
-                if period_request.emit.by_position_timeseries and raw_timeseries:
-                    by_pos_ts = {pos_id: [PositionDailyContribution(date=row["date"], contribution=row.get(pos_id, 0.0)) for row in raw_timeseries] for pos_id in position_results_map.keys()}
-                    period_result_payload["by_position_timeseries"] = [ PositionContributionSeries(position_id=pos_id, series=series) for pos_id, series in by_pos_ts.items() ]
-                
-                period_result = SinglePeriodContributionResult.model_validate(period_result_payload)
 
             results_by_period[period.name] = period_result
 
@@ -178,7 +134,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
             results_by_period=results_by_period,
             meta=meta, diagnostics=diagnostics, audit=audit,
         )
-
+    
     background_tasks.add_task(
         lineage_service.capture,
         calculation_id=request.calculation_id,
