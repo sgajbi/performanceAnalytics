@@ -42,11 +42,8 @@ def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
         return pd.DataFrame()
     try:
         df = pd.DataFrame(daily_data)
-        # --- START FIX: Handle duplicate dates in input data ---
         if "perf_date" in df.columns:
-            # Keep the last entry for any given date to allow for corrections
             df.drop_duplicates(subset=["perf_date"], keep="last", inplace=True)
-        # --- END FIX ---
         return df
     except Exception as e:
         logger.exception("Failed to create DataFrame from daily data.")
@@ -74,6 +71,12 @@ def format_breakdowns_for_response(
                 "net_cash_flow": summary_data.get("net_cash_flow"),
                 **summary_data,
             }
+
+            # --- FIX START: Correctly populate cumulative return for daily summaries ---
+            if freq == Frequency.DAILY and "cumulative_return_pct_to_date" not in pydantic_summary_data:
+                 if "final_cum_ror" in summary_data:
+                      pydantic_summary_data["cumulative_return_pct_to_date"] = summary_data["final_cum_ror"]
+            # --- FIX END ---
 
             summary_model = PerformanceSummary.model_validate(pydantic_summary_data)
 

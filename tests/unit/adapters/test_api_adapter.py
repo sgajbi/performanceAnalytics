@@ -7,7 +7,7 @@ import pytest
 
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.models.requests import PerformanceRequest
-from app.models.responses import PerformanceResultItem, PerformanceSummary, SinglePeriodPerformanceResult
+from app.models.responses import PerformanceResultItem, PerformanceSummary
 from common.enums import Frequency, PeriodType
 from engine.config import EngineConfig
 from engine.schema import PortfolioColumns
@@ -25,6 +25,7 @@ def sample_engine_outputs():
                     PortfolioColumns.END_MV: 1010.0,
                     "net_cash_flow": 0.0,
                     "period_return_pct": 1.0,
+                    "final_cum_ror": 1.0, # Add cumulative data from engine
                 },
             }
         ],
@@ -36,6 +37,7 @@ def sample_engine_outputs():
                     PortfolioColumns.END_MV: 1010.0,
                     "net_cash_flow": 0.0,
                     "period_return_pct": 1.0,
+                    "cumulative_return_pct_to_date": 1.0, # Aggregated periods already have this
                 },
             }
         ],
@@ -59,13 +61,12 @@ def test_create_engine_config():
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-31",
         "metric_basis": "NET",
-        "period_type": "YTD",
+        "periods": ["YTD"],
         "frequencies": ["daily"],
         "daily_data": [],
     }
     pydantic_request = PerformanceRequest.model_validate(request_data)
 
-    # The adapter now requires explicit dates passed from the endpoint
     start_date = date(2025, 1, 1)
     end_date = date(2025, 1, 31)
 
@@ -144,3 +145,16 @@ def test_format_breakdowns_for_response_empty_input():
     empty_df = pd.DataFrame()
     formatted_response = format_breakdowns_for_response(empty_breakdowns, empty_df)
     assert formatted_response == {}
+
+
+def test_format_breakdowns_populates_daily_cumulative_return(sample_engine_outputs):
+    """Tests that the cumulative return is correctly populated for daily summaries."""
+    breakdowns_data, daily_results_df = sample_engine_outputs
+    
+    # Simulate a request where cumulative is desired but not pre-calculated for daily
+    breakdowns_data[Frequency.DAILY][0]['summary'].pop('cumulative_return_pct_to_date', None)
+
+    formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df)
+    
+    daily_summary = formatted_response[Frequency.DAILY][0].summary
+    assert daily_summary.cumulative_return_pct_to_date == 1.0
