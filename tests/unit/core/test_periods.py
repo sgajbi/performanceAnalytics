@@ -1,8 +1,16 @@
 # tests/unit/core/test_periods.py
 from datetime import date
 import pytest
+from pydantic import BaseModel
 from core.envelope import Periods
-from core.periods import resolve_period
+from core.periods import resolve_period, resolve_periods
+from common.enums import PeriodType
+
+
+class ResolvedPeriod(BaseModel):
+    name: str
+    start_date: date
+    end_date: date
 
 
 @pytest.mark.parametrize(
@@ -24,8 +32,43 @@ from core.periods import resolve_period
 )
 def test_resolve_period(period_def, as_of, expected_start, expected_end):
     """Tests that all period types are resolved to the correct start and end dates."""
+    # This test is for the old single-period resolver, which is now used internally.
+    # It remains valuable for validating the underlying logic.
     period_model = Periods.model_validate(period_def)
     as_of_date = date.fromisoformat(as_of)
     start_date, end_date = resolve_period(period_model, as_of_date)
     assert start_date == expected_start
     assert end_date == expected_end
+
+
+def test_resolve_periods_multi():
+    """Tests the new multi-period resolver."""
+    as_of = date(2025, 8, 15)
+    inception = date(2023, 1, 1)
+    requested_periods = [PeriodType.MTD, PeriodType.YTD, PeriodType.ITD, PeriodType.Y1]
+
+    resolved = resolve_periods(requested_periods, as_of, inception)
+
+    assert len(resolved) == 4
+    
+    mtd = next(p for p in resolved if p.name == PeriodType.MTD.value)
+    assert mtd.start_date == date(2025, 8, 1)
+    assert mtd.end_date == date(2025, 8, 15)
+
+    ytd = next(p for p in resolved if p.name == PeriodType.YTD.value)
+    assert ytd.start_date == date(2025, 1, 1)
+    assert ytd.end_date == date(2025, 8, 15)
+    
+    itd = next(p for p in resolved if p.name == PeriodType.ITD.value)
+    assert itd.start_date == inception
+    assert itd.end_date == date(2025, 8, 15)
+    
+    y1 = next(p for p in resolved if p.name == PeriodType.Y1.value)
+    assert y1.start_date == date(2024, 8, 16)
+    assert y1.end_date == date(2025, 8, 15)
+
+
+def test_resolve_periods_handles_empty_list():
+    """Tests that the resolver returns an empty list if no periods are requested."""
+    resolved = resolve_periods([], date(2025, 1, 1), date(2024, 1, 1))
+    assert resolved == []
