@@ -3,7 +3,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from core.envelope import Audit, Diagnostics, Meta
 
 
@@ -14,8 +14,8 @@ class PositionContribution(BaseModel):
     total_contribution: float
     average_weight: float
     total_return: float
-    local_contribution: Optional[float] = None # ADDED
-    fx_contribution: Optional[float] = None    # ADDED
+    local_contribution: Optional[float] = None  # ADDED
+    fx_contribution: Optional[float] = None  # ADDED
 
 
 class DailyContribution(BaseModel):
@@ -45,8 +45,8 @@ class ContributionSummary(BaseModel):
     portfolio_contribution: float
     coverage_mv_pct: float
     weighting_scheme: str
-    local_contribution: Optional[float] = None # ADDED
-    fx_contribution: Optional[float] = None    # ADDED
+    local_contribution: Optional[float] = None  # ADDED
+    fx_contribution: Optional[float] = None  # ADDED
 
 
 class ContributionRow(BaseModel):
@@ -58,8 +58,8 @@ class ContributionRow(BaseModel):
     children_count: Optional[int] = None
     is_other: bool = False
     residual_bp: Optional[float] = None
-    local_contribution: Optional[float] = None # ADDED
-    fx_contribution: Optional[float] = None    # ADDED
+    local_contribution: Optional[float] = None  # ADDED
+    fx_contribution: Optional[float] = None  # ADDED
 
 
 class ContributionLevel(BaseModel):
@@ -71,24 +71,55 @@ class ContributionLevel(BaseModel):
     rows: List[ContributionRow]
 
 
+class SinglePeriodContributionResult(BaseModel):
+    """Contains the full set of contribution results for a single, resolved period."""
+
+    total_portfolio_return: Optional[float] = None
+    total_contribution: Optional[float] = None
+    position_contributions: Optional[List[PositionContribution]] = None
+    timeseries: Optional[List[DailyContribution]] = None
+    by_position_timeseries: Optional[List[PositionContributionSeries]] = None
+    summary: Optional[ContributionSummary] = None
+    levels: Optional[List[ContributionLevel]] = None
+
+
 class ContributionResponse(BaseModel):
     """Response model for the Contribution engine."""
 
     calculation_id: UUID
     portfolio_number: str
-    report_start_date: date
-    report_end_date: date
 
+    # New multi-period structure
+    results_by_period: Optional[Dict[str, SinglePeriodContributionResult]] = None
+
+    # Legacy single-period fields for backward compatibility
+    report_start_date: Optional[date] = None
+    report_end_date: Optional[date] = None
     total_portfolio_return: Optional[float] = None
     total_contribution: Optional[float] = None
     position_contributions: Optional[List[PositionContribution]] = None
-
     timeseries: Optional[List[DailyContribution]] = None
     by_position_timeseries: Optional[List[PositionContributionSeries]] = None
-
     summary: Optional[ContributionSummary] = None
     levels: Optional[List[ContributionLevel]] = None
 
+    # Shared footer
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_result_structure(cls, values):
+        """Ensures that exactly one result structure is used."""
+        has_new_structure = "results_by_period" in values and values["results_by_period"] is not None
+        # Check for any of the legacy top-level result fields
+        has_legacy_structure = "total_portfolio_return" in values and values["total_portfolio_return"] is not None
+
+        if has_new_structure and has_legacy_structure:
+            raise ValueError("Provide either 'results_by_period' or legacy top-level fields, but not both.")
+
+        if not has_new_structure and not has_legacy_structure:
+            raise ValueError("A result structure ('results_by_period' or legacy fields) must be provided.")
+
+        return values
