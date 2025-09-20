@@ -88,7 +88,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 totals = period_slice_df.groupby("position_id").agg(
                     total_contribution=("smoothed_contribution", "sum"),
                     local_contribution=("smoothed_local_contribution", "sum"),
-                    fx_contribution=("smoothed_fx_contribution", "sum"),
                     average_weight=("daily_weight", "mean"),
                 ).reset_index()
 
@@ -104,6 +103,10 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
 
                 if total_avg_weight > 0 and master_request.smoothing.method == "CARINO":
                     totals["total_contribution"] += residual * (totals["average_weight"] / total_avg_weight)
+
+                # --- FIX START: Derive FX contribution to force reconciliation ---
+                totals["fx_contribution"] = totals["total_contribution"] - totals["local_contribution"]
+                # --- FIX END ---
 
                 position_contributions = [
                     PositionContribution(
