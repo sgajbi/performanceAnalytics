@@ -1,21 +1,22 @@
+
 # RFC 029: Unified Multi-Period Analysis Framework
 
-**Status:** Final (For Approval)  
+**Status:** Final (Approved for Implementation)  
 **Owner:** Senior Architect  
 **Reviewers:** Perf Engine, Risk, Platform  
 **Related:** RFC-014 (Cross-Cutting Consistency), RFC-025 (Reproducibility)
 
-## 1\. Executive Summary
+## 1. Executive Summary
 
 This document specifies the final design for a new, platform-wide **Unified Multi-Period Analysis Framework**. A critical limitation of our current analytics suite is its "one-period-per-request" model. Clients needing to analyze and compare performance across multiple time horizons (e.g., MTD, YTD, and 1-Year) must make separate, redundant API calls, resubmitting the same large data payloads each time. This is inefficient, costly for both client and server, and provides a poor developer experience.
 
 This RFC addresses this limitation by introducing a new `periods` array to the shared API request envelope. This will allow clients to request a comprehensive set of standard and custom time horizons—`1D`, `1W`, `MTD`, `QTD`, `YTD`, `1Y`, `3Y`, `5Y`, `ITD`, and `EXPLICIT`—in a single, optimized API call. The engine will be enhanced to perform its core daily calculations once on the supplied data, then efficiently slice and aggregate the results for each requested period.
 
-The response structure will be updated to a clear, dictionary-based format, mapping each requested period to its corresponding analytical result. This change is **fully backward-compatible** and will be consistently applied across all relevant endpoints (TWR, MWR, Contribution, Attribution), dramatically improving the efficiency, power, and usability of the entire analytics suite.
+The response structure will be updated to a clear, dictionary-based format, mapping each requested period to its corresponding analytical result. This change is **fully backward-compatible** and will be consistently applied across all relevant endpoints (TWR, Contribution, Attribution), dramatically improving the efficiency, power, and usability of the entire analytics suite.
 
 -----
 
-## 2\. Problem & Motivation
+## 2. Problem & Motivation
 
 The current API design, which uses a single `period_type` field, forces a sequential, inefficient workflow for any user requiring multi-period analysis. To generate a standard reporting table with MTD, QTD, YTD, and 1-Year returns, a client must:
 
@@ -35,7 +36,7 @@ This RFC proposes a "calculate once, aggregate many" model that solves these pro
 
 -----
 
-## 3\. Goals & Non-Goals
+## 3. Goals & Non-Goals
 
 ### Goals
 
@@ -43,7 +44,7 @@ This RFC proposes a "calculate once, aggregate many" model that solves these pro
   - **Support Multiple Periods per Request:** Allow clients to pass a list of desired period types (e.g., `["MTD", "YTD", "1Y"]`) in a single API call.
   - **Optimize Performance:** Refactor the core engines to process the full input data once, then perform lightweight slicing and aggregation for each requested period, eliminating redundant calculations.
   - **Provide a Clear Response Structure:** Return results in a dictionary where keys are the requested period types and values are the corresponding analytics, making the output easy to parse.
-  - **Maintain Consistency:** Apply this new pattern uniformly across all relevant endpoints, including TWR, MWR, Contribution, and Attribution.
+  - **Maintain Consistency:** Apply this new pattern uniformly across TWR, Contribution, and Attribution. The MWR endpoint is excluded due to an incompatible data model.
   - **Ensure Backward Compatibility:** The existing `period_type` field will continue to be supported to avoid breaking existing client integrations.
 
 ### Non-Goals
@@ -51,10 +52,11 @@ This RFC proposes a "calculate once, aggregate many" model that solves these pro
   - The API will not infer or automatically add periods; the client must explicitly request them.
   - The service will not persist data. The client remains responsible for providing a `daily_data` series that covers the longest requested period.
   - This RFC does not introduce support for custom fiscal calendars; all periods are based on standard calendar conventions.
+  - This RFC will not refactor the MWR endpoint for multi-period analysis, as this would require a breaking change to its request model.
 
 -----
 
-## 4\. Methodology
+## 4. Methodology
 
 The core of this enhancement is a new **Period Resolver** and an adaptation of the engines to a **slice-and-aggregate** pattern.
 
@@ -83,7 +85,7 @@ This approach maximizes computational reuse and minimizes redundant work, leadin
 
 -----
 
-## 5\. API Design
+## 5. API Design
 
 ### 5.1. Request Changes
 
@@ -92,14 +94,14 @@ The shared request envelope defined in RFC-014 will be modified. The existing `p
 **New `periods` Field:**
 
 ```jsonc
-// In any analytics request (TWR, MWR, Contribution, etc.)
+// In any analytics request (TWR, Contribution, Attribution)
 {
   "as_of": "2025-08-31",
   "periods": ["MTD", "QTD", "YTD", "1Y", "ITD"],
   // ... other request fields ...
   "daily_data": [ /* ... data covering the full 1-year period ... */ ]
 }
-```
+````
 
 **Backward Compatibility:** If a client sends a request using the old `period_type` field, the API adapter will internally convert it to a single-element `periods` array (e.g., `"period_type": "YTD"` becomes `"periods": ["YTD"]`).
 
@@ -190,8 +192,10 @@ The implementation of this RFC will be considered complete when the following cr
 
 1.  This RFC is formally approved by all stakeholders.
 2.  The shared API request envelope is updated to accept a `periods` array, with backward compatibility for the legacy `period_type` field.
-3.  All relevant analytics endpoints (TWR, MWR, Contribution, Attribution) are refactored to efficiently process multi-period requests and return results in the new `results_by_period` dictionary format.
+3.  The TWR, Contribution, and Attribution endpoints are refactored to efficiently process multi-period requests and return results in the new `results_by_period` dictionary format.
 4.  The `PeriodResolver` is fully implemented and unit-tested.
 5.  The testing strategy is fully implemented, all new and existing tests are passing, and the required coverage targets are met.
 6.  The updated integration tests confirm that multi-period results are numerically identical to single-period results.
 7.  All relevant documentation, including `README.md`, `docs/guides/api_reference.md`, and all usage examples, is updated to reflect the new multi-period request and response structure.
+
+<!-- end list -->

@@ -1,4 +1,5 @@
 # app/models/requests.py
+# app/models/requests.py
 from datetime import date
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
@@ -19,13 +20,13 @@ from core.envelope import (
 
 
 class DailyInputData(BaseModel):
-    day: int
-    perf_date: date
-    begin_mv: float
-    bod_cf: float = 0.0
-    eod_cf: float = 0.0
-    mgmt_fees: float = 0.0
-    end_mv: float
+    day: int = Field(..., description="A sequential day number for the record within the request payload.")
+    perf_date: date = Field(..., description="The specific date of the observation in YYYY-MM-DD format.")
+    begin_mv: float = Field(..., description="The market value of the portfolio at the beginning of the day, before any cash flows.")
+    bod_cf: float = Field(0.0, description="Cash flow occurring at the beginning of the day (before trading). Positive for inflows, negative for outflows.")
+    eod_cf: float = Field(0.0, description="Cash flow occurring at the end of the day (after trading). Positive for inflows, negative for outflows.")
+    mgmt_fees: float = Field(0.0, description="Management or other fees charged for the day. Should be a negative value to reduce performance.")
+    end_mv: float = Field(..., description="The market value of the portfolio at the end of the day.")
 
 
 class FeeEffect(BaseModel):
@@ -33,26 +34,26 @@ class FeeEffect(BaseModel):
 
 
 class ResetPolicy(BaseModel):
-    emit: bool = False
+    emit: bool = Field(False, description="If true, the response will include a list of any performance reset events that occurred.")
 
 
 class PerformanceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    calculation_id: UUID = Field(default_factory=uuid4)
-    portfolio_number: str
-    performance_start_date: date
-    metric_basis: Literal["NET", "GROSS"]
-    report_start_date: Optional[date] = None
-    report_end_date: date
-    period_type: Optional[PeriodType] = None  # Deprecated in favor of 'periods'
-    periods: Optional[List[PeriodType]] = None  # New field for multi-period requests
-    frequencies: List[Frequency] = [Frequency.DAILY]
+    calculation_id: UUID = Field(default_factory=uuid4, description="A unique identifier for the calculation request. If not provided, one will be generated.")
+    portfolio_number: str = Field(..., description="A unique identifier for the portfolio being analyzed.")
+    performance_start_date: date = Field(..., description="The inception date of the portfolio or the earliest date for which performance data is available.")
+    metric_basis: Literal["NET", "GROSS"] = Field(..., description="Specifies whether to calculate returns 'NET' (after fees) or 'GROSS' (before fees).")
+    report_start_date: Optional[date] = Field(None, description="The explicit start date for an 'EXPLICIT' period calculation. Ignored for other period types.")
+    report_end_date: date = Field(..., description="The final date of the analysis period. Also used as the 'as_of' date for resolving relative periods like YTD.")
+    period_type: Optional[PeriodType] = Field(None, description="[DEPRECATED] The time frame for the calculation. Use 'periods' for new implementations.")
+    periods: Optional[List[PeriodType]] = Field(None, description="A list of time frames to calculate (e.g., ['MTD', 'YTD', 'ITD']). Replaces the singular 'period_type'.")
+    frequencies: List[Frequency] = Field([Frequency.DAILY], description="A list of frequencies for breaking down the performance results.")
     daily_data: List[DailyInputData]
-    as_of: Optional[date] = None
-    currency: str = "USD"
-    precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
-    rounding_precision: int = 6
+    as_of: Optional[date] = Field(None, description="The 'as of' date for resolving relative periods. If not provided, 'report_end_date' is used.")
+    currency: str = Field("USD", description="The three-letter ISO currency code for the request (e.g., 'USD').")
+    precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = Field("FLOAT64", description="The numerical precision mode for the calculation engine.")
+    rounding_precision: int = Field(6, description="The number of decimal places to round final float results to.")
     calendar: Calendar = Field(default_factory=Calendar)
     annualization: Annualization = Field(default_factory=Annualization)
     output: Output = Field(default_factory=Output)
@@ -78,10 +79,5 @@ class PerformanceRequest(BaseModel):
 
         if has_periods and not values["periods"]:
             raise ValueError("The 'periods' list cannot be empty.")
-
-        # TODO: Implement backward compatibility logic to move period_type into periods
-        # if 'period_type' in values:
-        #     values['periods'] = [values['period_type']]
-        #     del values['period_type']
 
         return values
