@@ -79,6 +79,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             base_total = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
 
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
+                # --- FIX START: Use correct column names for reset-aware cumulative returns ---
                 local_long_cum = last_day.get("local_ror_long_cum_ror", 0.0)
                 local_short_cum = last_day.get("local_ror_short_cum_ror", 0.0)
                 local_total_cum_ror = (1 + local_long_cum / 100) * (1 + local_short_cum / 100) - 1
@@ -92,6 +93,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                     fx=fx_total_cum_ror * 100,
                     base=base_total
                 )
+                # --- FIX END ---
             else:
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=base_total, fx=0.0, base=base_total

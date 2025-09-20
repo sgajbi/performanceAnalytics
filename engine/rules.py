@@ -77,7 +77,6 @@ def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) ->
     eom_mask = df[PortfolioColumns.PERF_DATE.value].dt.is_month_end
     next_day_bod_cf = df[PortfolioColumns.BOD_CF.value].shift(-1).fillna(zero)
     
-    # Use a fixed future date for comparison to handle the last row gracefully
     future_date = pd.Timestamp.max.normalize()
     next_date_is_after_end = df[PortfolioColumns.PERF_DATE.value].shift(-1, fill_value=future_date) > report_end_date
     if not df.empty:
@@ -90,10 +89,12 @@ def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) ->
         | eom_mask
         | next_date_is_after_end
     )
-
-    cond_nctrl1 = df["temp_daily_ror_long_cum_ror"] < -100
-    cond_nctrl2 = df["temp_daily_ror_short_cum_ror"] > 100
-    cond_nctrl3 = (df["temp_daily_ror_short_cum_ror"] < -100) & (df["temp_daily_ror_long_cum_ror"] != 0)
+    
+    # --- FIX START: Use correct column names from schema enum ---
+    cond_nctrl1 = df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] < -100
+    cond_nctrl2 = df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] > 100
+    cond_nctrl3 = (df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] < -100) & (df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] != 0)
+    # --- FIX END ---
 
     nctrl1 = (cond_nctrl1 & ~cond_nctrl1.shift(1, fill_value=False)) & cond_common
     nctrl2 = (cond_nctrl2 & ~cond_nctrl2.shift(1, fill_value=False)) & cond_common

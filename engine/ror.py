@@ -87,43 +87,48 @@ def calculate_cumulative_ror(df: pd.DataFrame, config):
     one = Decimal(1) if is_decimal_mode else 1.0
     hundred = Decimal(100) if is_decimal_mode else 100.0
 
-    components = [PortfolioColumns.DAILY_ROR.value]
+    # --- FIX START: Use the correct schema enum for column names ---
+    components = [PortfolioColumns.DAILY_ROR]
     if "local_ror" in df.columns:
         components.append("local_ror")
     if "fx_ror" in df.columns:
         components.append("fx_ror")
     
     for component in components:
-        prefix = "temp_" + (f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else "")
-        df[f"{prefix}long_cum_ror"] = _compound_ror(df, df[component], "long", use_resets=False)
-        df[f"{prefix}short_cum_ror"] = _compound_ror(df, df[component], "short", use_resets=False)
+        # Use simple prefixing for component columns
+        prefix = f"{component.value}_" if component != PortfolioColumns.DAILY_ROR else ""
+        
+        # These create columns like 'temp_long_cum_ror', 'temp_local_ror_long_cum_ror', etc.
+        df[f"temp_{prefix}long_cum_ror"] = _compound_ror(df, df[component.value], "long", use_resets=False)
+        df[f"temp_{prefix}short_cum_ror"] = _compound_ror(df, df[component.value], "short", use_resets=False)
+    # --- FIX END ---
 
     report_end_ts = pd.to_datetime(config.report_end_date)
     initial_resets = calculate_initial_resets(df, report_end_ts)
     df[PortfolioColumns.PERF_RESET.value] = initial_resets.astype(int)
 
     for component in components:
-        prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
-        final_long_ror = _compound_ror(df, df[component], "long", use_resets=True)
-        final_short_ror = _compound_ror(df, df[component], "short", use_resets=True)
+        prefix = f"{component.value}_" if component != PortfolioColumns.DAILY_ROR else ""
+        final_long_ror = _compound_ror(df, df[component.value], "long", use_resets=True)
+        final_short_ror = _compound_ror(df, df[component.value], "short", use_resets=True)
         df[f"{prefix}long_cum_ror"] = final_long_ror
         df[f"{prefix}short_cum_ror"] = final_short_ror
     
     is_initial_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
     for component in components:
-        prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        prefix = f"{component.value}_" if component != PortfolioColumns.DAILY_ROR else ""
         df.loc[is_initial_reset_day, [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = 0.0
 
     nctrl4_resets = calculate_nctrl4_reset(df)
     df[PortfolioColumns.PERF_RESET.value] |= nctrl4_resets.astype(bool)
     is_final_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
     for component in components:
-        prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        prefix = f"{component.value}_" if component != PortfolioColumns.DAILY_ROR else ""
         df.loc[is_final_reset_day, [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = 0.0
 
     is_nip = df[PortfolioColumns.NIP.value] == 1
     for component in components:
-        prefix = f"{component}_" if component != PortfolioColumns.DAILY_ROR.value else ""
+        prefix = f"{component.value}_" if component != PortfolioColumns.DAILY_ROR else ""
         df.loc[is_nip, [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = np.nan
         df[[f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = df[
             [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]
