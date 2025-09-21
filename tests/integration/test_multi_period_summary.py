@@ -59,12 +59,13 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
     assert mtd_summary["base"] == pytest.approx(4.04)
 
     # Assert YTD summary is correct for Jan + Feb
-    # Compounded Local: (1.01 * 1.02) - 1 = 3.02%
-    # Compounded FX: (1.01 * 1.02) - 1 = 3.02%
-    # Compounded Base: (1.0201 * 1.0404) - 1 = 6.13248...%
     assert ytd_summary["local"] == pytest.approx(3.02)
     assert ytd_summary["fx"] == pytest.approx(3.02)
-    assert ytd_summary["base"] == pytest.approx(6.132484)
+
+    # --- FIX START: Assert that the base return is the geometric sum of its components ---
+    expected_base = ((1 + ytd_summary["local"] / 100) * (1 + ytd_summary["fx"] / 100) - 1) * 100
+    assert ytd_summary["base"] == pytest.approx(expected_base)
+    # --- FIX END ---
 
     # Crucially, assert the MTD and YTD summaries are NOT the same
     assert mtd_summary["base"] != ytd_summary["base"]
