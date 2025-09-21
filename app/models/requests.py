@@ -1,5 +1,4 @@
 # app/models/requests.py
-# app/models/requests.py
 from datetime import date
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
@@ -49,7 +48,7 @@ class PerformanceRequest(BaseModel):
     period_type: Optional[PeriodType] = Field(None, description="[DEPRECATED] The time frame for the calculation. Use 'periods' for new implementations.")
     periods: Optional[List[PeriodType]] = Field(None, description="A list of time frames to calculate (e.g., ['MTD', 'YTD', 'ITD']). Replaces the singular 'period_type'.")
     frequencies: List[Frequency] = Field([Frequency.DAILY], description="A list of frequencies for breaking down the performance results.")
-    daily_data: List[DailyInputData]
+    valuation_points: List[DailyInputData]
     currency: str = Field("USD", description="The three-letter ISO currency code for the request (e.g., 'USD').")
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = Field("FLOAT64", description="The numerical precision mode for the calculation engine.")
     rounding_precision: int = Field(6, description="The number of decimal places to round final float results to.")
