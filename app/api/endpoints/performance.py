@@ -34,10 +34,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     try:
-        if request.period_type:
-            periods_to_resolve = [request.period_type]
-        else:
-            periods_to_resolve = request.periods
+        # --- FIX START: Adapt to new 'analyses' structure ---
+        periods_to_resolve = [analysis.period for analysis in request.analyses]
+        # Create a dictionary to look up frequencies by period
+        freqs_by_period = {analysis.period.value: analysis.frequencies for analysis in request.analyses}
+        # --- FIX END ---
 
         as_of_date = request.report_end_date
         resolved_periods = resolve_periods(periods_to_resolve, as_of_date, request.performance_start_date)
@@ -49,9 +50,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         master_end_date = max(p.end_date for p in resolved_periods)
 
         engine_config = create_engine_config(request, master_start_date, master_end_date)
-        # --- FIX START: Use new 'valuation_points' field name ---
         engine_df = create_engine_dataframe([item.model_dump() for item in request.valuation_points])
-        # --- FIX END ---
         daily_results_df, diagnostics_data = run_calculations(engine_df, engine_config)
 
         results_by_period = {}
@@ -75,10 +74,13 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
 
             if period_slice_df.empty:
                 continue
-
+            
+            # --- FIX START: Use the correct frequencies for the current period ---
+            requested_frequencies_for_period = freqs_by_period.get(period.name, [])
             breakdowns_data = generate_performance_breakdowns(
-                period_slice_df, request.frequencies, request.annualization, request.output.include_cumulative
+                period_slice_df, requested_frequencies_for_period, request.annualization, request.output.include_cumulative
             )
+            # --- FIX END ---
             formatted_breakdowns = format_breakdowns_for_response(
                 breakdowns_data, period_slice_df, request.output.include_timeseries
             )
@@ -157,9 +159,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         policy=diagnostics_data.get("policy"),
         samples=diagnostics_data.get("samples"),
     )
-    # --- FIX START: Use new 'valuation_points' field name for audit count ---
     audit = Audit(counts={"input_rows": len(request.valuation_points), "output_rows": len(daily_results_df)})
-    # --- FIX END ---
 
     response_model = PerformanceResponse(
         calculation_id=request.calculation_id,

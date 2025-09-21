@@ -17,12 +17,16 @@ def create_engine_config(
     request: PerformanceRequest, effective_start_date: date, effective_end_date: date
 ) -> EngineConfig:
     """Creates an EngineConfig object from an API PerformanceRequest and an effective date range."""
+    # Since we run the engine once on a master period, we can use the first analysis's period type
+    # for the engine config. The specific slicing is handled later.
+    period_type_for_engine = request.analyses[0].period if request.analyses else PeriodType.ITD
+
     return EngineConfig(
         performance_start_date=request.performance_start_date,
         report_start_date=effective_start_date,
         report_end_date=effective_end_date,
         metric_basis=request.metric_basis,
-        period_type=PeriodType.EXPLICIT,  # The engine now always runs on an explicit range
+        period_type=period_type_for_engine,
         rounding_precision=request.rounding_precision,
         precision_mode=PrecisionMode(request.precision_mode),
         data_policy=request.data_policy,
@@ -65,7 +69,6 @@ def format_breakdowns_for_response(
         for i, result_item in enumerate(results):
             summary_data = result_item["summary"]
 
-            # --- FIX START: Logic simplified as engine now produces correct field names ---
             pydantic_summary_data = {
                 "begin_mv": summary_data.get(PortfolioColumns.BEGIN_MV),
                 "end_mv": summary_data.get(PortfolioColumns.END_MV),
@@ -74,7 +77,6 @@ def format_breakdowns_for_response(
                 "cumulative_return_pct_to_date": summary_data.get("cumulative_return_pct_to_date"),
                 "annualized_return_pct": summary_data.get("annualized_return_pct"),
             }
-            # --- FIX END ---
 
             summary_model = PerformanceSummary.model_validate(pydantic_summary_data)
 
