@@ -84,17 +84,13 @@ def calculate_initial_resets(
     if not df.empty:
         next_date_is_after_end.iloc[-1] = True
 
-    # --- START FIX: The common condition must also check for a sign change ---
-    prev_sign = df[PortfolioColumns.SIGN.value].shift(1).fillna(0)
-    sign_change = df[PortfolioColumns.SIGN.value] != prev_sign
-    
+    # --- START FIX: Revert the logic to remove dependency on 'sign' ---
     cond_common = (
         (df[PortfolioColumns.BOD_CF.value] != zero)
         | (next_day_bod_cf != zero)
         | (df[PortfolioColumns.EOD_CF.value] != zero)
         | eom_mask
         | next_date_is_after_end
-        | sign_change
     )
     # --- END FIX ---
     
