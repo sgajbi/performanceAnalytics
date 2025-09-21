@@ -83,31 +83,39 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
             
-            end_row = period_slice_df.iloc[-1]
-            day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < period.start_date
-            day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
-
-            # Base Return
-            end_cum_base = end_row[PortfolioColumns.FINAL_CUM_ROR.value]
-            start_cum_base = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
-            base_total = (((1 + end_cum_base / 100) / (1 + start_cum_base / 100)) - 1) * 100
-
-            if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
-                # Local Return
-                end_cum_local = get_total_cum_ror(end_row, "local_ror_")
-                start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
-                local_total = (((1 + end_cum_local / 100) / (1 + start_cum_local / 100)) - 1) * 100
-
-                # FX Return is derived using the identity: (1+base) = (1+local)*(1+fx)
-                fx_total = (((1 + base_total / 100) / (1 + local_total / 100)) - 1) * 100
-                
-                period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=local_total, fx=fx_total, base=base_total
-                )
+            if period_slice_df[PortfolioColumns.PERF_RESET.value].sum() == 0:
+                base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
+                if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
+                    local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
+                    fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
+                    period_result.portfolio_return = PortfolioReturnDecomposition(
+                        local=local_total * 100, fx=fx_total * 100, base=base_total * 100
+                    )
+                else:
+                    period_result.portfolio_return = PortfolioReturnDecomposition(
+                        local=base_total * 100, fx=0.0, base=base_total * 100
+                    )
             else:
-                period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=base_total, fx=0.0, base=base_total
-                )
+                end_row = period_slice_df.iloc[-1]
+                day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < period.start_date
+                day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
+
+                end_cum_base = end_row[PortfolioColumns.FINAL_CUM_ROR.value]
+                start_cum_base = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
+                base_total = (((1 + end_cum_base / 100) / (1 + start_cum_base / 100)) - 1) * 100
+
+                if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
+                    end_cum_local = get_total_cum_ror(end_row, "local_ror_")
+                    start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
+                    local_total = (((1 + end_cum_local / 100) / (1 + start_cum_local / 100)) - 1) * 100
+                    fx_total = (((1 + base_total / 100) / (1 + local_total / 100)) - 1) * 100
+                    period_result.portfolio_return = PortfolioReturnDecomposition(
+                        local=local_total, fx=fx_total, base=base_total
+                    )
+                else:
+                    period_result.portfolio_return = PortfolioReturnDecomposition(
+                        local=base_total, fx=0.0, base=base_total
+                    )
 
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
