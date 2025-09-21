@@ -81,7 +81,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         report_start_date=request.report_start_date,
         report_end_date=request.report_end_date,
         metric_basis=request.portfolio_data.metric_basis,
-        period_type=request.period_type,
+        period_type=request.analyses[0].period,
         precision_mode=request.precision_mode,
         rounding_precision=request.rounding_precision,
         currency_mode=request.currency_mode,
