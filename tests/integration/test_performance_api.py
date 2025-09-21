@@ -36,8 +36,8 @@ def test_calculate_twr_endpoint_with_annualization(client):
     
     assert "annualized_return_pct" in summary
     assert summary["period_return_pct"] == pytest.approx(2.01)
-    # Approx 90 days in Q1. Expected: (1.0201 ** (365 / 90)) - 1 = ~8.39%
-    assert summary["annualized_return_pct"] == pytest.approx(8.39, abs=0.01)
+    # 90 days in Q1 2025. Expected: (1.0201 ** (365 / 90)) - 1 = 8.40545...%
+    assert summary["annualized_return_pct"] == pytest.approx(8.40545, abs=1e-5)
 
 def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
     """Tests the /performance/twr endpoint using the new 'analyses' structure and verifies the shared response footer."""

@@ -19,7 +19,7 @@ class PerformanceSummary(BaseModel):
     net_cash_flow: float
     period_return_pct: float
     cumulative_return_pct_to_date: Optional[float] = None
-    annualized_return_pct: Optional[float] = None # Add this field
+    annualized_return_pct: Optional[float] = None
 
 
 class PerformanceResultItem(BaseModel):
@@ -63,9 +63,25 @@ class PerformanceResponse(BaseModel):
     calculation_id: UUID
     portfolio_number: str
 
-    results_by_period: Dict[str, SinglePeriodPerformanceResult]
+    results_by_period: Optional[Dict[str, SinglePeriodPerformanceResult]] = None
 
-    # Shared response footer
+    breakdowns: Optional[PerformanceBreakdown] = None
+    reset_events: Optional[List[ResetEvent]] = None
+    portfolio_return: Optional[PortfolioReturnDecomposition] = None
+
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_result_structure(cls, values):
+        """Ensures that exactly one result structure is used."""
+        has_new_structure = "results_by_period" in values and values.get("results_by_period") is not None
+        has_legacy_structure = "breakdowns" in values and values.get("breakdowns") is not None
+
+        if not (has_new_structure ^ has_legacy_structure):
+            raise ValueError(
+                "Provide either 'results_by_period' or the legacy 'breakdowns' field, but not both."
+            )
+        return values
