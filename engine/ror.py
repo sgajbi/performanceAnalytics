@@ -56,11 +56,9 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
         fx_rates_df['date'] = pd.to_datetime(fx_rates_df['date'])
         fx_rates_df = fx_rates_df.set_index('date')['rate'].sort_index()
 
-        # --- FIX START: Ensure the date range includes the day before performance starts ---
         start_dt = pd.to_datetime(config.performance_start_date) - pd.Timedelta(days=1)
         end_dt = df[PortfolioColumns.PERF_DATE.value].max()
         full_date_range = pd.date_range(start=start_dt, end=end_dt, freq='D')
-        # --- FIX END ---
         all_rates = fx_rates_df.reindex(full_date_range).ffill()
 
         df['start_rate'] = df[PortfolioColumns.PERF_DATE.value].apply(lambda x: all_rates.get(x - pd.Timedelta(days=1)))
@@ -92,22 +90,22 @@ def calculate_cumulative_ror(df: pd.DataFrame, config):
     one = Decimal(1) if is_decimal_mode else 1.0
     hundred = Decimal(100) if is_decimal_mode else 100.0
 
-    components = [PortfolioColumns.DAILY_ROR.value]
-    if "local_ror" in df.columns:
-        components.append("local_ror")
-    if "fx_ror" in df.columns:
-        components.append("fx_ror")
-    
-    report_end_ts = pd.to_datetime(config.report_end_date)
-    
-    for component_name in components:
+    # --- START FIX: Ensure base calculation is done first and separately ---
+    base_components = [PortfolioColumns.DAILY_ROR.value]
+    other_components = []
+    if "local_ror" in df.columns: other_components.append("local_ror")
+    if "fx_ror" in df.columns: other_components.append("fx_ror")
+
+    # Step 1: Calculate temp cumulative returns for all components (pre-reset)
+    for component_name in base_components + other_components:
         prefix = f"{component_name}_" if component_name != PortfolioColumns.DAILY_ROR.value else ""
         df[f"temp_{prefix}long_cum_ror"] = _compound_ror(df, df[component_name], "long", use_resets=False)
         df[f"temp_{prefix}short_cum_ror"] = _compound_ror(df, df[component_name], "short", use_resets=False)
 
+    # Step 2: Determine resets based ONLY on the base TWR
     initial_resets, nctrl1, nctrl2, nctrl3 = calculate_initial_resets(
         df,
-        report_end_ts,
+        pd.to_datetime(config.report_end_date),
         PortfolioColumns.TEMP_LONG_CUM_ROR.value,
         PortfolioColumns.TEMP_SHORT_CUM_ROR.value
     )
@@ -116,42 +114,47 @@ def calculate_cumulative_ror(df: pd.DataFrame, config):
     df[PortfolioColumns.NCTRL_3.value] = nctrl3.astype(int)
     df[PortfolioColumns.PERF_RESET.value] = initial_resets.astype(int)
 
-    for component_name in components:
+    # Step 3: Recalculate all cumulative returns applying the same reset logic
+    for component_name in base_components + other_components:
         prefix = f"{component_name}_" if component_name != PortfolioColumns.DAILY_ROR.value else ""
         df[f"{prefix}long_cum_ror"] = _compound_ror(df, df[component_name], "long", use_resets=True)
         df[f"{prefix}short_cum_ror"] = _compound_ror(df, df[component_name], "short", use_resets=True)
     
     is_initial_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
-    for component_name in components:
+    for component_name in base_components + other_components:
         prefix = f"{component_name}_" if component_name != PortfolioColumns.DAILY_ROR.value else ""
         df.loc[is_initial_reset_day, [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = 0.0
 
+    # Step 4: Final reset calculations based on base TWR
     nctrl4_resets = calculate_nctrl4_reset(
         df,
         long_cum_col=PortfolioColumns.LONG_CUM_ROR.value,
         short_cum_col=PortfolioColumns.SHORT_CUM_ROR.value,
     )
     df[PortfolioColumns.NCTRL_4.value] = nctrl4_resets.astype(int)
-    df[PortfolioColumns.PERF_RESET.value] |= nctrl4_resets.astype(bool)
+    df.loc[nctrl4_resets, PortfolioColumns.PERF_RESET.value] = 1 # Use .loc to update
     
     is_final_reset_day = df[PortfolioColumns.PERF_RESET.value] == 1
-    for component_name in components:
+    for component_name in base_components + other_components:
         prefix = f"{component_name}_" if component_name != PortfolioColumns.DAILY_ROR.value else ""
         df.loc[is_final_reset_day, [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = 0.0
 
+    # Step 5: Handle NIP days for all components
     is_nip = df[PortfolioColumns.NIP.value] == 1
-    for component_name in components:
+    for component_name in base_components + other_components:
         prefix = f"{component_name}_" if component_name != PortfolioColumns.DAILY_ROR.value else ""
         df.loc[is_nip, [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = np.nan
         df[[f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]] = df[
             [f"{prefix}long_cum_ror", f"{prefix}short_cum_ror"]
         ].ffill().fillna(0.0)
 
+    # Step 6: Calculate the final cumulative return based ONLY on the base components
     df[PortfolioColumns.FINAL_CUM_ROR.value] = (
         (one + df[PortfolioColumns.LONG_CUM_ROR.value] / hundred)
         * (one + df[PortfolioColumns.SHORT_CUM_ROR.value] / hundred)
         - one
     ) * hundred
+    # --- END FIX ---
 
 
 def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=False) -> pd.Series:

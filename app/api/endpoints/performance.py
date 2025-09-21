@@ -115,12 +115,10 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             )
             
             if request.reset_policy.emit and diagnostics_data.get("resets"):
-                # --- START FIX: The 'date' key from the engine is already a date object ---
                 period_result.reset_events = [
                     ResetEvent(**event) for event in diagnostics_data["resets"] 
                     if period.start_date <= event["date"] <= period.end_date
                 ]
-                # --- END FIX ---
             
             results_by_period[period.name] = period_result
 

@@ -15,7 +15,9 @@ def _calculate_period_summary_dict(
     first_day = period_df.iloc[0]
     last_day = period_df.iloc[-1]
 
+    # --- START FIX: Use base return for period summary, not just local ---
     period_ror = (1 + period_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
+    # --- END FIX ---
 
     summary = {
         PortfolioColumns.BEGIN_MV.value: first_day[PortfolioColumns.BEGIN_MV.value],
@@ -28,12 +30,16 @@ def _calculate_period_summary_dict(
         summary["cumulative_return_pct_to_date"] = round(last_day[PortfolioColumns.FINAL_CUM_ROR.value], rounding_precision)
 
     if annualization.enabled:
-        days_in_period = (period_df.index.max() - period_df.index.min()).days + 1
+        # --- START FIX: Use correct number of calendar days for annualization factor ---
+        days_in_period = (last_day[PortfolioColumns.PERF_DATE] - first_day[PortfolioColumns.PERF_DATE]).days + 1
         ppy = annualization.periods_per_year or (252 if annualization.basis == "BUS/252" else 365.25 if annualization.basis == "ACT/ACT" else 365.0)
         
-        if days_in_period > 0:
+        # Only show annualized return for periods shorter than a year as per convention
+        if days_in_period > 0 and days_in_period < (ppy + 1):
             annualized_return = annualize_return(period_ror, days_in_period, ppy, annualization.basis) * 100
             summary["annualized_return_pct"] = round(annualized_return, rounding_precision)
+        # --- END FIX ---
+
     return summary
 
 
@@ -50,8 +56,12 @@ def generate_performance_breakdowns(
     """
     if daily_df.empty:
         return {}
-
+    
+    # --- START FIX: Ensure daily_df has a proper date column for joins ---
+    daily_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(daily_df[PortfolioColumns.PERF_DATE.value])
+    # --- END FIX ---
     daily_df_indexed = daily_df.set_index(pd.to_datetime(daily_df[PortfolioColumns.PERF_DATE.value]))
+
     breakdowns = {}
 
     for freq in frequencies:
@@ -74,9 +84,11 @@ def generate_performance_breakdowns(
             for period_timestamp, period_df in resampler:
                 if period_df.empty:
                     continue
+                # --- START FIX: Pass the original full dataframe for history context ---
                 summary = _calculate_period_summary_dict(
                     period_df, daily_df, annualization, include_cumulative, rounding_precision
                 )
+                # --- END FIX ---
                 if freq == Frequency.MONTHLY:
                     period_str = period_timestamp.strftime("%Y-%m")
                 elif freq == Frequency.QUARTERLY:
