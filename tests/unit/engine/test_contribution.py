@@ -29,7 +29,8 @@ def hierarchical_request_fixture(happy_path_payload):
         ]
     })
     payload["positions_data"][0]["meta"]["region"] = "US"
-    payload["period_type"] = "ITD"
+    payload["analyses"] = [{"period": "ITD", "frequencies": ["daily"]}]
+    payload.pop("period_type", None)
     return ContributionRequest.model_validate(payload)
 
 
