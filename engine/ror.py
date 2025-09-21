@@ -44,9 +44,7 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
                 local_ror.loc[safe_division_mask] = numerator[safe_division_mask] / denominator[safe_division_mask]
         else:
             np.divide(numerator, denominator, out=local_ror_np, where=safe_division_mask)
-            # --- FIX START: Ensure consistent type by converting numpy array to indexed Series ---
             local_ror = pd.Series(local_ror_np, index=df.index)
-            # --- FIX END ---
 
     result_df = pd.DataFrame(index=df.index)
     if config and config.currency_mode and config.currency_mode != "BASE_ONLY" and config.fx:
@@ -156,7 +154,15 @@ def _compound_ror(df: pd.DataFrame, daily_ror: pd.Series, leg: str, use_resets=F
         growth_factor = one - (daily_ror / hundred)
     growth_factor = growth_factor.where(is_leg_day, one)
 
-    is_period_start = df[PortfolioColumns.PERF_DATE.value] == df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
+    # --- FIX START: Robustly identify the start of compounding blocks ---
+    # A new block starts if the effective period start date changes from the previous day.
+    # This correctly handles sparse data where no observation falls on the exact period start.
+    prev_eff_start = df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value].shift(1)
+    is_period_start = df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value] != prev_eff_start
+    if not df.empty:
+        is_period_start.iloc[0] = True # The very first row is always a block start.
+    # --- FIX END ---
+
     block_starts = is_period_start
     if use_resets:
         prev_day_was_reset = df[PortfolioColumns.PERF_RESET.value].shift(1, fill_value=0) == 1
