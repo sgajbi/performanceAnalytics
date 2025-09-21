@@ -85,7 +85,7 @@ class RollingPeriod(BaseModel):
 
 
 class Periods(BaseModel):
-    type: Literal["YTD", "QTD", "MTD", "WTD", "Y1", "Y3", "Y5", "ITD", "ROLLING", "EXPLICIT"] = "EXPLICIT"
+    type: Literal["YTD", "QTD", "MTD", "WTD", "1Y", "3Y", "5Y", "ITD", "ROLLING", "EXPLICIT"] = "EXPLICIT"
     explicit: Optional[ExplicitPeriod] = None
     rolling: Optional[RollingPeriod] = None
 
