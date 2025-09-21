@@ -56,7 +56,7 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
         fx_rates_df['date'] = pd.to_datetime(fx_rates_df['date'])
         fx_rates_df = fx_rates_df.set_index('date')['rate'].sort_index()
 
-        # --- FIX START: Ensure the date range for FX lookups is comprehensive ---
+        # --- FIX START: Ensure the date range includes the day before performance starts ---
         start_dt = pd.to_datetime(config.performance_start_date)
         end_dt = df[PortfolioColumns.PERF_DATE.value].max()
         full_date_range = pd.date_range(start=start_dt, end=end_dt, freq='D')
