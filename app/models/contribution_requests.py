@@ -43,8 +43,6 @@ class PortfolioData(BaseModel):
 
     metric_basis: Literal["NET", "GROSS"]
     daily_data: List[PositionDailyData]
-    # period_type, report_start_date, and report_end_date are deprecated from here
-    # and moved to the top-level ContributionRequest for consistency.
 
 
 class Smoothing(BaseModel):
@@ -87,7 +85,6 @@ class ContributionRequest(BaseModel):
     emit: Emit = Field(default_factory=Emit)
     lookthrough: Lookthrough = Field(default_factory=Lookthrough)
     bucketing: Optional[Dict[str, Any]] = None
-    as_of: Optional[date] = None
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
     rounding_precision: int = 6
