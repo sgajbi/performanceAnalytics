@@ -26,19 +26,21 @@ def single_period_data():
 @pytest.fixture
 def by_group_request_data():
     """Provides a sample AttributionRequest for by_group mode where weights sum to 1."""
+    # --- START FIX: Align fixture with new model ---
     return {
         "portfolio_number": "ATTRIB_UNIT_TEST_01", "mode": "by_group", "group_by": ["sector"], "model": "BF", "linking": "carino", "frequency": "monthly",
         "report_start_date": "2025-01-01", "report_end_date": "2025-02-28",
         "analyses": [{"period": "ITD", "frequencies": ["monthly"]}],
         "portfolio_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-28", "return": 0.01, "weight_bop": 0.6}]},
-            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-28", "return": 0.005, "weight_bop": 0.4}]}
+            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.02, "weight_bop": 0.5}, {"date": "2025-02-28", "return_base": 0.01, "weight_bop": 0.6}]},
+            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 0.5}, {"date": "2025-02-28", "return_base": 0.005, "weight_bop": 0.4}]}
         ],
         "benchmark_groups_data": [
             {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 0.4}, {"date": "2025-02-28", "return_base": -0.01, "weight_bop": 0.45}]},
             {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return_base": 0.005, "weight_bop": 0.6}, {"date": "2025-02-28", "return_base": 0.002, "weight_bop": 0.55}]}
         ],
     }
+    # --- END FIX ---
 
 
 def test_align_and_prepare_data_by_group(by_group_request_data):
@@ -92,6 +94,7 @@ def test_prepare_data_from_instruments():
     daily_data_aapl = [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 600, "end_mv": 624}]
     daily_data_msft = [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 401}]
 
+    # --- START FIX: Align fixture with new model ---
     request_data = {
         "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
@@ -103,6 +106,7 @@ def test_prepare_data_from_instruments():
         ],
         "benchmark_groups_data": []
     }
+    # --- END FIX ---
     request = AttributionRequest.model_validate(request_data)
 
     result_groups = _prepare_data_from_instruments(request)
@@ -117,11 +121,13 @@ def test_prepare_data_from_instruments():
 
 def test_prepare_data_from_instruments_missing_portfolio_data():
     """Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode."""
+    # --- START FIX: Align fixture with new model ---
     request_data = {
-        "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "instruments_data": [], "benchmark_groups_data": [], "linking": "none",
+        "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "instruments_data": [], "benchmark_groups_data": [], "linking": "none", "frequency": "daily",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
     }
+    # --- END FIX ---
     request = AttributionRequest.model_validate(request_data)
     with pytest.raises(ValueError, match="'portfolio_data' and 'instruments_data' are required"):
         _prepare_data_from_instruments(request)

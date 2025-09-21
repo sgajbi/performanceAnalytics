@@ -76,27 +76,10 @@ class AttributionResponse(BaseModel):
     model: AttributionModel
     linking: LinkingMethod
 
-    # New multi-period structure
-    results_by_period: Optional[Dict[str, SinglePeriodAttributionResult]] = None
+    # --- START REFACTOR: Align with unified multi-period model ---
+    results_by_period: Dict[str, SinglePeriodAttributionResult]
+    # --- END REFACTOR ---
 
-    # Legacy single-period fields
-    levels: Optional[List[AttributionLevelResult]] = None
-    reconciliation: Optional[Reconciliation] = None
-    currency_attribution: Optional[List[CurrencyAttributionResult]] = None
-    currency_attribution_totals: Optional[CurrencyAttributionTotals] = None
-
-    meta: Optional[Meta] = None
-    diagnostics: Optional[Diagnostics] = None
-    audit: Optional[Audit] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_result_structure(cls, values):
-        """Ensures that exactly one result structure is used."""
-        has_new_structure = "results_by_period" in values and values.get("results_by_period") is not None
-        has_legacy_structure = "levels" in values and values.get("levels") is not None
-
-        if not (has_new_structure ^ has_legacy_structure):
-            raise ValueError("Provide either 'results_by_period' or legacy 'levels' field, but not both.")
-
-        return values
+    meta: Meta
+    diagnostics: Optional[Diagnostics] = None # To be populated
+    audit: Optional[Audit] = None # To be populated

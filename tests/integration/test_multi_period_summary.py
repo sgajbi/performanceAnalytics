@@ -15,7 +15,8 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
     """
     Tests that in a multi-period request, the portfolio_return summary object
     for each period correctly reflects that period's return, not the master
-    period's return. This test specifically validates the fix for this bug.
+    period's return.
+    This test specifically validates the fix for this bug.
     """
     payload = {
         "portfolio_number": "MULTI_PERIOD_SUMMARY_TEST",

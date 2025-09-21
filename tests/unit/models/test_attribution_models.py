@@ -24,36 +24,31 @@ def base_attribution_payload():
     }
 
 
-def test_attribution_request_with_periods_passes(base_attribution_payload):
-    """Tests that a request using the new 'periods' array is valid."""
+def test_attribution_request_with_analyses_passes(base_attribution_payload):
+    """Tests that a request using the new 'analyses' array is valid."""
+    # --- START FIX: Align test with new model ---
     payload = base_attribution_payload.copy()
-    payload["periods"] = [PeriodType.YTD, PeriodType.MTD]
+    payload["analyses"] = [{"period": PeriodType.YTD, "frequencies": ["monthly"]}]
     try:
         AttributionRequest.model_validate(payload)
     except ValidationError as e:
-        pytest.fail(f"Validation failed unexpectedly with 'periods': {e}")
+        pytest.fail(f"Validation failed unexpectedly with 'analyses': {e}")
+    # --- END FIX ---
 
 
-def test_attribution_request_with_legacy_period_type_passes(base_attribution_payload):
-    """Tests that a request using the legacy 'period_type' field is valid."""
+def test_attribution_request_with_empty_analyses_fails(base_attribution_payload):
+    """Tests that validation fails if 'analyses' is an empty list."""
+    # --- START FIX: Align test with new model ---
     payload = base_attribution_payload.copy()
-    payload["period_type"] = PeriodType.ITD
-    try:
+    payload["analyses"] = []
+    with pytest.raises(ValidationError, match="analyses list cannot be empty"):
         AttributionRequest.model_validate(payload)
-    except ValidationError as e:
-        pytest.fail(f"Validation failed unexpectedly with legacy 'period_type': {e}")
+    # --- END FIX ---
 
 
-def test_attribution_request_with_both_fails(base_attribution_payload):
-    """Tests that validation fails if both 'periods' and 'period_type' are provided."""
-    payload = base_attribution_payload.copy()
-    payload["periods"] = [PeriodType.YTD]
-    payload["period_type"] = PeriodType.YTD
-    with pytest.raises(ValidationError, match="Exactly one of 'periods' or 'period_type' must be provided"):
-        AttributionRequest.model_validate(payload)
-
-
-def test_attribution_request_with_neither_fails(base_attribution_payload):
-    """Tests that validation fails if neither 'periods' nor 'period_type' is provided."""
-    with pytest.raises(ValidationError, match="Exactly one of 'periods' or 'period_type' must be provided"):
+def test_attribution_request_with_no_analyses_fails(base_attribution_payload):
+    """Tests that validation fails if the 'analyses' field is missing entirely."""
+    # --- START FIX: Align test with new model ---
+    with pytest.raises(ValidationError, match="Field required"):
         AttributionRequest.model_validate(base_attribution_payload)
+    # --- END FIX ---
