@@ -33,7 +33,7 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
         if metric_basis == "NET":
             numerator += df[PortfolioColumns.MGMT_FEES.value].to_numpy()
         denominator = np.abs(df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).to_numpy()
-        local_ror = np.full(denominator.shape, 0.0, dtype=np.float64)
+        local_ror_np = np.full(denominator.shape, 0.0, dtype=np.float64)
 
     is_after_start = df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
     safe_division_mask = (denominator != zero) & is_after_start
@@ -43,7 +43,8 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
             if safe_division_mask.any():
                 local_ror.loc[safe_division_mask] = numerator[safe_division_mask] / denominator[safe_division_mask]
         else:
-            np.divide(numerator, denominator, out=local_ror, where=safe_division_mask)
+            np.divide(numerator, denominator, out=local_ror_np, where=safe_division_mask)
+            local_ror = pd.Series(local_ror_np, index=df.index)
 
     result_df = pd.DataFrame(index=df.index)
     if config and config.currency_mode and config.currency_mode != "BASE_ONLY" and config.fx:
@@ -73,8 +74,8 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
                 fx_ror = fx_ror * (1.0 - hedge_ratios)
 
         result_df["local_ror"] = local_ror * hundred
-        result_df["fx_ror"] = fx_ror.values * hundred
-        result_df[PortfolioColumns.DAILY_ROR.value] = ((1 + local_ror) * (1 + fx_ror.values) - 1) * hundred
+        result_df["fx_ror"] = fx_ror * hundred
+        result_df[PortfolioColumns.DAILY_ROR.value] = ((1 + local_ror) * (1 + fx_ror) - 1) * hundred
     else:
         result_df[PortfolioColumns.DAILY_ROR.value] = local_ror * hundred
 
@@ -87,7 +88,6 @@ def calculate_cumulative_ror(df: pd.DataFrame, config):
     one = Decimal(1) if is_decimal_mode else 1.0
     hundred = Decimal(100) if is_decimal_mode else 100.0
 
-    # --- FIX START: Use consistent string names for components ---
     components = [PortfolioColumns.DAILY_ROR.value]
     if "local_ror" in df.columns:
         components.append("local_ror")
@@ -99,7 +99,6 @@ def calculate_cumulative_ror(df: pd.DataFrame, config):
         
         df[f"temp_{prefix}long_cum_ror"] = _compound_ror(df, df[component_name], "long", use_resets=False)
         df[f"temp_{prefix}short_cum_ror"] = _compound_ror(df, df[component_name], "short", use_resets=False)
-    # --- FIX END ---
 
     report_end_ts = pd.to_datetime(config.report_end_date)
     initial_resets = calculate_initial_resets(df, report_end_ts)
