@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from common.enums import Frequency
 from core.envelope import Annualization
-from engine.breakdown import generate_performance_breakdowns
+from engine.breakdown import generate_performance_breakdowns, _calculate_period_summary_dict
 from engine.schema import PortfolioColumns
 
 
@@ -33,7 +33,6 @@ def default_annualization() -> Annualization:
 
 def test_generate_breakdowns_monthly(sample_daily_results, default_annualization):
     """Tests that monthly aggregation is calculated correctly."""
-    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
         sample_daily_results, [Frequency.MONTHLY], default_annualization, False
     )
@@ -48,7 +47,6 @@ def test_generate_breakdowns_monthly(sample_daily_results, default_annualization
 
 def test_generate_breakdowns_yearly(sample_daily_results, default_annualization):
     """Tests that yearly aggregation is calculated correctly."""
-    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
         sample_daily_results, [Frequency.YEARLY], default_annualization, False
     )
@@ -63,7 +61,6 @@ def test_generate_breakdowns_yearly(sample_daily_results, default_annualization)
 
 def test_generate_breakdowns_multiple_frequencies(sample_daily_results, default_annualization):
     """Tests that the function returns multiple breakdowns when requested."""
-    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
         sample_daily_results, [Frequency.DAILY, Frequency.YEARLY], default_annualization, False
     )
@@ -73,7 +70,6 @@ def test_generate_breakdowns_multiple_frequencies(sample_daily_results, default_
 
 def test_generate_breakdowns_empty_input(default_annualization):
     """Tests that the function handles an empty DataFrame correctly."""
-    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
         pd.DataFrame(), [Frequency.DAILY], default_annualization, False
     )
@@ -82,7 +78,6 @@ def test_generate_breakdowns_empty_input(default_annualization):
 
 def test_generate_breakdowns_quarterly(sample_daily_results, default_annualization):
     """Tests that quarterly aggregation is calculated correctly."""
-    # FIX: Pass new required arguments
     breakdowns = generate_performance_breakdowns(
         sample_daily_results, [Frequency.QUARTERLY], default_annualization, False
     )
@@ -90,3 +85,30 @@ def test_generate_breakdowns_quarterly(sample_daily_results, default_annualizati
     assert len(breakdowns[Frequency.QUARTERLY]) == 1
     q1_results = breakdowns[Frequency.QUARTERLY][0]
     assert q1_results["period"] == "2025-Q1"
+
+
+def test_annualization_correctly_handles_sparse_long_period():
+    """
+    Tests the annualization logic. A sparse (e.g., monthly) series over a
+    year-long period should be annualized. This test will fail before the fix.
+    """
+    # This data represents a 5% return over exactly one year.
+    year_long_sparse_data = {
+        PortfolioColumns.PERF_DATE: [date(2024, 1, 1), date(2024, 12, 31)],
+        PortfolioColumns.DAILY_ROR: [2.0, 2.941176], # (1.02 * 1.02941176) - 1 = 0.05
+        PortfolioColumns.BEGIN_MV: [100.0, 102.0],
+        PortfolioColumns.END_MV: [102.0, 105.0],
+        PortfolioColumns.BOD_CF: [0.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0],
+        PortfolioColumns.FINAL_CUM_ROR: [2.0, 5.0],
+    }
+    df = pd.DataFrame(year_long_sparse_data)
+    df_indexed = df.set_index(pd.to_datetime(df[PortfolioColumns.PERF_DATE]))
+    
+    annualization_config = Annualization(enabled=True, basis="ACT/365")
+
+    summary = _calculate_period_summary_dict(df_indexed, df_indexed, annualization_config, False)
+
+    assert "annualized_return_pct" in summary
+    # The return is 5% over 365 days, so annualized return is ~5%
+    assert summary["annualized_return_pct"] == pytest.approx(5.0, abs=1e-4)

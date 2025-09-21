@@ -27,17 +27,17 @@ def _calculate_period_summary_dict(
     if include_cumulative:
         summary["cumulative_return_pct_to_date"] = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
 
-    # --- FIX START: Add rule to suppress annualization for periods < 1 year ---
     if annualization.enabled:
-        days_in_period = len(period_df)
-        ppy = annualization.periods_per_year or (252 if annualization.basis == "BUS/252" else 365.25)
+        # --- FIX START: Use calendar days in period, not number of observations ---
+        days_in_period = (period_df.index.max() - period_df.index.min()).days + 1
+        ppy = annualization.periods_per_year or (252 if annualization.basis == "BUS/252" else 365.0)
         
-        # Only annualize if the period is at least one year long
+        # Only annualize if the period is at least one year long (approx)
         if days_in_period >= ppy:
             summary["annualized_return_pct"] = (
                 annualize_return(period_ror, days_in_period, ppy, annualization.basis) * 100
             )
-    # --- FIX END ---
+        # --- FIX END ---
     return summary
 
 
