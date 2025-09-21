@@ -3,9 +3,9 @@ from datetime import date
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
-from common.enums import PeriodType, WeightingScheme
+from common.enums import PeriodType, WeightingScheme, Frequency
 from core.envelope import (
     Annualization,
     Calendar,
@@ -16,6 +16,7 @@ from core.envelope import (
     Output,
     Periods,
 )
+from app.models.requests import Analysis # Import the new shared model
 
 
 class PositionDailyData(BaseModel):
@@ -74,8 +75,10 @@ class ContributionRequest(BaseModel):
     portfolio_number: str
     report_start_date: date
     report_end_date: date
-    period_type: Optional[PeriodType] = None  # Deprecated in favor of 'periods'
-    periods: Optional[List[PeriodType]] = None  # New field for multi-period requests
+    
+    # --- START REFACTOR: Decouple periods and frequencies ---
+    analyses: List[Analysis]
+    # --- END REFACTOR ---
 
     portfolio_data: PortfolioData
     positions_data: List[PositionData]
@@ -99,17 +102,9 @@ class ContributionRequest(BaseModel):
     fx: Optional[FXRequestBlock] = None
     hedging: Optional[HedgingRequestBlock] = None
 
-    @model_validator(mode="before")
+    @field_validator('analyses')
     @classmethod
-    def check_period_definition(cls, values):
-        """Ensures that exactly one period definition method is used."""
-        has_periods = "periods" in values and values["periods"] is not None
-        has_period_type = "period_type" in values and values["period_type"] is not None
-
-        if not (has_periods ^ has_period_type):
-            raise ValueError("Exactly one of 'periods' or 'period_type' must be provided.")
-
-        if has_periods and not values["periods"]:
-            raise ValueError("The 'periods' list cannot be empty.")
-
-        return values
+    def analyses_must_not_be_empty(cls, v):
+        if not v:
+            raise ValueError('analyses list cannot be empty')
+        return v
