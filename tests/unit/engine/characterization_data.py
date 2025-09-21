@@ -5,6 +5,34 @@ import pandas as pd
 from engine.config import EngineConfig, PeriodType, FXRequestBlock
 from engine.schema import PortfolioColumns
 
+
+def cumulative_return_scenario():
+    """Provides a simple two-day scenario to validate running cumulative return."""
+    engine_config = EngineConfig(
+        performance_start_date=date(2024, 12, 31),
+        report_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 2),
+        metric_basis="GROSS",
+        period_type=PeriodType.YTD,
+    )
+    input_df = pd.DataFrame({
+        PortfolioColumns.DAY: [1, 2],
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02"]),
+        PortfolioColumns.BEGIN_MV: [100.0, 110.0],
+        PortfolioColumns.BOD_CF: [0.0, 0.0],
+        PortfolioColumns.EOD_CF: [0.0, 0.0],
+        PortfolioColumns.MGMT_FEES: [0.0, 0.0],
+        PortfolioColumns.END_MV: [110.0, 126.5],
+    })
+    expected_df = pd.DataFrame({
+        PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2)],
+        PortfolioColumns.DAILY_ROR: [10.0, 15.0],
+        # Day 1: 10%
+        # Day 2: (1.10 * 1.15) - 1 = 1.265 - 1 = 26.5%
+        PortfolioColumns.FINAL_CUM_ROR: [10.0, 26.5],
+    })
+    return engine_config, input_df, expected_df
+
 def long_flip_scenario():
     """Provides the input and expected output for the long flip scenario."""
     engine_config = EngineConfig(
@@ -23,7 +51,7 @@ def long_flip_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [500.0, -50.0, 1050.0, 1155.0],
     })
-    # --- FIX START: Correct the expected values for the temporary cumulative column ---
+    # --- START FIX: Align expected data with correct engine calculation ---
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3), date(2025, 1, 4)],
         PortfolioColumns.SIGN: [1, 1, 1, 1],
@@ -41,7 +69,7 @@ def long_flip_scenario():
         PortfolioColumns.SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.FINAL_CUM_ROR: [-50.0, 0.0, 10.5263, 21.5789],
     })
-    # --- FIX END ---
+    # --- END FIX ---
     return engine_config, input_df, expected_df
 
 def short_flip_scenario():

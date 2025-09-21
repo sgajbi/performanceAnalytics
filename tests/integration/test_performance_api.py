@@ -16,6 +16,65 @@ def client():
         yield c
 
 
+def test_twr_reports_reset_events_when_requested(client):
+    """
+    Tests that when a reset occurs and the policy is enabled,
+    the reset_events list is correctly populated in the response.
+    """
+    # This payload is based on the 'long_flip_scenario' which triggers an NCTRL_1 reset
+    payload = {
+        "portfolio_number": "RESET_SCENARIO_TEST",
+        "performance_start_date": "2024-12-31",
+        "report_end_date": "2025-01-04",
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
+        "metric_basis": "GROSS",
+        "valuation_points": [
+            { "day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 500.0 },
+            { "day": 2, "perf_date": "2025-01-02", "begin_mv": 500.0, "end_mv": -50.0 },
+            { "day": 3, "perf_date": "2025-01-03", "begin_mv": -50.0, "bod_cf": 1000.0, "end_mv": 1050.0 },
+            { "day": 4, "perf_date": "2025-01-04", "begin_mv": 1050.0, "end_mv": 1155.0 }
+        ],
+        "reset_policy": { "emit": True }
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    itd_results = data["results_by_period"]["ITD"]
+
+    assert "reset_events" in itd_results
+    assert itd_results["reset_events"] is not None
+    assert len(itd_results["reset_events"]) == 1
+    
+    reset_event = itd_results["reset_events"][0]
+    assert reset_event["date"] == "2025-01-02"
+    assert "NCTRL_1" in reset_event["reason"]
+
+
+    
+def test_calculate_twr_endpoint_with_annualization(client):
+    """Tests that a request with annualization enabled correctly returns annualized figures."""
+    payload = {
+        "portfolio_number": "ANNUALIZATION_TEST",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-03-31",
+        "analyses": [{"period": "QTD", "frequencies": ["quarterly"]}],
+        "valuation_points": [
+            {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0},
+            {"day": 60, "perf_date": "2025-03-31", "begin_mv": 1010.0, "end_mv": 1020.1}
+        ],
+        "annualization": {"enabled": True, "basis": "ACT/365"}
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    summary = data["results_by_period"]["QTD"]["breakdowns"]["quarterly"][0]["summary"]
+    
+    assert "annualized_return_pct" in summary
+    assert summary["period_return_pct"] == pytest.approx(2.01)
+    # 90 days in Q1 2025. Expected: (1.0201 ** (365 / 90)) - 1 = 8.40545...%
+    assert summary["annualized_return_pct"] == pytest.approx(8.40545, abs=1e-5)
+
 def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
     """Tests the /performance/twr endpoint using the new 'analyses' structure and verifies the shared response footer."""
     payload = {

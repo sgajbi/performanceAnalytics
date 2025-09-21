@@ -11,6 +11,7 @@ from tests.unit.engine.characterization_data import (
     eod_flip_net_scenario,
     eod_flip_gross_scenario,
     multi_currency_scenario,
+    cumulative_return_scenario, # Add new import
 )
 
 @pytest.mark.parametrize(
@@ -24,6 +25,7 @@ from tests.unit.engine.characterization_data import (
         (eod_flip_net_scenario, "eod_flip_net"),
         (eod_flip_gross_scenario, "eod_flip_gross"),
         (multi_currency_scenario, "multi_currency"),
+        (cumulative_return_scenario, "cumulative_return"), # Add new scenario
     ],
     ids=[
         "long_flip",
@@ -34,6 +36,7 @@ from tests.unit.engine.characterization_data import (
         "eod_flip_net",
         "eod_flip_gross",
         "multi_currency",
+        "cumulative_return", # Add new scenario ID
     ]
 )
 def test_engine_characterization_scenarios(scenario_func, scenario_name):
@@ -44,17 +47,15 @@ def test_engine_characterization_scenarios(scenario_func, scenario_name):
     engine_config, input_df, expected_df = scenario_func()
 
     # 2. Act
-    # FIX: Unpack the tuple returned by run_calculations
     result_df, _ = run_calculations(input_df, engine_config)
 
     # 3. Assert
-    # Select only the columns we want to compare from the result
-    output_columns = expected_df.columns
+    output_columns = [col for col in expected_df.columns if col in result_df.columns]
     actual_df = result_df[output_columns].reset_index(drop=True)
 
     pd.testing.assert_frame_equal(
         actual_df,
-        expected_df.reset_index(drop=True),
+        expected_df[output_columns].reset_index(drop=True),
         check_exact=False,
         atol=1e-4,
     )

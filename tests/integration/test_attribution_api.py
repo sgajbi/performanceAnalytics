@@ -15,7 +15,8 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
     """Tests the /performance/attribution endpoint end-to-end with a valid 'by_instrument' payload."""
     payload = {
         "portfolio_number": "ATTRIB_BY_INST_01", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", 
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "portfolio_data": {"metric_basis": "NET", "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1018.5}
         ]},
@@ -31,11 +32,10 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
 
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == 200
-    response_data = response.json()
-    assert response_data["portfolio_number"] == "ATTRIB_BY_INST_01"
+    response_data = response.json()["results_by_period"]["ITD"]
+    assert response_data["reconciliation"]["total_active_return"] == pytest.approx(0.1)
     level = response_data["levels"][0]
     tech_group = next(g for g in level["groups"] if g["key"]["sector"] == "Tech")
-    assert response_data["reconciliation"]["total_active_return"] == pytest.approx(0.1)
     assert tech_group["selection"] == pytest.approx(0.25)
 
 
@@ -43,8 +43,9 @@ def test_attribution_lineage_flow(client):
     """Tests that lineage is correctly captured for an attribution request."""
     payload = {
         "portfolio_number": "ATTRIB_LINEAGE_01", "mode": "by_group", "group_by": ["sector"], "linking": "none", "frequency": "monthly",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", "period_type": "ITD",
-        "portfolio_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 1.0}]}],
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", 
+        "analyses": [{"period": "ITD", "frequencies": ["monthly"]}],
+        "portfolio_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.02, "weight_bop": 1.0}]}],
         "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 1.0}]}],
     }
     attrib_response = client.post("/performance/attribution", json=payload)
@@ -64,7 +65,8 @@ def test_attribution_endpoint_hierarchical(client):
     """Tests multi-level hierarchical attribution, ensuring bottom-up aggregation is correct."""
     payload = {
         "portfolio_number": "HIERARCHY_01", "mode": "by_instrument", "group_by": ["assetClass", "sector"], "linking": "none", "frequency": "daily",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", 
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "portfolio_data": {"metric_basis": "NET", "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1020}
         ]},
@@ -81,7 +83,7 @@ def test_attribution_endpoint_hierarchical(client):
     }
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == 200
-    data = response.json()
+    data = response.json()["results_by_period"]["ITD"]
     assert len(data["levels"]) == 2
     level_ac = data["levels"][0]
     level_sector = data["levels"][1]
@@ -97,7 +99,8 @@ def test_attribution_endpoint_currency_attribution(client):
     payload = {
         "portfolio_number": "FX_ATTRIB_01", "mode": "by_instrument", "group_by": ["currency"],
         "linking": "none", "frequency": "daily", "currency_mode": "BOTH", "report_ccy": "USD",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", 
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "portfolio_data": {
             "metric_basis": "GROSS",
             "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 103.02}]
@@ -121,7 +124,7 @@ def test_attribution_endpoint_currency_attribution(client):
     }
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == 200
-    data = response.json()
+    data = response.json()["results_by_period"]["ITD"]
 
     assert "currency_attribution" in data
     assert data["currency_attribution"] is not None
@@ -133,11 +136,13 @@ def test_attribution_endpoint_currency_attribution(client):
     assert eur_effects["currency_selection"] == pytest.approx(0.005)
     assert eur_effects["total_effect"] == pytest.approx(0.505)
 
-    calculation_id = data["calculation_id"]
+    calculation_id = response.json()["calculation_id"]
     lineage_response = client.get(f"/performance/lineage/{calculation_id}")
     assert lineage_response.status_code == 200
     lineage_data = lineage_response.json()
-    assert "currency_attribution_effects.csv" in lineage_data["artifacts"]
+    # --- START FIX: Update assertion to expect period-prefixed artifact name ---
+    assert "ITD_currency_attribution_effects.csv" in lineage_data["artifacts"]
+    # --- END FIX ---
 
 
 @pytest.mark.parametrize(
@@ -148,8 +153,9 @@ def test_attribution_endpoint_error_handling(client, mocker, error_class, expect
     """Tests that the attribution endpoint correctly handles engine exceptions."""
     mocker.patch('app.api.endpoints.performance.run_attribution_calculations', side_effect=error_class("Test Error"))
     payload = {
-        "portfolio_number": "ERROR", "mode": "by_group", "group_by": ["sector"], "benchmark_groups_data": [], "linking": "none",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", "period_type": "ITD",
+        "portfolio_number": "ERROR", "mode": "by_group", "group_by": ["sector"], "benchmark_groups_data": [], "linking": "none", "frequency": "monthly",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", 
+        "analyses": [{"period": "ITD", "frequencies": ["monthly"]}],
     }
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == expected_status

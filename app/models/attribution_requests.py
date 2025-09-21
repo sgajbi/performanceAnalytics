@@ -3,17 +3,16 @@ from datetime import date
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 from common.enums import (
     AttributionMode,
     AttributionModel,
     Frequency,
     LinkingMethod,
-    PeriodType,
 )
 from core.envelope import Annualization, Calendar, Flags, Output, FXRequestBlock, HedgingRequestBlock
-from app.models.requests import DailyInputData
+from app.models.requests import DailyInputData, Analysis  # Import the shared Analysis model
 
 
 class AttributionPortfolioData(BaseModel):
@@ -58,8 +57,10 @@ class AttributionRequest(BaseModel):
     portfolio_number: str
     report_start_date: date
     report_end_date: date
-    period_type: Optional[PeriodType] = None  # Deprecated in favor of 'periods'
-    periods: Optional[List[PeriodType]] = None  # New field for multi-period requests
+    
+    # --- START REFACTOR: Align with unified multi-period model ---
+    analyses: List[Analysis]
+    # --- END REFACTOR ---
 
     mode: AttributionMode
     frequency: Frequency = Frequency.MONTHLY
@@ -82,17 +83,9 @@ class AttributionRequest(BaseModel):
     fx: Optional[FXRequestBlock] = None
     hedging: Optional[HedgingRequestBlock] = None
 
-    @model_validator(mode="before")
+    @field_validator('analyses')
     @classmethod
-    def check_period_definition(cls, values):
-        """Ensures that exactly one period definition method is used."""
-        has_periods = "periods" in values and values.get("periods") is not None
-        has_period_type = "period_type" in values and values.get("period_type") is not None
-
-        if not (has_periods ^ has_period_type):
-            raise ValueError("Exactly one of 'periods' or 'period_type' must be provided.")
-
-        if has_periods and not values["periods"]:
-            raise ValueError("The 'periods' list cannot be empty.")
-
-        return values
+    def analyses_must_not_be_empty(cls, v):
+        if not v:
+            raise ValueError('analyses list cannot be empty')
+        return v
