@@ -50,7 +50,6 @@ class PerformanceRequest(BaseModel):
     periods: Optional[List[PeriodType]] = Field(None, description="A list of time frames to calculate (e.g., ['MTD', 'YTD', 'ITD']). Replaces the singular 'period_type'.")
     frequencies: List[Frequency] = Field([Frequency.DAILY], description="A list of frequencies for breaking down the performance results.")
     daily_data: List[DailyInputData]
-    as_of: Optional[date] = Field(None, description="The 'as of' date for resolving relative periods. If not provided, 'report_end_date' is used.")
     currency: str = Field("USD", description="The three-letter ISO currency code for the request (e.g., 'USD').")
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = Field("FLOAT64", description="The numerical precision mode for the calculation engine.")
     rounding_precision: int = Field(6, description="The number of decimal places to round final float results to.")
