@@ -56,7 +56,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         ).dt.date
 
         def get_total_cum_ror(row: pd.Series, prefix: str = "") -> float:
-            """Helper to combine long/short sleeves into a total cumulative return."""
             if row is None:
                 return 0.0
             long_cum = row.get(f"{prefix}long_cum_ror", 0.0)
@@ -74,16 +73,32 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
 
                 start_cum_base = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
                 end_cum_base = end_row[PortfolioColumns.FINAL_CUM_ROR.value]
-                base_total = (((1 + end_cum_base / 100) / (1 + start_cum_base / 100)) - 1) * 100
+                
+                # --- START FIX: Prevent ZeroDivisionError ---
+                start_base_denom = 1 + start_cum_base / 100
+                if start_base_denom == 0:
+                    base_total = end_cum_base # Cannot link from -100%, new return is the end value
+                else:
+                    base_total = (((1 + end_cum_base / 100) / start_base_denom) - 1) * 100
+                # --- END FIX ---
 
                 if "local_ror" in df_slice.columns:
                     start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
                     end_cum_local = get_total_cum_ror(end_row, "local_ror_")
-                    local_total = (((1 + end_cum_local / 100) / (1 + start_cum_local / 100)) - 1) * 100
-                    if (1 + local_total / 100) == 0:
+                    
+                    # --- START FIX: Prevent ZeroDivisionError ---
+                    start_local_denom = 1 + start_cum_local / 100
+                    if start_local_denom == 0:
+                        local_total = end_cum_local
+                    else:
+                        local_total = (((1 + end_cum_local / 100) / start_local_denom) - 1) * 100
+                    # --- END FIX ---
+
+                    base_denom_for_fx = 1 + local_total / 100
+                    if base_denom_for_fx == 0:
                          fx_total = 0.0
                     else:
-                        fx_total = (((1 + base_total / 100) / (1 + local_total / 100)) - 1) * 100
+                        fx_total = (((1 + base_total / 100) / base_denom_for_fx) - 1) * 100
                 else:
                     local_total = base_total
                     fx_total = 0.0
@@ -91,10 +106,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 base_total = ((1 + df_slice[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1) * 100
                 if "local_ror" in df_slice.columns:
                     local_total = ((1 + df_slice["local_ror"] / 100).prod() - 1) * 100
-                    if (1 + local_total / 100) == 0:
+                    base_denom_for_fx = 1 + local_total / 100
+                    if base_denom_for_fx == 0:
                         fx_total = 0.0
                     else:
-                        fx_total = (((1 + base_total / 100) / (1 + local_total / 100)) - 1) * 100
+                        fx_total = (((1 + base_total / 100) / base_denom_for_fx) - 1) * 100
                 else:
                     local_total = base_total
                     fx_total = 0.0
