@@ -15,6 +15,29 @@ def client():
     with TestClient(app) as c:
         yield c
 
+def test_calculate_twr_endpoint_with_annualization(client):
+    """Tests that a request with annualization enabled correctly returns annualized figures."""
+    payload = {
+        "portfolio_number": "ANNUALIZATION_TEST",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-03-31",
+        "analyses": [{"period": "QTD", "frequencies": ["quarterly"]}],
+        "valuation_points": [
+            {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0},
+            {"day": 60, "perf_date": "2025-03-31", "begin_mv": 1010.0, "end_mv": 1020.1}
+        ],
+        "annualization": {"enabled": True, "basis": "ACT/365"}
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    summary = data["results_by_period"]["QTD"]["breakdowns"]["quarterly"][0]["summary"]
+    
+    assert "annualized_return_pct" in summary
+    assert summary["period_return_pct"] == pytest.approx(2.01)
+    # Approx 90 days in Q1. Expected: (1.0201 ** (365 / 90)) - 1 = ~8.39%
+    assert summary["annualized_return_pct"] == pytest.approx(8.39, abs=0.01)
 
 def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
     """Tests the /performance/twr endpoint using the new 'analyses' structure and verifies the shared response footer."""
