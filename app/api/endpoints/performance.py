@@ -75,29 +75,23 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
             
-            last_day = period_slice_df.iloc[-1]
-            base_total = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
+            # --- FIX START: Calculate period-specific return by compounding daily returns from the slice ---
+            base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
 
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
-                # --- FIX START: Use correct column names for reset-aware cumulative returns ---
-                local_long_cum = last_day.get("local_ror_long_cum_ror", 0.0)
-                local_short_cum = last_day.get("local_ror_short_cum_ror", 0.0)
-                local_total_cum_ror = (1 + local_long_cum / 100) * (1 + local_short_cum / 100) - 1
-
-                fx_long_cum = last_day.get("fx_ror_long_cum_ror", 0.0)
-                fx_short_cum = last_day.get("fx_ror_short_cum_ror", 0.0)
-                fx_total_cum_ror = (1 + fx_long_cum / 100) * (1 + fx_short_cum / 100) - 1
+                local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
+                fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
                 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=local_total_cum_ror * 100,
-                    fx=fx_total_cum_ror * 100,
-                    base=base_total
+                    local=local_total * 100,
+                    fx=fx_total * 100,
+                    base=base_total * 100
                 )
-                # --- FIX END ---
             else:
                 period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=base_total, fx=0.0, base=base_total
+                    local=base_total * 100, fx=0.0, base=base_total * 100
                 )
+            # --- FIX END ---
 
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
