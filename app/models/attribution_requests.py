@@ -70,7 +70,6 @@ class AttributionRequest(BaseModel):
     instruments_data: Optional[List[InstrumentData]] = None
     portfolio_groups_data: Optional[List[PortfolioGroup]] = None
     benchmark_groups_data: List[BenchmarkGroup]
-    as_of: Optional[date] = None
     currency: str = "USD"
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = "FLOAT64"
     rounding_precision: int = 6
