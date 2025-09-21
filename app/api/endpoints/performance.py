@@ -5,7 +5,7 @@ import pandas as pd
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
-from app.models.attribution_responses import AttributionResponse, SinglePeriodAttributionResult
+from app.models.attribution_responses import AttributionResponse
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
@@ -56,7 +56,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         ).dt.date
 
         def get_total_return_from_slice(df_slice: pd.DataFrame) -> PortfolioReturnDecomposition:
-            """Calculates local, fx, and base returns for a given DataFrame slice."""
             if df_slice.empty:
                 return PortfolioReturnDecomposition(local=0.0, fx=0.0, base=0.0)
             
@@ -116,10 +115,12 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             )
             
             if request.reset_policy.emit and diagnostics_data.get("resets"):
+                # --- START FIX: The 'date' key from the engine is already a date object ---
                 period_result.reset_events = [
                     ResetEvent(**event) for event in diagnostics_data["resets"] 
-                    if period.start_date <= date.fromisoformat(event["date"]) <= period.end_date
+                    if period.start_date <= event["date"] <= period.end_date
                 ]
+                # --- END FIX ---
             
             results_by_period[period.name] = period_result
 
