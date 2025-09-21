@@ -68,7 +68,9 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             if df_slice[PortfolioColumns.PERF_RESET.value].any():
                 end_row = df_slice.iloc[-1]
-                day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < df_slice.perf_date.min()
+                # --- START FIX: Correct column access typo ---
+                day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < df_slice[PortfolioColumns.PERF_DATE.value].min()
+                # --- END FIX ---
                 day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
 
                 start_cum_base = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
