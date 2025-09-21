@@ -1,5 +1,6 @@
 # tests/unit/engine/test_rules.py
 from decimal import Decimal
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -19,8 +20,6 @@ def sign_test_df() -> pd.DataFrame:
         PortfolioColumns.PERF_RESET: [0, 0, 0, 1, 0],
     }
     df = pd.DataFrame(data)
-    # The `calculate_sign` function expects PERF_RESET to already be calculated.
-    # We initialize it here to simulate the state when the function is called.
     return df
 
 
@@ -148,6 +147,12 @@ def reset_test_df() -> pd.DataFrame:
         PortfolioColumns.SHORT_CUM_ROR: [50, 10, 105, 20],
         PortfolioColumns.BOD_CF: [0, 0, 1000, 0],
         PortfolioColumns.EOD_CF: [0, 0, 0, 0],
+        # --- FIX START: Initialize NCTRL columns in the test fixture ---
+        PortfolioColumns.NCTRL_1: [0, 0, 0, 0],
+        PortfolioColumns.NCTRL_2: [0, 0, 0, 0],
+        PortfolioColumns.NCTRL_3: [0, 0, 0, 0],
+        PortfolioColumns.NCTRL_4: [0, 0, 0, 0],
+        # --- FIX END ---
     }
     return pd.DataFrame(data)
 
