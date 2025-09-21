@@ -20,7 +20,7 @@ def sample_daily_results() -> pd.DataFrame:
         PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [110.0, 121.0, 135.0],
         PortfolioColumns.DAILY_ROR: [10.0, 10.0, 3.030303],
-        PortfolioColumns.FINAL_CUM_ROR: [21.0, 21.0, 24.666663], # Dummy cumulative
+        PortfolioColumns.FINAL_CUM_ROR: [10.0, 21.0, 24.666663],
     }
     return pd.DataFrame(data)
 
@@ -34,15 +34,27 @@ def default_annualization() -> Annualization:
 def test_generate_breakdowns_monthly(sample_daily_results, default_annualization):
     """Tests that monthly aggregation is calculated correctly."""
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, [Frequency.MONTHLY], default_annualization, False
+        sample_daily_results, [Frequency.MONTHLY], default_annualization, True
     )
 
     assert Frequency.MONTHLY in breakdowns
     assert len(breakdowns[Frequency.MONTHLY]) == 2
+    
+    # Check January
     jan_results = breakdowns[Frequency.MONTHLY][0]
     assert jan_results["period"] == "2025-01"
     jan_summary = jan_results["summary"]
     assert jan_summary["period_return_pct"] == pytest.approx(21.0)
+    assert jan_summary["cumulative_return_pct_to_date"] == pytest.approx(21.0)
+
+    # Check February
+    feb_results = breakdowns[Frequency.MONTHLY][1]
+    assert feb_results["period"] == "2025-02"
+    feb_summary = feb_results["summary"]
+    # The period return is for Feb only
+    assert feb_summary["period_return_pct"] == pytest.approx(3.030303)
+    # The cumulative return is for Jan + Feb
+    assert feb_summary["cumulative_return_pct_to_date"] == pytest.approx(24.666663)
     
 
 def test_generate_breakdowns_yearly(sample_daily_results, default_annualization):
@@ -110,8 +122,6 @@ def test_annualization_correctly_handles_sparse_long_period():
     summary = _calculate_period_summary_dict(df_indexed, df_indexed, annualization_config, False)
 
     assert "annualized_return_pct" in summary
-    # --- FIX START: Assert the mathematically correct value for a leap year ---
     # The return is 5% over 366 days, annualized to a 365 day year.
     # Expected: (1.05 ** (365 / 366)) - 1 = 4.986...%
     assert summary["annualized_return_pct"] == pytest.approx(4.986003, abs=1e-6)
-    # --- FIX END ---
