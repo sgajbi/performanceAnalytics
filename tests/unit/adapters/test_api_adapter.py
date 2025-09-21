@@ -63,7 +63,7 @@ def test_create_engine_config():
         "metric_basis": "NET",
         "periods": ["YTD"],
         "frequencies": ["daily"],
-        "daily_data": [],
+        "valuation_points": [],
     }
     pydantic_request = PerformanceRequest.model_validate(request_data)
 
@@ -81,12 +81,12 @@ def test_create_engine_config():
 
 def test_create_engine_dataframe_happy_path():
     """Tests that a list of daily data dictionaries is correctly converted into a DataFrame."""
-    api_daily_data: List[Dict[str, Any]] = [
+    api_valuation_points: List[Dict[str, Any]] = [
         {"perf_date": "2025-01-01", "begin_mv": 1000},
         {"perf_date": "2025-01-02", "begin_mv": 1010},
     ]
 
-    engine_df = create_engine_dataframe(api_daily_data)
+    engine_df = create_engine_dataframe(api_valuation_points)
 
     assert isinstance(engine_df, pd.DataFrame)
     assert not engine_df.empty
@@ -151,13 +151,8 @@ def test_format_breakdowns_populates_daily_cumulative_return(sample_engine_outpu
     """Tests that the cumulative return is correctly populated for daily summaries."""
     breakdowns_data, daily_results_df = sample_engine_outputs
     
-    # Simulate a request where cumulative is desired but not pre-calculated for daily
     breakdowns_data[Frequency.DAILY][0]['summary'].pop('cumulative_return_pct_to_date', None)
 
-    # The adapter no longer has the logic to map from final_cum_ror, so this test is no longer valid.
-    # The engine's breakdown function is now the source of truth.
-    # We will test the adapter's simpler passthrough behavior.
-    
     formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, include_timeseries=True)
     
     daily_summary = formatted_response[Frequency.DAILY][0].summary

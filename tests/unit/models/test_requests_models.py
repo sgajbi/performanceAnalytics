@@ -15,7 +15,7 @@ def base_twr_payload():
         "metric_basis": "NET",
         "report_end_date": "2025-01-31",
         "frequencies": ["daily"],
-        "daily_data": [],
+        "valuation_points": [],
     }
 
 

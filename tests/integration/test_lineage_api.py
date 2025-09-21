@@ -33,7 +33,7 @@ def test_lineage_end_to_end_flow(client):
         "report_end_date": "2025-01-01",
         "period_type": "YTD",
         "frequencies": ["daily"],
-        "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
+        "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
     }
 
     # 1. Run a calculation
@@ -42,9 +42,6 @@ def test_lineage_end_to_end_flow(client):
     twr_data = twr_response.json()
     calculation_id = twr_data["calculation_id"]
 
-    # The background task needs time to run. In a real test, we might need a small delay
-    # or a more sophisticated way to check for file existence. For now, we assume it's fast enough.
-
     # 2. Retrieve lineage data
     lineage_response = client.get(f"/performance/lineage/{calculation_id}")
     assert lineage_response.status_code == 200
@@ -52,7 +49,7 @@ def test_lineage_end_to_end_flow(client):
 
     assert lineage_data["calculation_id"] == calculation_id
     assert lineage_data["calculation_type"] == "TWR"
-    assert "Z" in lineage_data["timestamp_utc"] # Check for UTC timezone indicator
+    assert "Z" in lineage_data["timestamp_utc"] 
     assert "request.json" in lineage_data["artifacts"]
     assert "response.json" in lineage_data["artifacts"]
     assert "twr_calculation_details.csv" in lineage_data["artifacts"]

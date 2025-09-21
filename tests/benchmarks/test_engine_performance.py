@@ -32,7 +32,7 @@ def large_input_data():
             new_entry["day"] = day_offset
             extended_daily_data.append(new_entry)
 
-    base_payload["daily_data"] = extended_daily_data
+    base_payload["valuation_points"] = extended_daily_data
     base_payload["report_end_date"] = original_daily_data[-1]["perf_date"]
 
     return base_payload
@@ -42,13 +42,12 @@ def test_vectorized_engine_performance(benchmark, large_input_data):
     """Benchmarks the new, high-performance vectorized engine (V2)."""
     pydantic_request = PerformanceRequest.model_validate(large_input_data)
     
-    # Provide the explicit dates required by the updated function signature
-    effective_start_date = date.fromisoformat(large_input_data["daily_data"][0]["perf_date"])
+    effective_start_date = date.fromisoformat(large_input_data["valuation_points"][0]["perf_date"])
     effective_end_date = date.fromisoformat(large_input_data["report_end_date"])
     
     engine_config = create_engine_config(pydantic_request, effective_start_date, effective_end_date)
-    daily_data_list = [item.model_dump() for item in pydantic_request.daily_data]
-    engine_df = create_engine_dataframe(daily_data_list)
+    valuation_points_list = [item.model_dump() for item in pydantic_request.valuation_points]
+    engine_df = create_engine_dataframe(valuation_points_list)
 
     def run():
         run_calculations(engine_df.copy(), engine_config)
