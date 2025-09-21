@@ -75,7 +75,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
     """
     Runs TWR calculations and combines all position data and metadata into a single DataFrame.
     """
-    perf_start_date = request.portfolio_data.daily_data[0].perf_date
+    perf_start_date = request.portfolio_data.valuation_points[0].perf_date
     twr_config = EngineConfig(
         performance_start_date=perf_start_date,
         report_start_date=request.report_start_date,
@@ -91,10 +91,9 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
     )
 
     portfolio_df = create_engine_dataframe(
-        [item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data]
+        [item.model_dump(by_alias=True) for item in request.portfolio_data.valuation_points]
     )
     
-    # --- FIX START: Use a BASE_ONLY config for the portfolio calculation ---
     portfolio_twr_config = twr_config
     if twr_config.currency_mode == "BOTH":
         portfolio_twr_config = EngineConfig(
@@ -106,7 +105,6 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
             currency_mode="BASE_ONLY"
         )
     portfolio_results_df, portfolio_diags = run_calculations(portfolio_df, portfolio_twr_config)
-    # --- FIX END ---
     
     portfolio_results_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(
         portfolio_results_df[PortfolioColumns.PERF_DATE.value]
@@ -120,7 +118,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
 
     all_positions_data = []
     for position in request.positions_data:
-        position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.daily_data])
+        position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.valuation_points])
         if position_df.empty:
             continue
 
@@ -144,7 +142,6 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         for key, value in position.meta.items():
             position_results_df[key] = value
 
-        # --- FIX START: Robustly convert monetary values to base currency for weighting ---
         if request.currency_mode == "BOTH" and position_ccy != request.report_ccy and not fx_rates_df.empty:
             pos_fx_lookup = fx_rates_df[fx_rates_df['ccy'] == position_ccy][['date', 'rate']].rename(columns={'rate': 'fx_rate'})
             position_results_df['prior_date'] = position_results_df[PortfolioColumns.PERF_DATE.value] - pd.Timedelta(days=1)
@@ -156,7 +153,6 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
             if 'fx_rate' in position_results_df.columns:
                  for col in [PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]:
                     position_results_df[col] *= position_results_df['fx_rate']
-        # --- FIX END ---
         
         all_positions_data.append(position_results_df)
 

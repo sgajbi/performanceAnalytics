@@ -40,10 +40,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     else:
         periods_to_resolve = request.periods
 
-    # --- FIX START: Use report_end_date as the single source of truth ---
     as_of_date = request.report_end_date
-    # --- FIX END ---
-    inception_date = request.portfolio_data.daily_data[0].perf_date if request.portfolio_data.daily_data else as_of_date
+    inception_date = request.portfolio_data.valuation_points[0].perf_date if request.portfolio_data.valuation_points else as_of_date
     resolved_periods = resolve_periods(periods_to_resolve, as_of_date, inception_date)
 
     if not resolved_periods:
