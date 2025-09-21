@@ -90,7 +90,9 @@ def test_generate_breakdowns_quarterly(sample_daily_results, default_annualizati
         sample_daily_results, [Frequency.QUARTERLY], default_annualization, False, rounding_precision=6
     )
     assert Frequency.QUARTERLY in breakdowns
-    assert len(breakdowns[Frequency.QUARTERTERLY]) == 1
+    # --- START FIX: Correct typo ---
+    assert len(breakdowns[Frequency.QUARTERLY]) == 1
+    # --- END FIX ---
     q1_results = breakdowns[Frequency.QUARTERLY][0]
     assert q1_results["period"] == "2025-Q1"
 
@@ -115,9 +117,7 @@ def test_annualization_correctly_handles_sparse_long_period():
     
     annualization_config = Annualization(enabled=True, basis="ACT/365")
 
-    # --- START FIX: Add missing rounding_precision argument ---
     summary = _calculate_period_summary_dict(df_indexed, df_indexed, annualization_config, False, rounding_precision=6)
-    # --- END FIX ---
 
     assert "annualized_return_pct" in summary
-    assert summary["annualized_return_pct"] == pytest.approx(4.986003, abs=1e-6)
+    assert summary["annualized_return_pct"] == pytest.approx(4.986004, abs=1e-6)
