@@ -57,6 +57,14 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             daily_results_df[PortfolioColumns.PERF_DATE.value]
         ).dt.date
 
+        def get_total_cum_ror(row: pd.Series, prefix: str = "") -> float:
+            """Helper to combine long/short sleeves into a total cumulative return."""
+            if row is None:
+                return 0.0
+            long_cum = row.get(f"{prefix}long_cum_ror", 0.0)
+            short_cum = row.get(f"{prefix}short_cum_ror", 0.0)
+            return ((1 + long_cum / 100) * (1 + short_cum / 100) - 1) * 100
+
         for period in resolved_periods:
             period_slice_df = daily_results_df[
                 (daily_results_df[PortfolioColumns.PERF_DATE.value] >= period.start_date)
@@ -75,21 +83,33 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
             
-            # --- FIX START: Calculate period-specific return by compounding daily returns from the slice ---
-            base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
+            # --- FIX START: Use reset-aware cumulative series to derive sub-period returns ---
+            end_row = period_slice_df.iloc[-1]
+            day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < period.start_date
+            day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
+
+            # Base Return
+            end_cum_base = end_row[PortfolioColumns.FINAL_CUM_ROR.value]
+            start_cum_base = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
+            base_total = (((1 + end_cum_base / 100) / (1 + start_cum_base / 100)) - 1) * 100
 
             if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
-                local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
-                fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
+                # Local Return
+                end_cum_local = get_total_cum_ror(end_row, "local_ror_")
+                start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
+                local_total = (((1 + end_cum_local / 100) / (1 + start_cum_local / 100)) - 1) * 100
+
+                # FX Return
+                end_cum_fx = get_total_cum_ror(end_row, "fx_ror_")
+                start_cum_fx = get_total_cum_ror(day_before_row, "fx_ror_")
+                fx_total = (((1 + end_cum_fx / 100) / (1 + start_cum_fx / 100)) - 1) * 100
                 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=local_total * 100,
-                    fx=fx_total * 100,
-                    base=base_total * 100
+                    local=local_total, fx=fx_total, base=base_total
                 )
             else:
                 period_result.portfolio_return = PortfolioReturnDecomposition(
-                    local=base_total * 100, fx=0.0, base=base_total * 100
+                    local=base_total, fx=0.0, base=base_total
                 )
             # --- FIX END ---
 
