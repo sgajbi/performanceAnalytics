@@ -19,9 +19,9 @@ class PeriodType(str, Enum):
     QTD = "QTD"
     YTD = "YTD"
     ITD = "ITD"
-    Y1 = "Y1"
-    Y3 = "Y3"
-    Y5 = "Y5"
+    ONE_YEAR = "1Y"
+    THREE_YEARS = "3Y"
+    FIVE_YEARS = "5Y"
     EXPLICIT = "EXPLICIT"
 
 
