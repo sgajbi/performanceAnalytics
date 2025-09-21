@@ -45,8 +45,8 @@ def resolve_period(period_model: Periods, as_of: date) -> Tuple[date, date]:
         start_date = as_of_ts.to_period("M").start_time.date()
     elif period_type == "WTD":
         start_date = (as_of_ts - pd.to_timedelta(as_of_ts.dayofweek, unit="d")).date()
-    elif period_type in ["Y1", "Y3", "Y5"]:
-        years = int(period_type[1:])
+    elif period_type in ["1Y", "3Y", "5Y"]:
+        years = int(period_type[:-1])  # Parse "1Y" into 1, etc.
         start_date = (as_of_ts - pd.DateOffset(years=years) + pd.Timedelta(days=1)).date()
     elif period_type == "ROLLING":
         if not period_model.rolling:

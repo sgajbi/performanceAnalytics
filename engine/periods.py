@@ -24,8 +24,8 @@ def get_effective_period_start_dates(
             config.report_start_date or config.performance_start_date,
         )
         return pd.Series(pd.to_datetime(explicit_start), index=perf_dates_dt.index, name=perf_dates_dt.name)
-    elif config.period_type in [PeriodType.Y1, PeriodType.Y3, PeriodType.Y5]:
-        years = int(config.period_type.value[1:])
+    elif config.period_type in [PeriodType.ONE_YEAR, PeriodType.THREE_YEARS, PeriodType.FIVE_YEARS]:
+        years = int(config.period_type.value[:-1])
         start_date = pd.to_datetime(config.report_end_date) - pd.DateOffset(years=years) + pd.Timedelta(days=1)
         return pd.Series(start_date, index=perf_dates_dt.index, name=perf_dates_dt.name)
     elif config.period_type == PeriodType.ITD:
