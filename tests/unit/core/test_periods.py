@@ -21,14 +21,14 @@ class ResolvedPeriod(BaseModel):
         ({"type": "QTD"}, "2025-08-31", date(2025, 7, 1), date(2025, 8, 31)),
         ({"type": "MTD"}, "2025-08-31", date(2025, 8, 1), date(2025, 8, 31)),
         ({"type": "WTD"}, "2025-08-31", date(2025, 8, 25), date(2025, 8, 31)), # Sunday is day 6
-        ({"type": "Y1"}, "2025-08-31", date(2024, 9, 1), date(2025, 8, 31)),
-        ({"type": "Y3"}, "2025-08-31", date(2022, 9, 1), date(2025, 8, 31)),
-        ({"type": "Y5"}, "2025-08-31", date(2020, 9, 1), date(2025, 8, 31)),
+        ({"type": "1Y"}, "2025-08-31", date(2024, 9, 1), date(2025, 8, 31)),
+        ({"type": "3Y"}, "2025-08-31", date(2022, 9, 1), date(2025, 8, 31)),
+        ({"type": "5Y"}, "2025-08-31", date(2020, 9, 1), date(2025, 8, 31)),
         ({"type": "ROLLING", "rolling": {"months": 12}}, "2025-08-31", date(2024, 9, 1), date(2025, 8, 31)),
         ({"type": "ROLLING", "rolling": {"days": 63}}, "2025-08-31", date(2025, 6, 30), date(2025, 8, 31)),
         ({"type": "ITD"}, "2025-08-31", date.min, date(2025, 8, 31)),
     ],
-    ids=["EXPLICIT", "YTD", "QTD", "MTD", "WTD", "Y1", "Y3", "Y5", "ROLLING_M", "ROLLING_D", "ITD"]
+    ids=["EXPLICIT", "YTD", "QTD", "MTD", "WTD", "1Y", "3Y", "5Y", "ROLLING_M", "ROLLING_D", "ITD"]
 )
 def test_resolve_period(period_def, as_of, expected_start, expected_end):
     """Tests that all period types are resolved to the correct start and end dates."""
@@ -45,7 +45,7 @@ def test_resolve_periods_multi():
     """Tests the new multi-period resolver."""
     as_of = date(2025, 8, 15)
     inception = date(2023, 1, 1)
-    requested_periods = [PeriodType.MTD, PeriodType.YTD, PeriodType.ITD, PeriodType.Y1]
+    requested_periods = [PeriodType.MTD, PeriodType.YTD, PeriodType.ITD, PeriodType.ONE_YEAR]
 
     resolved = resolve_periods(requested_periods, as_of, inception)
 
@@ -63,7 +63,7 @@ def test_resolve_periods_multi():
     assert itd.start_date == inception
     assert itd.end_date == date(2025, 8, 15)
     
-    y1 = next(p for p in resolved if p.name == PeriodType.Y1.value)
+    y1 = next(p for p in resolved if p.name == PeriodType.ONE_YEAR.value)
     assert y1.start_date == date(2024, 8, 16)
     assert y1.end_date == date(2025, 8, 15)
 
