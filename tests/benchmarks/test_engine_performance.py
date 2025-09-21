@@ -14,8 +14,7 @@ def large_input_data():
         "portfolio_number": "BENCHMARK_PORT_01",
         "performance_start_date": "2023-12-31",
         "metric_basis": "NET",
-        "periods": ["YTD"],
-        "frequencies": ["daily"],
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
         "rounding_precision": 4,
     }
     original_daily_data = [

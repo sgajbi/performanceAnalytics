@@ -17,16 +17,15 @@ def client():
 
 
 def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
-    """Tests the /performance/twr endpoint using the legacy 'period_type' and verifies the shared response footer."""
+    """Tests the /performance/twr endpoint using the new 'analyses' structure and verifies the shared response footer."""
     payload = {
         "portfolio_number": "PORT_STANDARD_GROWTH",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-05",
-        "period_type": "YTD",  # Using legacy field
+        "analyses": [{"period": "YTD", "frequencies": ["daily", "monthly"]}],
         "calculation_id": str(uuid4()),
         "rounding_precision": 6,
-        "frequencies": ["daily", "monthly"],
         "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 100000.0, "end_mv": 101000.0},
             {"day": 2, "perf_date": "2025-01-02", "begin_mv": 101000.0, "end_mv": 102010.0},
@@ -61,8 +60,10 @@ def test_calculate_twr_endpoint_multi_period(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-02-15",
-        "periods": ["MTD", "YTD"],
-        "frequencies": ["monthly"],
+        "analyses": [
+            {"period": "MTD", "frequencies": ["monthly"]},
+            {"period": "YTD", "frequencies": ["monthly"]},
+        ],
         "valuation_points": [
             {"day": 1, "perf_date": "2025-01-15", "begin_mv": 1000.0, "end_mv": 1010.0},  # +1.0%
             {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010.0, "end_mv": 1030.2},  # +2.0%
@@ -101,8 +102,7 @@ def test_calculate_twr_endpoint_multi_currency(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "GROSS",
         "report_end_date": "2025-01-02",
-        "periods": ["ITD"],
-        "frequencies": ["daily"],
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0},
             {"day": 2, "perf_date": "2025-01-02", "begin_mv": 102.0, "end_mv": 103.02},
@@ -136,8 +136,7 @@ def test_calculate_twr_endpoint_with_data_policy(client):
         "performance_start_date": "2024-12-27",
         "metric_basis": "NET",
         "report_end_date": "2025-01-03",
-        "periods": ["ITD"],
-        "frequencies": ["daily"],
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "valuation_points": [
             {"day": 1, "perf_date": "2024-12-28", "begin_mv": 1000.0, "end_mv": 1001.0},
             {"day": 2, "perf_date": "2024-12-29", "begin_mv": 1001.0, "end_mv": 1002.0},
@@ -175,8 +174,7 @@ def test_twr_respects_include_timeseries_flag(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-01",
-        "periods": ["YTD"],
-        "frequencies": ["daily"],
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
         "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
     }
 
@@ -205,8 +203,7 @@ def test_twr_response_includes_portfolio_return_summary(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-02",
-        "periods": ["YTD"],
-        "frequencies": ["daily"],
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
         "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0},
             {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1010.0, "end_mv": 1020.1},
@@ -231,9 +228,8 @@ def test_twr_reset_scenario_has_correct_summary(client):
         "portfolio_number": "TWR_STRESS_TEST_03",
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-04",
-        "periods": ["ITD"],
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "metric_basis": "GROSS",
-        "frequencies": ["daily"],
         "valuation_points": [
             { "day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 500.0 },
             { "day": 2, "perf_date": "2025-01-02", "begin_mv": 500.0, "end_mv": -50.0 },
@@ -263,8 +259,7 @@ def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expe
         "performance_start_date": "2023-12-31",
         "metric_basis": "NET",
         "report_end_date": "2024-01-05",
-        "periods": ["YTD"],
-        "frequencies": ["daily"],
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
         "valuation_points": [{"day": 1, "perf_date": "2024-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
     }
     response = client.post("/performance/twr", json=payload)

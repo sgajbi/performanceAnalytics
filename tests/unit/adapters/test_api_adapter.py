@@ -61,8 +61,7 @@ def test_create_engine_config():
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-31",
         "metric_basis": "NET",
-        "periods": ["YTD"],
-        "frequencies": ["daily"],
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
         "valuation_points": [],
     }
     pydantic_request = PerformanceRequest.model_validate(request_data)
@@ -76,7 +75,7 @@ def test_create_engine_config():
     assert engine_config.report_start_date == start_date
     assert engine_config.report_end_date == end_date
     assert engine_config.metric_basis == "NET"
-    assert engine_config.period_type == PeriodType.EXPLICIT
+    assert engine_config.period_type == PeriodType.YTD
 
 
 def test_create_engine_dataframe_happy_path():

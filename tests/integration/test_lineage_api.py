@@ -31,8 +31,7 @@ def test_lineage_end_to_end_flow(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-01",
-        "period_type": "YTD",
-        "frequencies": ["daily"],
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
         "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
     }
 

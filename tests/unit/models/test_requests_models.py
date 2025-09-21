@@ -3,7 +3,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.requests import PerformanceRequest
-from common.enums import PeriodType
+from common.enums import PeriodType, Frequency
 
 
 @pytest.fixture
@@ -14,49 +14,37 @@ def base_twr_payload():
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-31",
-        "frequencies": ["daily"],
         "valuation_points": [],
     }
 
 
-def test_performance_request_with_periods_passes(base_twr_payload):
-    """Tests that validation succeeds when the new 'periods' array is used."""
+def test_performance_request_with_analyses_passes(base_twr_payload):
+    """Tests that validation succeeds when the new 'analyses' field is used."""
     payload = base_twr_payload.copy()
-    payload["periods"] = [PeriodType.YTD, PeriodType.MTD]
+    payload["analyses"] = [{"period": "YTD", "frequencies": ["monthly"]}]
     try:
         PerformanceRequest.model_validate(payload)
     except ValidationError as e:
-        pytest.fail(f"Validation failed unexpectedly with 'periods': {e}")
+        pytest.fail(f"Validation failed unexpectedly with 'analyses': {e}")
 
 
-def test_performance_request_with_period_type_passes(base_twr_payload):
-    """Tests that validation succeeds with the legacy 'period_type' for backward compatibility."""
+def test_performance_request_with_empty_analyses_list_fails(base_twr_payload):
+    """Tests that validation fails if 'analyses' is an empty list."""
     payload = base_twr_payload.copy()
-    payload["period_type"] = PeriodType.YTD
-    try:
-        PerformanceRequest.model_validate(payload)
-    except ValidationError as e:
-        pytest.fail(f"Validation failed unexpectedly with 'period_type': {e}")
-
-
-def test_performance_request_with_both_fails(base_twr_payload):
-    """Tests that validation fails if both 'periods' and 'period_type' are provided."""
-    payload = base_twr_payload.copy()
-    payload["periods"] = [PeriodType.YTD]
-    payload["period_type"] = PeriodType.YTD
-    with pytest.raises(ValidationError, match="Exactly one of 'periods' or 'period_type' must be provided"):
+    payload["analyses"] = []
+    with pytest.raises(ValidationError, match="analyses list cannot be empty"):
         PerformanceRequest.model_validate(payload)
 
 
-def test_performance_request_with_neither_fails(base_twr_payload):
-    """Tests that validation fails if neither 'periods' nor 'period_type' is provided."""
-    with pytest.raises(ValidationError, match="Exactly one of 'periods' or 'period_type' must be provided"):
+def test_performance_request_with_empty_frequencies_list_fails(base_twr_payload):
+    """Tests that validation fails if a frequency list within 'analyses' is empty."""
+    payload = base_twr_payload.copy()
+    payload["analyses"] = [{"period": "YTD", "frequencies": []}]
+    with pytest.raises(ValidationError, match="frequencies list cannot be empty"):
+        PerformanceRequest.model_validate(payload)
+
+
+def test_performance_request_without_analyses_fails(base_twr_payload):
+    """Tests that validation fails if the 'analyses' field is missing."""
+    with pytest.raises(ValidationError, match="Field required"):
         PerformanceRequest.model_validate(base_twr_payload)
-
-
-def test_performance_request_with_empty_periods_list_fails(base_twr_payload):
-    """Tests that validation fails if 'periods' is an empty list."""
-    payload = base_twr_payload.copy()
-    payload["periods"] = []
-    with pytest.raises(ValidationError, match="The 'periods' list cannot be empty"):
-        PerformanceRequest.model_validate(payload)

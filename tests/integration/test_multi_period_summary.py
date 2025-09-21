@@ -21,9 +21,11 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
         "portfolio_number": "MULTI_PERIOD_SUMMARY_TEST",
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-02-28",
-        "periods": ["MTD", "YTD"],
+        "analyses": [
+            {"period": "MTD", "frequencies": ["monthly"]},
+            {"period": "YTD", "frequencies": ["monthly"]},
+        ],
         "metric_basis": "GROSS",
-        "frequencies": ["monthly"],
         "currency_mode": "BOTH",
         "report_ccy": "USD",
         "valuation_points": [

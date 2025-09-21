@@ -11,8 +11,7 @@ def sample_twr_request():
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-02",
         "metric_basis": "NET",
-        "period_type": "YTD",
-        "frequencies": ["daily"],
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
         "valuation_points": [
             {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1010.0, "end_mv": 1020.0},
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0},
