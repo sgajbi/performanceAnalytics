@@ -65,12 +65,10 @@ class PerformanceResponse(BaseModel):
 
     results_by_period: Optional[Dict[str, SinglePeriodPerformanceResult]] = None
 
-    # Legacy single-period structure for backward compatibility
     breakdowns: Optional[PerformanceBreakdown] = None
     reset_events: Optional[List[ResetEvent]] = None
     portfolio_return: Optional[PortfolioReturnDecomposition] = None
 
-    # Shared response footer
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit
@@ -79,8 +77,8 @@ class PerformanceResponse(BaseModel):
     @classmethod
     def check_result_structure(cls, values):
         """Ensures that exactly one result structure is used."""
-        has_new_structure = "results_by_period" in values and values["results_by_period"] is not None
-        has_legacy_structure = "breakdowns" in values and values["breakdowns"] is not None
+        has_new_structure = "results_by_period" in values and values.get("results_by_period") is not None
+        has_legacy_structure = "breakdowns" in values and values.get("breakdowns") is not None
 
         if not (has_new_structure ^ has_legacy_structure):
             raise ValueError(
