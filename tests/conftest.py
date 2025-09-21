@@ -12,7 +12,7 @@ def happy_path_payload():
         "period_type": "ITD",
         "portfolio_data": {
             "metric_basis": "NET",
-            "daily_data": [
+            "valuation_points": [
                 {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1020, "bod_cf": 0, "eod_cf": 0, "mgmt_fees": 0},
                 {"day": 2, "perf_date": "2025-01-02", "begin_mv": 1020, "end_mv": 1080, "bod_cf": 50, "eod_cf": 0, "mgmt_fees": 0},
             ],
@@ -21,7 +21,7 @@ def happy_path_payload():
             {
                 "position_id": "Stock_A",
                 "meta": {"sector": "Technology"},
-                "daily_data": [
+                "valuation_points": [
                     {"day": 1, "perf_date": "2025-01-01", "begin_mv": 600, "end_mv": 612, "bod_cf": 0, "eod_cf": 0, "mgmt_fees": 0},
                     {"day": 2, "perf_date": "2025-01-02", "begin_mv": 612, "end_mv": 670, "bod_cf": 50, "eod_cf": 0, "mgmt_fees": 0},
                 ],

@@ -17,10 +17,10 @@ def minimal_contribution_request_payload():
         "report_end_date": "2025-01-31",
         "portfolio_data": {
             "metric_basis": "NET",
-            "daily_data": [],
+            "valuation_points": [],
         },
         "positions_data": [
-            {"position_id": "Stock_A", "meta": {"sector": "Tech"}, "daily_data": []}
+            {"position_id": "Stock_A", "meta": {"sector": "Tech"}, "valuation_points": []}
         ],
     }
 

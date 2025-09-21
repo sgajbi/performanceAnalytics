@@ -40,7 +40,7 @@ def test_contribution_endpoint_multi_period(client):
         "periods": ["MTD", "YTD"],  # New multi-period request
         "portfolio_data": {
             "metric_basis": "NET",
-            "daily_data": [
+            "valuation_points": [
                 {"day": 1, "perf_date": "2025-01-10", "begin_mv": 1000, "end_mv": 1010},  # +1%
                 {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010, "end_mv": 1030.2},  # +2%
             ],
@@ -48,7 +48,7 @@ def test_contribution_endpoint_multi_period(client):
         "positions_data": [
             {
                 "position_id": "Stock_A",
-                "daily_data": [
+                "valuation_points": [
                     {"day": 1, "perf_date": "2025-01-10", "begin_mv": 1000, "end_mv": 1010},
                     {"day": 2, "perf_date": "2025-02-10", "begin_mv": 1010, "end_mv": 1030.2},
                 ],
@@ -80,12 +80,12 @@ def test_contribution_endpoint_multi_currency(client):
         "period_type": "ITD",
         "portfolio_data": {
             "metric_basis": "GROSS",
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}],
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}],
         },
         "positions_data": [{
             "position_id": "EUR_STOCK",
             "meta": {"currency": "EUR"},
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}],
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}],
         }],
         "currency_mode": "BOTH",
         "report_ccy": "USD",
@@ -166,7 +166,7 @@ def test_contribution_endpoint_hierarchy_happy_path(client, happy_path_payload):
         {
             "position_id": "Stock_B",
             "meta": {"sector": "Technology"},
-            "daily_data": [
+            "valuation_points": [
                 {"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 408},
                 {"day": 2, "perf_date": "2025-01-02", "begin_mv": 408, "end_mv": 410},
             ],
@@ -203,7 +203,7 @@ def test_contribution_endpoint_error_handling(client, mocker):
         "period_type": "ITD",
         "portfolio_data": {
             "metric_basis": "NET",
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1025}],
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1025}],
         },
         "positions_data": [],
     }

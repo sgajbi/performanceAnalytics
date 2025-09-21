@@ -23,7 +23,7 @@ def hierarchical_request_fixture(happy_path_payload):
     payload["positions_data"].append({
         "position_id": "Stock_B",
         "meta": {"sector": "Healthcare", "region": "US"},
-        "daily_data": [
+        "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 408},
             {"day": 2, "perf_date": "2025-01-02", "begin_mv": 408, "end_mv": 410},
         ]
