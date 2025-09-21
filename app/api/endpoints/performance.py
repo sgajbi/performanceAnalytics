@@ -72,7 +72,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < df_slice[PortfolioColumns.PERF_DATE.value].min()
                 day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
 
-                # --- START FIX: Use the definitive final_cum_ror for base return ---
                 start_cum_base = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
                 end_cum_base = end_row[PortfolioColumns.FINAL_CUM_ROR.value]
                 base_total = (((1 + end_cum_base / 100) / (1 + start_cum_base / 100)) - 1) * 100
@@ -88,7 +87,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 else:
                     local_total = base_total
                     fx_total = 0.0
-                # --- END FIX ---
             else:
                 base_total = ((1 + df_slice[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1) * 100
                 if "local_ror" in df_slice.columns:
