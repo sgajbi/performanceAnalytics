@@ -84,14 +84,15 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
             
             if period_slice_df[PortfolioColumns.PERF_RESET.value].sum() == 0:
-                base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
                 if engine_config.currency_mode == "BOTH" and "local_ror" in period_slice_df.columns:
                     local_total = (1 + period_slice_df["local_ror"] / 100).prod() - 1
                     fx_total = (1 + period_slice_df["fx_ror"] / 100).prod() - 1
+                    base_total = ((1 + local_total) * (1 + fx_total)) - 1
                     period_result.portfolio_return = PortfolioReturnDecomposition(
                         local=local_total * 100, fx=fx_total * 100, base=base_total * 100
                     )
                 else:
+                    base_total = (1 + period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1
                     period_result.portfolio_return = PortfolioReturnDecomposition(
                         local=base_total * 100, fx=0.0, base=base_total * 100
                     )
