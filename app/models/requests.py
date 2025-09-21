@@ -3,7 +3,7 @@ from datetime import date
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 from common.enums import Frequency, PeriodType
 from core.envelope import (
@@ -36,6 +36,19 @@ class ResetPolicy(BaseModel):
     emit: bool = Field(False, description="If true, the response will include a list of any performance reset events that occurred.")
 
 
+class Analysis(BaseModel):
+    """Defines a single analysis with its period and desired frequencies."""
+    period: PeriodType
+    frequencies: List[Frequency]
+
+    @field_validator('frequencies')
+    @classmethod
+    def frequencies_must_not_be_empty(cls, v):
+        if not v:
+            raise ValueError('frequencies list cannot be empty for an analysis')
+        return v
+
+
 class PerformanceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -44,10 +57,12 @@ class PerformanceRequest(BaseModel):
     performance_start_date: date = Field(..., description="The inception date of the portfolio or the earliest date for which performance data is available.")
     metric_basis: Literal["NET", "GROSS"] = Field(..., description="Specifies whether to calculate returns 'NET' (after fees) or 'GROSS' (before fees).")
     report_start_date: Optional[date] = Field(None, description="The explicit start date for an 'EXPLICIT' period calculation. Ignored for other period types.")
-    report_end_date: date = Field(..., description="The final date of the analysis period. Also used as the 'as_of' date for resolving relative periods like YTD.")
-    period_type: Optional[PeriodType] = Field(None, description="[DEPRECATED] The time frame for the calculation. Use 'periods' for new implementations.")
-    periods: Optional[List[PeriodType]] = Field(None, description="A list of time frames to calculate (e.g., ['MTD', 'YTD', 'ITD']). Replaces the singular 'period_type'.")
-    frequencies: List[Frequency] = Field([Frequency.DAILY], description="A list of frequencies for breaking down the performance results.")
+    report_end_date: date = Field(..., description="The final date of the analysis period. Also used as the anchor date for resolving relative periods like YTD.")
+    
+    # --- START REFACTOR: Decouple periods and frequencies ---
+    analyses: List[Analysis]
+    # --- END REFACTOR ---
+
     valuation_points: List[DailyInputData]
     currency: str = Field("USD", description="The three-letter ISO currency code for the request (e.g., 'USD').")
     precision_mode: Literal["FLOAT64", "DECIMAL_STRICT"] = Field("FLOAT64", description="The numerical precision mode for the calculation engine.")
@@ -65,17 +80,9 @@ class PerformanceRequest(BaseModel):
     fx: Optional[FXRequestBlock] = None
     hedging: Optional[HedgingRequestBlock] = None
 
-    @model_validator(mode="before")
+    @field_validator('analyses')
     @classmethod
-    def check_period_definition(cls, values):
-        """Ensures that exactly one period definition method is used."""
-        has_periods = "periods" in values and values["periods"] is not None
-        has_period_type = "period_type" in values and values["period_type"] is not None
-
-        if not (has_periods ^ has_period_type):
-            raise ValueError("Exactly one of 'periods' or 'period_type' must be provided.")
-
-        if has_periods and not values["periods"]:
-            raise ValueError("The 'periods' list cannot be empty.")
-
-        return values
+    def analyses_must_not_be_empty(cls, v):
+        if not v:
+            raise ValueError('analyses list cannot be empty')
+        return v
