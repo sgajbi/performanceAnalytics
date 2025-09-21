@@ -56,6 +56,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         ).dt.date
 
         def get_total_cum_ror(row: pd.Series, prefix: str = "") -> float:
+            """Helper to combine long/short sleeves into a total cumulative return."""
             if row is None:
                 return 0.0
             long_cum = row.get(f"{prefix}long_cum_ror", 0.0)
@@ -77,7 +78,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 # --- START FIX: Prevent ZeroDivisionError ---
                 start_base_denom = 1 + start_cum_base / 100
                 if start_base_denom == 0:
-                    base_total = end_cum_base # Cannot link from -100%, new return is the end value
+                    base_total = end_cum_base
                 else:
                     base_total = (((1 + end_cum_base / 100) / start_base_denom) - 1) * 100
                 # --- END FIX ---
@@ -86,13 +87,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                     start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
                     end_cum_local = get_total_cum_ror(end_row, "local_ror_")
                     
-                    # --- START FIX: Prevent ZeroDivisionError ---
                     start_local_denom = 1 + start_cum_local / 100
                     if start_local_denom == 0:
                         local_total = end_cum_local
                     else:
                         local_total = (((1 + end_cum_local / 100) / start_local_denom) - 1) * 100
-                    # --- END FIX ---
 
                     base_denom_for_fx = 1 + local_total / 100
                     if base_denom_for_fx == 0:
