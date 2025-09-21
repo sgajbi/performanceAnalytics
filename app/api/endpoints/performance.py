@@ -39,9 +39,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         else:
             periods_to_resolve = request.periods
 
-        # --- FIX START: Use report_end_date as the single source of truth ---
         as_of_date = request.report_end_date
-        # --- FIX END ---
         resolved_periods = resolve_periods(periods_to_resolve, as_of_date, request.performance_start_date)
 
         if not resolved_periods:
@@ -51,7 +49,9 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         master_end_date = max(p.end_date for p in resolved_periods)
 
         engine_config = create_engine_config(request, master_start_date, master_end_date)
-        engine_df = create_engine_dataframe([item.model_dump() for item in request.daily_data])
+        # --- FIX START: Use new 'valuation_points' field name ---
+        engine_df = create_engine_dataframe([item.model_dump() for item in request.valuation_points])
+        # --- FIX END ---
         daily_results_df, diagnostics_data = run_calculations(engine_df, engine_config)
 
         results_by_period = {}
@@ -157,7 +157,9 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         policy=diagnostics_data.get("policy"),
         samples=diagnostics_data.get("samples"),
     )
-    audit = Audit(counts={"input_rows": len(request.daily_data), "output_rows": len(daily_results_df)})
+    # --- FIX START: Use new 'valuation_points' field name for audit count ---
+    audit = Audit(counts={"input_rows": len(request.valuation_points), "output_rows": len(daily_results_df)})
+    # --- FIX END ---
 
     response_model = PerformanceResponse(
         calculation_id=request.calculation_id,

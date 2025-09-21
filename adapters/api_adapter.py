@@ -33,15 +33,15 @@ def create_engine_config(
     )
 
 
-def create_engine_dataframe(daily_data: List[Dict[str, Any]]) -> pd.DataFrame:
+def create_engine_dataframe(valuation_points: List[Dict[str, Any]]) -> pd.DataFrame:
     """
-    Creates a Pandas DataFrame for the engine from the raw daily data list.
+    Creates a Pandas DataFrame for the engine from the raw valuation points list.
     No renaming is needed as the API contract now matches the engine's snake_case schema.
     """
-    if not daily_data:
+    if not valuation_points:
         return pd.DataFrame()
     try:
-        df = pd.DataFrame(daily_data)
+        df = pd.DataFrame(valuation_points)
         if "perf_date" in df.columns:
             df.drop_duplicates(subset=["perf_date"], keep="last", inplace=True)
         return df
