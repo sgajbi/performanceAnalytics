@@ -35,14 +35,14 @@ class PositionData(BaseModel):
 
     position_id: str
     meta: Dict[str, Any] = Field(default_factory=dict)
-    daily_data: List[PositionDailyData]
+    valuation_points: List[PositionDailyData]
 
 
 class PortfolioData(BaseModel):
     """Contains the full time series and config for the total portfolio."""
 
     metric_basis: Literal["NET", "GROSS"]
-    daily_data: List[PositionDailyData]
+    valuation_points: List[PositionDailyData]
 
 
 class Smoothing(BaseModel):
