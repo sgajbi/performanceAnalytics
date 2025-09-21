@@ -29,7 +29,7 @@ def hierarchical_request_fixture(happy_path_payload):
         ]
     })
     payload["positions_data"][0]["meta"]["region"] = "US"
-    payload["analyses"] = [{"period": "ITD", "frequencies": ["daily"]}]
+    # Remove legacy field to use the one from the fixture
     payload.pop("period_type", None)
     return ContributionRequest.model_validate(payload)
 
