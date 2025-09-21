@@ -23,7 +23,7 @@ def long_flip_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [500.0, -50.0, 1050.0, 1155.0],
     })
-    # --- FIX START: Correct the expected values for the temporary cumulative column ---
+    # --- START FIX: Correct the expected cumulative values to expose the bug ---
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3), date(2025, 1, 4)],
         PortfolioColumns.SIGN: [1, 1, 1, 1],
@@ -35,13 +35,13 @@ def long_flip_scenario():
         PortfolioColumns.NCTRL_2: [0, 0, 0, 0],
         PortfolioColumns.NCTRL_3: [0, 0, 0, 0],
         PortfolioColumns.NCTRL_4: [0, 0, 0, 0],
-        PortfolioColumns.TEMP_LONG_CUM_ROR: [-50.0, -105.0, -105.5263, -106.0789],
+        PortfolioColumns.TEMP_LONG_CUM_ROR: [-50.0, -105.0, -94.4737, -83.9211],
         PortfolioColumns.TEMP_SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.LONG_CUM_ROR: [-50.0, 0.0, 10.5263, 21.5789],
         PortfolioColumns.SHORT_CUM_ROR: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.FINAL_CUM_ROR: [-50.0, 0.0, 10.5263, 21.5789],
     })
-    # --- FIX END ---
+    # --- END FIX ---
     return engine_config, input_df, expected_df
 
 def short_flip_scenario():
