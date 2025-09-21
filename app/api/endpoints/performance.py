@@ -5,7 +5,7 @@ import pandas as pd
 from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
-from app.models.attribution_responses import AttributionResponse, SinglePeriodAttributionResult
+from app.models.attribution_responses import AttributionResponse
 from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
@@ -56,7 +56,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         ).dt.date
 
         def get_total_return_from_slice(df_slice: pd.DataFrame) -> PortfolioReturnDecomposition:
-            """Calculates local, fx, and base returns for a given DataFrame slice."""
             if df_slice.empty:
                 return PortfolioReturnDecomposition(local=0.0, fx=0.0, base=0.0)
             
@@ -99,7 +98,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             requested_frequencies_for_period = freqs_by_period.get(period.name, [])
             breakdowns_data = generate_performance_breakdowns(
-                period_slice_df, requested_frequencies_for_period, request.annualization, request.output.include_cumulative
+                period_slice_df,
+                requested_frequencies_for_period,
+                request.annualization,
+                request.output.include_cumulative,
+                request.rounding_precision
             )
             formatted_breakdowns = format_breakdowns_for_response(
                 breakdowns_data, period_slice_df, request.output.include_timeseries
@@ -112,10 +115,12 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             )
             
             if request.reset_policy.emit and diagnostics_data.get("resets"):
+                # --- START FIX: The 'date' key from the engine is already a date object ---
                 period_result.reset_events = [
                     ResetEvent(**event) for event in diagnostics_data["resets"] 
                     if period.start_date <= event["date"] <= period.end_date
                 ]
+                # --- END FIX ---
             
             results_by_period[period.name] = period_result
 
@@ -254,7 +259,6 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     try:
-        # --- START REFACTOR: Align with unified multi-period model ---
         periods_to_resolve = [analysis.period for analysis in request.analyses]
         resolved_periods = resolve_periods(periods_to_resolve, request.report_end_date, request.report_start_date)
 
@@ -264,11 +268,9 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
         master_start_date = min(p.start_date for p in resolved_periods)
         master_end_date = max(p.end_date for p in resolved_periods)
         
-        # Create a deep copy of the request to run on the master period
         master_request = request.model_copy(deep=True)
         master_request.report_start_date = master_start_date
         master_request.report_end_date = master_end_date
-        # --- END REFACTOR ---
 
         effects_df, lineage_data = run_attribution_calculations(master_request)
 
@@ -306,7 +308,6 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             results_by_period=results_by_period,
             meta=meta,
         )
-        # --- END REFACTOR ---
 
         background_tasks.add_task(
             lineage_service.capture,

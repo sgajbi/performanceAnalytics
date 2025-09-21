@@ -20,7 +20,6 @@ def sample_daily_results() -> pd.DataFrame:
         PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [110.0, 121.0, 135.0],
         PortfolioColumns.DAILY_ROR: [10.0, 10.0, 3.030303],
-        # Corrected cumulative values: 10.0, then (1.1*1.1)-1=21.0, then (1.21*1.0303...)-1=24.66...
         PortfolioColumns.FINAL_CUM_ROR: [10.0, 21.0, 24.666663],
     }
     return pd.DataFrame(data)
@@ -35,33 +34,29 @@ def default_annualization() -> Annualization:
 def test_generate_breakdowns_monthly(sample_daily_results, default_annualization):
     """Tests that monthly aggregation is calculated correctly."""
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, [Frequency.MONTHLY], default_annualization, True
+        sample_daily_results, [Frequency.MONTHLY], default_annualization, True, rounding_precision=6
     )
 
     assert Frequency.MONTHLY in breakdowns
     assert len(breakdowns[Frequency.MONTHLY]) == 2
     
-    # Check January
     jan_results = breakdowns[Frequency.MONTHLY][0]
     assert jan_results["period"] == "2025-01"
     jan_summary = jan_results["summary"]
     assert jan_summary["period_return_pct"] == pytest.approx(21.0)
     assert jan_summary["cumulative_return_pct_to_date"] == pytest.approx(21.0)
 
-    # Check February
     feb_results = breakdowns[Frequency.MONTHLY][1]
     assert feb_results["period"] == "2025-02"
     feb_summary = feb_results["summary"]
-    # The period return is for Feb only
     assert feb_summary["period_return_pct"] == pytest.approx(3.030303)
-    # The cumulative return is the running total for Jan + Feb
     assert feb_summary["cumulative_return_pct_to_date"] == pytest.approx(24.666663)
     
 
 def test_generate_breakdowns_yearly(sample_daily_results, default_annualization):
     """Tests that yearly aggregation is calculated correctly."""
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, [Frequency.YEARLY], default_annualization, False
+        sample_daily_results, [Frequency.YEARLY], default_annualization, False, rounding_precision=6
     )
 
     assert Frequency.YEARLY in breakdowns
@@ -75,7 +70,7 @@ def test_generate_breakdowns_yearly(sample_daily_results, default_annualization)
 def test_generate_breakdowns_multiple_frequencies(sample_daily_results, default_annualization):
     """Tests that the function returns multiple breakdowns when requested."""
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, [Frequency.DAILY, Frequency.YEARLY], default_annualization, False
+        sample_daily_results, [Frequency.DAILY, Frequency.YEARLY], default_annualization, False, rounding_precision=6
     )
     assert Frequency.DAILY in breakdowns
     assert Frequency.YEARLY in breakdowns
@@ -84,7 +79,7 @@ def test_generate_breakdowns_multiple_frequencies(sample_daily_results, default_
 def test_generate_breakdowns_empty_input(default_annualization):
     """Tests that the function handles an empty DataFrame correctly."""
     breakdowns = generate_performance_breakdowns(
-        pd.DataFrame(), [Frequency.DAILY], default_annualization, False
+        pd.DataFrame(), [Frequency.DAILY], default_annualization, False, rounding_precision=6
     )
     assert breakdowns == {}
 
@@ -92,23 +87,25 @@ def test_generate_breakdowns_empty_input(default_annualization):
 def test_generate_breakdowns_quarterly(sample_daily_results, default_annualization):
     """Tests that quarterly aggregation is calculated correctly."""
     breakdowns = generate_performance_breakdowns(
-        sample_daily_results, [Frequency.QUARTERLY], default_annualization, False
+        sample_daily_results, [Frequency.QUARTERLY], default_annualization, False, rounding_precision=6
     )
     assert Frequency.QUARTERLY in breakdowns
+    # --- START FIX: Correct typo ---
     assert len(breakdowns[Frequency.QUARTERLY]) == 1
+    # --- END FIX ---
     q1_results = breakdowns[Frequency.QUARTERLY][0]
     assert q1_results["period"] == "2025-Q1"
 
 
 def test_annualization_correctly_handles_sparse_long_period():
     """
-    Tests the annualization logic. A sparse (e.g., monthly) series over a
+    Tests the annualization logic.
+    A sparse (e.g., monthly) series over a
     year-long period should be annualized.
     """
-    # This data represents a 5% return over exactly one year (a 366-day leap year).
     year_long_sparse_data = {
         PortfolioColumns.PERF_DATE: [date(2024, 1, 1), date(2024, 12, 31)],
-        PortfolioColumns.DAILY_ROR: [2.0, 2.94117647], # (1.02 * 1.0294117647) - 1 = 0.05
+        PortfolioColumns.DAILY_ROR: [2.0, 2.94117647],
         PortfolioColumns.BEGIN_MV: [100.0, 102.0],
         PortfolioColumns.END_MV: [102.0, 105.0],
         PortfolioColumns.BOD_CF: [0.0, 0.0],
@@ -120,9 +117,7 @@ def test_annualization_correctly_handles_sparse_long_period():
     
     annualization_config = Annualization(enabled=True, basis="ACT/365")
 
-    summary = _calculate_period_summary_dict(df_indexed, df_indexed, annualization_config, False)
+    summary = _calculate_period_summary_dict(df_indexed, df_indexed, annualization_config, False, rounding_precision=6)
 
     assert "annualized_return_pct" in summary
-    # The return is 5% over 366 days, annualized to a 365 day year.
-    # Expected: (1.05 ** (365 / 366)) - 1 = 4.986...%
-    assert summary["annualized_return_pct"] == pytest.approx(4.986003, abs=1e-6)
+    assert summary["annualized_return_pct"] == pytest.approx(4.986004, abs=1e-6)
