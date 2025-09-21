@@ -34,11 +34,8 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     try:
-        # --- START REFACTOR: Adapt to new 'analyses' structure ---
         periods_to_resolve = [analysis.period for analysis in request.analyses]
-        # Create a dictionary to look up frequencies by period
         freqs_by_period = {analysis.period.value: analysis.frequencies for analysis in request.analyses}
-        # --- END REFACTOR ---
 
         as_of_date = request.report_end_date
         resolved_periods = resolve_periods(periods_to_resolve, as_of_date, request.performance_start_date)
@@ -58,16 +55,13 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             daily_results_df[PortfolioColumns.PERF_DATE.value]
         ).dt.date
 
-        # --- START FIX: Helper function to correctly calculate geometric returns from a slice ---
         def get_total_return_from_slice(df_slice: pd.DataFrame) -> PortfolioReturnDecomposition:
             """Calculates local, fx, and base returns for a given DataFrame slice."""
             if df_slice.empty:
                 return PortfolioReturnDecomposition(local=0.0, fx=0.0, base=0.0)
             
-            # Use cumulative columns if a reset occurred, otherwise compound daily returns
             if df_slice[PortfolioColumns.PERF_RESET.value].any():
                 end_row = df_slice.iloc[-1]
-                # Find the day before the slice started to get the starting cumulative value
                 day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < df_slice[PortfolioColumns.PERF_DATE.value].min()
                 day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
 
@@ -84,7 +78,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                     local_total = base_total
                     fx_total = 0.0
             else:
-                # Simple geometric compounding for periods without resets
                 base_total = ((1 + df_slice[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1) * 100
                 if "local_ror" in df_slice.columns:
                     local_total = ((1 + df_slice["local_ror"] / 100).prod() - 1) * 100
@@ -94,7 +87,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                     fx_total = 0.0
             
             return PortfolioReturnDecomposition(local=local_total, fx=fx_total, base=base_total)
-        # --- END FIX ---
 
         for period in resolved_periods:
             period_slice_df = daily_results_df[
@@ -113,13 +105,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 breakdowns_data, period_slice_df, request.output.include_timeseries
             )
             
-            # --- START FIX: Calculate return summary for each specific period slice ---
             period_return_summary = get_total_return_from_slice(period_slice_df)
             period_result = SinglePeriodPerformanceResult(
                 breakdowns=formatted_breakdowns,
                 portfolio_return=period_return_summary
             )
-            # --- END FIX ---
             
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
@@ -264,11 +254,8 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     try:
-        if request.period_type:
-            periods_to_resolve = [request.period_type]
-        else:
-            periods_to_resolve = request.periods
-        
+        # --- START REFACTOR: Align with unified multi-period model ---
+        periods_to_resolve = [analysis.period for analysis in request.analyses]
         resolved_periods = resolve_periods(periods_to_resolve, request.report_end_date, request.report_start_date)
 
         if not resolved_periods:
@@ -277,12 +264,11 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
         master_start_date = min(p.start_date for p in resolved_periods)
         master_end_date = max(p.end_date for p in resolved_periods)
         
-        master_request = request.model_copy(deep=True, update={
-            "report_start_date": master_start_date,
-            "report_end_date": master_end_date,
-            "period_type": "EXPLICIT",
-            "periods": None,
-        })
+        # Create a deep copy of the request to run on the master period
+        master_request = request.model_copy(deep=True)
+        master_request.report_start_date = master_start_date
+        master_request.report_end_date = master_end_date
+        # --- END REFACTOR ---
 
         effects_df, lineage_data = run_attribution_calculations(master_request)
 
@@ -297,7 +283,8 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
                 continue
             
             period_result, aggregation_lineage = aggregate_attribution_results(period_slice_df, request)
-            lineage_data.update(aggregation_lineage)
+            if aggregation_lineage:
+                lineage_data.update({f"{period.name}_{k}": v for k, v in aggregation_lineage.items()})
             results_by_period[period.name] = period_result
 
         meta = Meta(
@@ -311,21 +298,15 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             calculation_hash=calculation_hash,
         )
 
-        if request.period_type and len(resolved_periods) == 1:
-            single_result = list(results_by_period.values())[0]
-            response_model = AttributionResponse(
-                calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
-                model=request.model, linking=request.linking,
-                **single_result.model_dump(exclude_none=True),
-                meta=meta,
-            )
-        else:
-             response_model = AttributionResponse(
-                calculation_id=request.calculation_id, portfolio_number=request.portfolio_number,
-                model=request.model, linking=request.linking,
-                results_by_period=results_by_period,
-                meta=meta
-            )
+        response_model = AttributionResponse(
+            calculation_id=request.calculation_id,
+            portfolio_number=request.portfolio_number,
+            model=request.model,
+            linking=request.linking,
+            results_by_period=results_by_period,
+            meta=meta,
+        )
+        # --- END REFACTOR ---
 
         background_tasks.add_task(
             lineage_service.capture,
