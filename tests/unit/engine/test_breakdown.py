@@ -20,6 +20,7 @@ def sample_daily_results() -> pd.DataFrame:
         PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [110.0, 121.0, 135.0],
         PortfolioColumns.DAILY_ROR: [10.0, 10.0, 3.030303],
+        # Corrected cumulative values: 10.0, then (1.1*1.1)-1=21.0, then (1.21*1.0303...)-1=24.66...
         PortfolioColumns.FINAL_CUM_ROR: [10.0, 21.0, 24.666663],
     }
     return pd.DataFrame(data)
@@ -53,7 +54,7 @@ def test_generate_breakdowns_monthly(sample_daily_results, default_annualization
     feb_summary = feb_results["summary"]
     # The period return is for Feb only
     assert feb_summary["period_return_pct"] == pytest.approx(3.030303)
-    # The cumulative return is for Jan + Feb
+    # The cumulative return is the running total for Jan + Feb
     assert feb_summary["cumulative_return_pct_to_date"] == pytest.approx(24.666663)
     
 

@@ -25,21 +25,7 @@ def _calculate_period_summary_dict(
     }
 
     if include_cumulative:
-        # --- FIX START: Correctly calculate the period's specific cumulative return ---
-        end_cum_ror = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
-        
-        # Find the cumulative return from the day before this period started
-        period_start_date = period_df[PortfolioColumns.PERF_DATE.value].iloc[0]
-        day_before_mask = full_history_df[PortfolioColumns.PERF_DATE.value] < period_start_date
-        
-        start_cum_ror = 0.0
-        if day_before_mask.any():
-            day_before_row = full_history_df[day_before_mask].iloc[-1]
-            start_cum_ror = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value]
-            
-        period_cumulative_ror = (((1 + end_cum_ror / 100) / (1 + start_cum_ror / 100)) - 1) * 100
-        summary["cumulative_return_pct_to_date"] = period_cumulative_ror
-        # --- FIX END ---
+        summary["cumulative_return_pct_to_date"] = last_day[PortfolioColumns.FINAL_CUM_ROR.value]
 
     if annualization.enabled:
         days_in_period = (period_df.index.max() - period_df.index.min()).days + 1
@@ -71,14 +57,7 @@ def generate_performance_breakdowns(
     for freq in frequencies:
         results = []
         if freq == Frequency.DAILY:
-            for i, row in daily_df.iterrows():
-                # --- FIX START: Correctly calculate daily cumulative return ---
-                if include_cumulative:
-                    day_before_mask = daily_df[PortfolioColumns.PERF_DATE.value] < row[PortfolioColumns.PERF_DATE.value]
-                    start_cum_ror = daily_df[day_before_mask].iloc[-1][PortfolioColumns.FINAL_CUM_ROR.value] if day_before_mask.any() else 0.0
-                    end_cum_ror = row[PortfolioColumns.FINAL_CUM_ROR.value]
-                    cumulative_return = (((1 + end_cum_ror / 100) / (1 + start_cum_ror / 100)) - 1) * 100
-                # --- FIX END ---
+            for _, row in daily_df.iterrows():
                 summary = {
                     PortfolioColumns.BEGIN_MV.value: row[PortfolioColumns.BEGIN_MV.value],
                     PortfolioColumns.END_MV.value: row[PortfolioColumns.END_MV.value],
@@ -86,7 +65,7 @@ def generate_performance_breakdowns(
                     "period_return_pct": row[PortfolioColumns.DAILY_ROR.value],
                 }
                 if include_cumulative:
-                    summary["cumulative_return_pct_to_date"] = cumulative_return
+                    summary["cumulative_return_pct_to_date"] = row[PortfolioColumns.FINAL_CUM_ROR.value]
                 results.append({"period": row[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"), "summary": summary})
         else:
             freq_map = {Frequency.MONTHLY: "ME", Frequency.QUARTERLY: "QE", Frequency.YEARLY: "YE", Frequency.WEEKLY: "W-FRI"}
@@ -94,7 +73,6 @@ def generate_performance_breakdowns(
             for period_timestamp, period_df in resampler:
                 if period_df.empty:
                     continue
-                # For aggregated periods, we pass the full daily_df for the prior-day lookup
                 summary = _calculate_period_summary_dict(
                     period_df, daily_df, annualization, include_cumulative
                 )
