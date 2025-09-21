@@ -23,7 +23,7 @@ def long_flip_scenario():
         PortfolioColumns.MGMT_FEES: [0.0, 0.0, 0.0, 0.0],
         PortfolioColumns.END_MV: [500.0, -50.0, 1050.0, 1155.0],
     })
-    # --- START FIX: Revert to the original, correct expected values ---
+    # --- START FIX: Align expected data with correct engine calculation ---
     expected_df = pd.DataFrame({
         PortfolioColumns.PERF_DATE: [date(2025, 1, 1), date(2025, 1, 2), date(2025, 1, 3), date(2025, 1, 4)],
         PortfolioColumns.SIGN: [1, 1, 1, 1],
