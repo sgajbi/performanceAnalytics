@@ -44,7 +44,9 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
                 local_ror.loc[safe_division_mask] = numerator[safe_division_mask] / denominator[safe_division_mask]
         else:
             np.divide(numerator, denominator, out=local_ror_np, where=safe_division_mask)
+            # --- FIX START: Ensure consistent type by converting numpy array to indexed Series ---
             local_ror = pd.Series(local_ror_np, index=df.index)
+            # --- FIX END ---
 
     result_df = pd.DataFrame(index=df.index)
     if config and config.currency_mode and config.currency_mode != "BASE_ONLY" and config.fx:
