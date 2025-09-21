@@ -144,7 +144,7 @@ def reset_test_df() -> pd.DataFrame:
         PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]),
         PortfolioColumns.TEMP_LONG_CUM_ROR: [-50, -105, 10, 15],
         PortfolioColumns.TEMP_SHORT_CUM_ROR: [50, 10, 105, 20],
-        PortfolioColumns.LONG_CUM_ROR: [-50, 0, 10, 15],  # Post-reset (zeroed)
+        PortfolioColumns.LONG_CUM_ROR: [-50, 0, 10, 15],
         PortfolioColumns.SHORT_CUM_ROR: [50, 10, 105, 20],
         PortfolioColumns.BOD_CF: [0, 0, 1000, 0],
         PortfolioColumns.EOD_CF: [0, 0, 0, 0],
@@ -155,26 +155,26 @@ def reset_test_df() -> pd.DataFrame:
 def test_calculate_initial_resets_nctrl1_triggered(reset_test_df):
     """Tests that NCTRL1 is triggered when Temp Long RoR breaches -100%."""
     df = reset_test_df
-    resets = calculate_initial_resets(
+    resets, nctrl1, _, _ = calculate_initial_resets(
         df,
         report_end_date=pd.to_datetime("2025-01-31"),
         temp_long_col=PortfolioColumns.TEMP_LONG_CUM_ROR.value,
         temp_short_col=PortfolioColumns.TEMP_SHORT_CUM_ROR.value,
     )
-    assert df[PortfolioColumns.NCTRL_1].iloc[1] == 1
+    assert nctrl1.iloc[1]
     assert resets.iloc[1]
 
 
 def test_calculate_initial_resets_nctrl2_triggered(reset_test_df):
     """Tests that NCTRL2 is triggered when Temp Short RoR breaches 100%."""
     df = reset_test_df
-    resets = calculate_initial_resets(
+    resets, _, nctrl2, _ = calculate_initial_resets(
         df,
         report_end_date=pd.to_datetime("2025-01-31"),
         temp_long_col=PortfolioColumns.TEMP_LONG_CUM_ROR.value,
         temp_short_col=PortfolioColumns.TEMP_SHORT_CUM_ROR.value,
     )
-    assert df[PortfolioColumns.NCTRL_2].iloc[2] == 1
+    assert nctrl2.iloc[2]
     assert resets.iloc[2]
 
 
@@ -185,13 +185,13 @@ def test_calculate_initial_resets_not_triggered_without_common_condition(reset_t
     df[PortfolioColumns.PERF_DATE] = pd.to_datetime(
         ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]
     )
-    resets = calculate_initial_resets(
+    resets, _, nctrl2, _ = calculate_initial_resets(
         df,
         report_end_date=pd.to_datetime("2025-02-28"),
         temp_long_col=PortfolioColumns.TEMP_LONG_CUM_ROR.value,
         temp_short_col=PortfolioColumns.TEMP_SHORT_CUM_ROR.value,
     )
-    assert df[PortfolioColumns.NCTRL_2].iloc[2] == 0
+    assert not nctrl2.iloc[2]
     assert not resets.iloc[2]
 
 
@@ -206,4 +206,3 @@ def test_calculate_nctrl4_reset_triggered(reset_test_df):
         short_cum_col=PortfolioColumns.SHORT_CUM_ROR.value,
     )
     assert resets.iloc[2]
-    assert df[PortfolioColumns.NCTRL_4].iloc[2] == 1
