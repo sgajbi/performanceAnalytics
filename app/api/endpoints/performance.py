@@ -98,10 +98,8 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
                 local_total = (((1 + end_cum_local / 100) / (1 + start_cum_local / 100)) - 1) * 100
 
-                # --- FIX START: Derive FX return from Base and Local to ensure correctness ---
                 # FX Return is derived using the identity: (1+base) = (1+local)*(1+fx)
                 fx_total = (((1 + base_total / 100) / (1 + local_total / 100)) - 1) * 100
-                # --- FIX END ---
                 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=local_total, fx=fx_total, base=base_total
