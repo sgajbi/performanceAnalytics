@@ -20,7 +20,6 @@ from engine.contribution import (
 )
 from engine.schema import PortfolioColumns
 
-
 router = APIRouter()
 settings = get_settings()
 
@@ -48,7 +47,6 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
         if request.hierarchy:
             results, lineage_details = calculate_hierarchical_contribution(request)
             period_result = SinglePeriodContributionResult(summary=results.get("summary"), levels=results.get("levels"))
-            # Hierarchical is currently single-period only, so we use the first resolved period's name
             results_by_period = {resolved_periods[0].name: period_result}
             portfolio_results_df = lineage_details.get("portfolio_twr.csv", pd.DataFrame())
             daily_contributions_df = lineage_details.get("daily_contributions.csv", pd.DataFrame())
