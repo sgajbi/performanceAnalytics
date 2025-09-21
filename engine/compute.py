@@ -44,11 +44,13 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
         if config.data_policy:
             _flag_outliers(df, config.data_policy, policy_diagnostics)
 
-        df[PortfolioColumns.PERF_RESET.value] = 0
+        # --- START FIX: Ensure correct order of operations for sign and reset ---
+        # Sign must be calculated before cumulative returns and resets that depend on it.
         df[PortfolioColumns.SIGN.value] = calculate_sign(df)
         df[PortfolioColumns.NIP.value] = calculate_nip(df, config)
 
         calculate_cumulative_ror(df, config)
+        # --- END FIX ---
 
         df[PortfolioColumns.LONG_SHORT.value] = np.select(
             [df[PortfolioColumns.SIGN.value] == -1, df[PortfolioColumns.SIGN.value] == 1],
@@ -57,10 +59,8 @@ def run_calculations(df: pd.DataFrame, config: EngineConfig) -> Tuple[pd.DataFra
         )
 
         reset_events = []
-        # --- FIX START: Ensure PERF_RESET is int before filtering ---
         df[PortfolioColumns.PERF_RESET.value] = df[PortfolioColumns.PERF_RESET.value].astype(int)
         reset_rows = df[df[PortfolioColumns.PERF_RESET.value] == 1]
-        # --- FIX END ---
         for _, row in reset_rows.iterrows():
             reason_codes = []
             if row[PortfolioColumns.NCTRL_1.value]: reason_codes.append("NCTRL_1")
@@ -125,6 +125,9 @@ def _prepare_dataframe(df: pd.DataFrame, config: EngineConfig):
     for col in PortfolioColumns:
         if col.value not in df.columns and col.value not in [PortfolioColumns.LONG_SHORT.value, PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]:
             df[col.value] = Decimal(0) if config.precision_mode == PrecisionMode.DECIMAL_STRICT else 0.0
+    # --- START FIX: Initialize PERF_RESET earlier ---
+    df[PortfolioColumns.PERF_RESET.value] = 0
+    # --- END FIX ---
     df[PortfolioColumns.LONG_SHORT.value] = ""
 
 
