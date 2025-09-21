@@ -40,7 +40,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     else:
         periods_to_resolve = request.periods
 
-    as_of_date = request.as_of or request.report_end_date
+    # --- FIX START: Use report_end_date as the single source of truth ---
+    as_of_date = request.report_end_date
+    # --- FIX END ---
     inception_date = request.portfolio_data.daily_data[0].perf_date if request.portfolio_data.daily_data else as_of_date
     resolved_periods = resolve_periods(periods_to_resolve, as_of_date, inception_date)
 
@@ -104,9 +106,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 if total_avg_weight > 0 and master_request.smoothing.method == "CARINO":
                     totals["total_contribution"] += residual * (totals["average_weight"] / total_avg_weight)
 
-                # --- FIX START: Derive FX contribution to force reconciliation ---
                 totals["fx_contribution"] = totals["total_contribution"] - totals["local_contribution"]
-                # --- FIX END ---
 
                 position_contributions = [
                     PositionContribution(

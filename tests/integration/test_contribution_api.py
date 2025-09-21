@@ -37,7 +37,6 @@ def test_contribution_endpoint_multi_period(client):
         "portfolio_number": "MULTI_PERIOD_CONTRIB",
         "report_start_date": "2025-01-01",  # Required for ITD resolution
         "report_end_date": "2025-02-15",
-        "as_of": "2025-02-15",
         "periods": ["MTD", "YTD"],  # New multi-period request
         "portfolio_data": {
             "metric_basis": "NET",
