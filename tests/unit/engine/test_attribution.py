@@ -94,10 +94,10 @@ def test_prepare_data_from_instruments():
     request_data = {
         "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
-        "portfolio_data": {"metric_basis": "NET", "daily_data": daily_data_p},
+        "portfolio_data": {"metric_basis": "NET", "valuation_points": daily_data_p},
         "instruments_data": [
-            {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "daily_data": daily_data_aapl},
-            {"instrument_id": "MSFT", "meta": {"sector": "Tech"}, "daily_data": daily_data_msft}
+            {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "valuation_points": daily_data_aapl},
+            {"instrument_id": "MSFT", "meta": {"sector": "Tech"}, "valuation_points": daily_data_msft}
         ],
         "benchmark_groups_data": []
     }

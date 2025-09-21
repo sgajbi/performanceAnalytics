@@ -16,12 +16,12 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
     payload = {
         "portfolio_number": "ATTRIB_BY_INST_01", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
-        "portfolio_data": {"metric_basis": "NET", "daily_data": [
+        "portfolio_data": {"metric_basis": "NET", "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1018.5}
         ]},
         "instruments_data": [
-            {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 600, "end_mv": 612}]},
-            {"instrument_id": "JNJ", "meta": {"sector": "Health"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 406.5}]}
+            {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 600, "end_mv": 612}]},
+            {"instrument_id": "JNJ", "meta": {"sector": "Health"}, "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 406.5}]}
         ],
         "benchmark_groups_data": [
             {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-01", "return_base": 0.015, "weight_bop": 0.5}]},
@@ -65,13 +65,13 @@ def test_attribution_endpoint_hierarchical(client):
     payload = {
         "portfolio_number": "HIERARCHY_01", "mode": "by_instrument", "group_by": ["assetClass", "sector"], "linking": "none", "frequency": "daily",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
-        "portfolio_data": {"metric_basis": "NET", "daily_data": [
+        "portfolio_data": {"metric_basis": "NET", "valuation_points": [
             {"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1020}
         ]},
         "instruments_data": [
-            {"instrument_id": "AAPL", "meta": {"assetClass": "Equity", "sector": "Tech"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 408}]},
-            {"instrument_id": "JNJ", "meta": {"assetClass": "Equity", "sector": "Health"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 300, "end_mv": 303}]},
-            {"instrument_id": "UST", "meta": {"assetClass": "Bond", "sector": "Government"}, "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 300, "end_mv": 309}]}
+            {"instrument_id": "AAPL", "meta": {"assetClass": "Equity", "sector": "Tech"}, "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 408}]},
+            {"instrument_id": "JNJ", "meta": {"assetClass": "Equity", "sector": "Health"}, "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 300, "end_mv": 303}]},
+            {"instrument_id": "UST", "meta": {"assetClass": "Bond", "sector": "Government"}, "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 300, "end_mv": 309}]}
         ],
         "benchmark_groups_data": [
             {"key": {"assetClass": "Equity", "sector": "Tech"}, "observations": [{"date": "2025-01-01", "return_base": 0.01, "weight_bop": 0.4}]},
@@ -100,11 +100,11 @@ def test_attribution_endpoint_currency_attribution(client):
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
         "portfolio_data": {
             "metric_basis": "GROSS",
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 103.02}]
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 103.02}]
         },
         "instruments_data": [{
             "instrument_id": "EUR_ASSET", "meta": {"currency": "EUR"},
-            "daily_data": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}] # 2% local return
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}] # 2% local return
         }],
         "benchmark_groups_data": [{
             "key": {"currency": "EUR"}, "observations": [{
