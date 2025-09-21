@@ -20,6 +20,7 @@ from engine.contribution import (
 )
 from engine.schema import PortfolioColumns
 
+
 router = APIRouter()
 settings = get_settings()
 
@@ -33,9 +34,8 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     input_fingerprint, calculation_hash = generate_canonical_hash(request, settings.APP_VERSION)
 
     periods_to_resolve = [analysis.period for analysis in request.analyses]
-    as_of_date = request.report_end_date
-    inception_date = request.portfolio_data.valuation_points[0].perf_date if request.portfolio_data.valuation_points else as_of_date
-    resolved_periods = resolve_periods(periods_to_resolve, as_of_date, inception_date)
+    inception_date = request.portfolio_data.valuation_points[0].perf_date if request.portfolio_data.valuation_points else request.report_end_date
+    resolved_periods = resolve_periods(periods_to_resolve, request.report_end_date, inception_date)
 
     if not resolved_periods:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid periods could be resolved.")
