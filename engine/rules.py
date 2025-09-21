@@ -1,5 +1,6 @@
 # engine/rules.py
 from decimal import Decimal
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -68,8 +69,10 @@ def calculate_nip(df: pd.DataFrame, config: EngineConfig) -> pd.Series:
     return (is_zero_value & is_offsetting_cf).astype(int)
 
 
-def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp, temp_long_col: str, temp_short_col: str) -> pd.Series:
-    """Calculates resets based on NCTRL 1, 2, and 3, which use preliminary RoR."""
+def calculate_initial_resets(
+    df: pd.DataFrame, report_end_date: pd.Timestamp, temp_long_col: str, temp_short_col: str
+) -> Tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+    """Calculates resets based on NCTRL 1, 2, and 3. This is a pure function."""
     is_decimal_mode = df[PortfolioColumns.BOD_CF.value].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
     
@@ -97,16 +100,12 @@ def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp, te
     nctrl2 = (cond_nctrl2 & ~cond_nctrl2.shift(1, fill_value=False)) & cond_common
     nctrl3 = (cond_nctrl3 & ~cond_nctrl3.shift(1, fill_value=False)) & cond_common
 
-    df[PortfolioColumns.NCTRL_1.value] = nctrl1.astype(int)
-    df[PortfolioColumns.NCTRL_2.value] = nctrl2.astype(int)
-    df[PortfolioColumns.NCTRL_3.value] = nctrl3.astype(int)
-    df[PortfolioColumns.NCTRL_4.value] = 0
-
-    return (nctrl1 | nctrl2 | nctrl3)
+    resets = (nctrl1 | nctrl2 | nctrl3)
+    return resets, nctrl1, nctrl2, nctrl3
 
 
 def calculate_nctrl4_reset(df: pd.DataFrame, long_cum_col: str, short_cum_col: str) -> pd.Series:
-    """Calculates resets based on NCTRL 4, which uses final, zeroed RoR."""
+    """Calculates resets based on NCTRL 4. This is a pure function."""
     is_decimal_mode = df[PortfolioColumns.BOD_CF.value].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
     hundred = Decimal(-100) if is_decimal_mode else -100.0
@@ -119,5 +118,4 @@ def calculate_nctrl4_reset(df: pd.DataFrame, long_cum_col: str, short_cum_col: s
         (df[PortfolioColumns.BOD_CF.value] != zero) | (prev_eod_cf != zero)
     )
 
-    df[PortfolioColumns.NCTRL_4.value] = nctrl4.astype(int)
-    return nctrl4.astype(int)
+    return nctrl4
