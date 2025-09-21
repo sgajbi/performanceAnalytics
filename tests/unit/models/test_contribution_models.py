@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from app.models.contribution_requests import ContributionRequest
 from app.models.contribution_responses import ContributionResponse
-from common.enums import PeriodType, Frequency
+from common.enums import PeriodType
 
 
 @pytest.fixture

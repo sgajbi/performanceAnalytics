@@ -28,7 +28,8 @@ def by_group_request_data():
     """Provides a sample AttributionRequest for by_group mode where weights sum to 1."""
     return {
         "portfolio_number": "ATTRIB_UNIT_TEST_01", "mode": "by_group", "group_by": ["sector"], "model": "BF", "linking": "carino", "frequency": "monthly",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-02-28", "period_type": "ITD",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-02-28",
+        "analyses": [{"period": "ITD", "frequencies": ["monthly"]}],
         "portfolio_groups_data": [
             {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return": 0.02, "weight_bop": 0.5}, {"date": "2025-02-28", "return": 0.01, "weight_bop": 0.6}]},
             {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return": 0.01, "weight_bop": 0.5}, {"date": "2025-02-28", "return": 0.005, "weight_bop": 0.4}]}
@@ -93,7 +94,8 @@ def test_prepare_data_from_instruments():
 
     request_data = {
         "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "portfolio_data": {"metric_basis": "NET", "valuation_points": daily_data_p},
         "instruments_data": [
             {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "valuation_points": daily_data_aapl},
@@ -117,7 +119,8 @@ def test_prepare_data_from_instruments_missing_portfolio_data():
     """Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode."""
     request_data = {
         "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "instruments_data": [], "benchmark_groups_data": [], "linking": "none",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", "period_type": "ITD",
+        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
     }
     request = AttributionRequest.model_validate(request_data)
     with pytest.raises(ValueError, match="'portfolio_data' and 'instruments_data' are required"):
