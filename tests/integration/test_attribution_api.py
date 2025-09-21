@@ -13,7 +13,6 @@ def client():
 
 def test_attribution_endpoint_by_instrument_happy_path(client):
     """Tests the /performance/attribution endpoint end-to-end with a valid 'by_instrument' payload."""
-    # --- START FIX: Align payload with new model ---
     payload = {
         "portfolio_number": "ATTRIB_BY_INST_01", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", 
@@ -30,7 +29,6 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
             {"key": {"sector": "Health"}, "observations": [{"date": "2025-01-01", "return_base": 0.02, "weight_bop": 0.5}]}
         ]
     }
-    # --- END FIX ---
 
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == 200
@@ -43,7 +41,6 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
 
 def test_attribution_lineage_flow(client):
     """Tests that lineage is correctly captured for an attribution request."""
-    # --- START FIX: Align payload with new model ---
     payload = {
         "portfolio_number": "ATTRIB_LINEAGE_01", "mode": "by_group", "group_by": ["sector"], "linking": "none", "frequency": "monthly",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", 
@@ -51,7 +48,6 @@ def test_attribution_lineage_flow(client):
         "portfolio_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.02, "weight_bop": 1.0}]}],
         "benchmark_groups_data": [{"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 1.0}]}],
     }
-    # --- END FIX ---
     attrib_response = client.post("/performance/attribution", json=payload)
     assert attrib_response.status_code == 200
     calculation_id = attrib_response.json()["calculation_id"]
@@ -67,7 +63,6 @@ def test_attribution_lineage_flow(client):
 
 def test_attribution_endpoint_hierarchical(client):
     """Tests multi-level hierarchical attribution, ensuring bottom-up aggregation is correct."""
-    # --- START FIX: Align payload with new model ---
     payload = {
         "portfolio_number": "HIERARCHY_01", "mode": "by_instrument", "group_by": ["assetClass", "sector"], "linking": "none", "frequency": "daily",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-01", 
@@ -86,7 +81,6 @@ def test_attribution_endpoint_hierarchical(client):
             {"key": {"assetClass": "Bond", "sector": "Government"}, "observations": [{"date": "2025-01-01", "return_base": 0.02, "weight_bop": 0.3}]}
         ]
     }
-    # --- END FIX ---
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == 200
     data = response.json()["results_by_period"]["ITD"]
@@ -102,7 +96,6 @@ def test_attribution_endpoint_hierarchical(client):
 
 def test_attribution_endpoint_currency_attribution(client):
     """Tests the Karnosky-Singer currency attribution model end-to-end."""
-    # --- START FIX: Align payload with new model ---
     payload = {
         "portfolio_number": "FX_ATTRIB_01", "mode": "by_instrument", "group_by": ["currency"],
         "linking": "none", "frequency": "daily", "currency_mode": "BOTH", "report_ccy": "USD",
@@ -129,7 +122,6 @@ def test_attribution_endpoint_currency_attribution(client):
             {"date": "2025-01-01", "ccy": "EUR", "rate": 1.01} # 1% fx return
         ]}
     }
-    # --- END FIX ---
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == 200
     data = response.json()["results_by_period"]["ITD"]
@@ -148,7 +140,9 @@ def test_attribution_endpoint_currency_attribution(client):
     lineage_response = client.get(f"/performance/lineage/{calculation_id}")
     assert lineage_response.status_code == 200
     lineage_data = lineage_response.json()
-    assert "currency_attribution_effects.csv" in lineage_data["artifacts"]
+    # --- START FIX: Update assertion to expect period-prefixed artifact name ---
+    assert "ITD_currency_attribution_effects.csv" in lineage_data["artifacts"]
+    # --- END FIX ---
 
 
 @pytest.mark.parametrize(
@@ -158,13 +152,11 @@ def test_attribution_endpoint_currency_attribution(client):
 def test_attribution_endpoint_error_handling(client, mocker, error_class, expected_status):
     """Tests that the attribution endpoint correctly handles engine exceptions."""
     mocker.patch('app.api.endpoints.performance.run_attribution_calculations', side_effect=error_class("Test Error"))
-    # --- START FIX: Align payload with new model ---
     payload = {
         "portfolio_number": "ERROR", "mode": "by_group", "group_by": ["sector"], "benchmark_groups_data": [], "linking": "none", "frequency": "monthly",
         "report_start_date": "2025-01-01", "report_end_date": "2025-01-31", 
         "analyses": [{"period": "ITD", "frequencies": ["monthly"]}],
     }
-    # --- END FIX ---
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == expected_status
     assert "detail" in response.json()
