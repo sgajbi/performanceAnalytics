@@ -90,12 +90,12 @@ def test_generate_breakdowns_quarterly(sample_daily_results, default_annualizati
 def test_annualization_correctly_handles_sparse_long_period():
     """
     Tests the annualization logic. A sparse (e.g., monthly) series over a
-    year-long period should be annualized. This test will fail before the fix.
+    year-long period should be annualized.
     """
-    # This data represents a 5% return over exactly one year.
+    # This data represents a 5% return over exactly one year (a 366-day leap year).
     year_long_sparse_data = {
         PortfolioColumns.PERF_DATE: [date(2024, 1, 1), date(2024, 12, 31)],
-        PortfolioColumns.DAILY_ROR: [2.0, 2.941176], # (1.02 * 1.02941176) - 1 = 0.05
+        PortfolioColumns.DAILY_ROR: [2.0, 2.94117647], # (1.02 * 1.0294117647) - 1 = 0.05
         PortfolioColumns.BEGIN_MV: [100.0, 102.0],
         PortfolioColumns.END_MV: [102.0, 105.0],
         PortfolioColumns.BOD_CF: [0.0, 0.0],
@@ -110,5 +110,8 @@ def test_annualization_correctly_handles_sparse_long_period():
     summary = _calculate_period_summary_dict(df_indexed, df_indexed, annualization_config, False)
 
     assert "annualized_return_pct" in summary
-    # The return is 5% over 365 days, so annualized return is ~5%
-    assert summary["annualized_return_pct"] == pytest.approx(5.0, abs=1e-4)
+    # --- FIX START: Assert the mathematically correct value for a leap year ---
+    # The return is 5% over 366 days, annualized to a 365 day year.
+    # Expected: (1.05 ** (365 / 366)) - 1 = 4.986...%
+    assert summary["annualized_return_pct"] == pytest.approx(4.986003, abs=1e-6)
+    # --- FIX END ---
