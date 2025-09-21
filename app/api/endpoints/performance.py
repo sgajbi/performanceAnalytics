@@ -83,7 +83,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             
             period_result = SinglePeriodPerformanceResult(breakdowns=formatted_breakdowns)
             
-            # --- FIX START: Use reset-aware cumulative series to derive sub-period returns ---
             end_row = period_slice_df.iloc[-1]
             day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < period.start_date
             day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
@@ -99,10 +98,10 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
                 local_total = (((1 + end_cum_local / 100) / (1 + start_cum_local / 100)) - 1) * 100
 
-                # FX Return
-                end_cum_fx = get_total_cum_ror(end_row, "fx_ror_")
-                start_cum_fx = get_total_cum_ror(day_before_row, "fx_ror_")
-                fx_total = (((1 + end_cum_fx / 100) / (1 + start_cum_fx / 100)) - 1) * 100
+                # --- FIX START: Derive FX return from Base and Local to ensure correctness ---
+                # FX Return is derived using the identity: (1+base) = (1+local)*(1+fx)
+                fx_total = (((1 + base_total / 100) / (1 + local_total / 100)) - 1) * 100
+                # --- FIX END ---
                 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=local_total, fx=fx_total, base=base_total
@@ -111,7 +110,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 period_result.portfolio_return = PortfolioReturnDecomposition(
                     local=base_total, fx=0.0, base=base_total
                 )
-            # --- FIX END ---
 
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
