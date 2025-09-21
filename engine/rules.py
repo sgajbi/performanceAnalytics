@@ -28,8 +28,7 @@ def calculate_sign(df: pd.DataFrame) -> pd.Series:
 
     prev_eod_cf = df[PortfolioColumns.EOD_CF.value].shift(1, fill_value=zero)
     prev_perf_reset = df[PortfolioColumns.PERF_RESET.value].shift(1, fill_value=0)
-    is_flip_event = ((df[PortfolioColumns.BOD_CF.value] != zero) |
-                     (prev_eod_cf != zero) | (prev_perf_reset == 1))
+    is_flip_event = ((df[PortfolioColumns.BOD_CF.value] != zero) | (prev_eod_cf != zero) | (prev_perf_reset == 1))
     
     if not df.empty:
         is_flip_event.iloc[0] = True
@@ -69,7 +68,7 @@ def calculate_nip(df: pd.DataFrame, config: EngineConfig) -> pd.Series:
     return (is_zero_value & is_offsetting_cf).astype(int)
 
 
-def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) -> pd.Series:
+def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp, temp_long_col: str, temp_short_col: str) -> pd.Series:
     """Calculates resets based on NCTRL 1, 2, and 3, which use preliminary RoR."""
     is_decimal_mode = df[PortfolioColumns.BOD_CF.value].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
@@ -90,11 +89,9 @@ def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) ->
         | next_date_is_after_end
     )
     
-    # --- FIX START: Use correct column names from schema enum ---
-    cond_nctrl1 = df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] < -100
-    cond_nctrl2 = df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] > 100
-    cond_nctrl3 = (df[PortfolioColumns.TEMP_SHORT_CUM_ROR.value] < -100) & (df[PortfolioColumns.TEMP_LONG_CUM_ROR.value] != 0)
-    # --- FIX END ---
+    cond_nctrl1 = df[temp_long_col] < -100
+    cond_nctrl2 = df[temp_short_col] > 100
+    cond_nctrl3 = (df[temp_short_col] < -100) & (df[temp_long_col] != 0)
 
     nctrl1 = (cond_nctrl1 & ~cond_nctrl1.shift(1, fill_value=False)) & cond_common
     nctrl2 = (cond_nctrl2 & ~cond_nctrl2.shift(1, fill_value=False)) & cond_common
@@ -108,14 +105,14 @@ def calculate_initial_resets(df: pd.DataFrame, report_end_date: pd.Timestamp) ->
     return (nctrl1 | nctrl2 | nctrl3)
 
 
-def calculate_nctrl4_reset(df: pd.DataFrame) -> pd.Series:
+def calculate_nctrl4_reset(df: pd.DataFrame, long_cum_col: str, short_cum_col: str) -> pd.Series:
     """Calculates resets based on NCTRL 4, which uses final, zeroed RoR."""
     is_decimal_mode = df[PortfolioColumns.BOD_CF.value].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
     hundred = Decimal(-100) if is_decimal_mode else -100.0
 
-    prev_long_ror = df[PortfolioColumns.LONG_CUM_ROR.value].shift(1, fill_value=zero)
-    prev_short_ror = df[PortfolioColumns.SHORT_CUM_ROR.value].shift(1, fill_value=zero)
+    prev_long_ror = df[long_cum_col].shift(1, fill_value=zero)
+    prev_short_ror = df[short_cum_col].shift(1, fill_value=zero)
     prev_eod_cf = df[PortfolioColumns.EOD_CF.value].shift(1, fill_value=zero)
 
     nctrl4 = ((prev_long_ror <= hundred) | (prev_short_ror >= -hundred)) & (
