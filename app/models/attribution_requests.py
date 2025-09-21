@@ -19,14 +19,14 @@ from app.models.requests import DailyInputData
 class AttributionPortfolioData(BaseModel):
     """Contains the full time series and config for the total portfolio for attribution."""
     metric_basis: Literal["NET", "GROSS"]
-    daily_data: List[DailyInputData]
+    valuation_points: List[DailyInputData]
 
 
 class InstrumentData(BaseModel):
     """Time series and metadata for a single instrument."""
     instrument_id: str
     meta: Dict[str, Any]
-    daily_data: List[DailyInputData]
+    valuation_points: List[DailyInputData]
 
 
 class BenchmarkObservation(BaseModel):
