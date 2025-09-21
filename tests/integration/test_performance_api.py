@@ -15,6 +15,42 @@ def client():
     with TestClient(app) as c:
         yield c
 
+
+def test_twr_reports_reset_events_when_requested(client):
+    """
+    Tests that when a reset occurs and the policy is enabled,
+    the reset_events list is correctly populated in the response.
+    """
+    # This payload is based on the 'long_flip_scenario' which triggers an NCTRL_1 reset
+    payload = {
+        "portfolio_number": "RESET_SCENARIO_TEST",
+        "performance_start_date": "2024-12-31",
+        "report_end_date": "2025-01-04",
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
+        "metric_basis": "GROSS",
+        "valuation_points": [
+            { "day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 500.0 },
+            { "day": 2, "perf_date": "2025-01-02", "begin_mv": 500.0, "end_mv": -50.0 },
+            { "day": 3, "perf_date": "2025-01-03", "begin_mv": -50.0, "bod_cf": 1000.0, "end_mv": 1050.0 },
+            { "day": 4, "perf_date": "2025-01-04", "begin_mv": 1050.0, "end_mv": 1155.0 }
+        ],
+        "reset_policy": { "emit": True }
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    itd_results = data["results_by_period"]["ITD"]
+
+    assert "reset_events" in itd_results
+    assert itd_results["reset_events"] is not None
+    assert len(itd_results["reset_events"]) == 1
+    
+    reset_event = itd_results["reset_events"][0]
+    assert reset_event["date"] == "2025-01-02"
+    assert "NCTRL_1" in reset_event["reason"]
+
+
+    
 def test_calculate_twr_endpoint_with_annualization(client):
     """Tests that a request with annualization enabled correctly returns annualized figures."""
     payload = {
