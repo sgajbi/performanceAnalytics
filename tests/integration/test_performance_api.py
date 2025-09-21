@@ -61,7 +61,6 @@ def test_calculate_twr_endpoint_multi_period(client):
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-02-15",
-        "as_of": "2025-02-15",
         "periods": ["MTD", "YTD"],
         "frequencies": ["monthly"],
         "daily_data": [
@@ -196,9 +195,7 @@ def test_twr_respects_include_timeseries_flag(client):
     response_without = client.post("/performance/twr", json=payload_without)
     assert response_without.status_code == 200
     daily_breakdown_without = response_without.json()["results_by_period"]["YTD"]["breakdowns"]["daily"][0]
-    # --- FIX START: Assert that the key is now absent from the response ---
     assert "daily_data" not in daily_breakdown_without
-    # --- FIX END ---
 
 
 def test_twr_response_includes_portfolio_return_summary(client):

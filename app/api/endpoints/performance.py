@@ -39,7 +39,9 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         else:
             periods_to_resolve = request.periods
 
-        as_of_date = request.as_of or request.report_end_date
+        # --- FIX START: Use report_end_date as the single source of truth ---
+        as_of_date = request.report_end_date
+        # --- FIX END ---
         resolved_periods = resolve_periods(periods_to_resolve, as_of_date, request.performance_start_date)
 
         if not resolved_periods:

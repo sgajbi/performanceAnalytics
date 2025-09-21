@@ -20,7 +20,6 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
     payload = {
         "portfolio_number": "MULTI_PERIOD_SUMMARY_TEST",
         "performance_start_date": "2024-12-31",
-        "as_of": "2025-02-28",
         "report_end_date": "2025-02-28",
         "periods": ["MTD", "YTD"],
         "metric_basis": "GROSS",
@@ -62,10 +61,9 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
     assert ytd_summary["local"] == pytest.approx(3.02)
     assert ytd_summary["fx"] == pytest.approx(3.02)
 
-    # --- FIX START: Assert that the base return is the geometric sum of its components ---
+    # Assert that the base return is the geometric sum of its components
     expected_base = ((1 + ytd_summary["local"] / 100) * (1 + ytd_summary["fx"] / 100) - 1) * 100
     assert ytd_summary["base"] == pytest.approx(expected_base)
-    # --- FIX END ---
 
     # Crucially, assert the MTD and YTD summaries are NOT the same
     assert mtd_summary["base"] != ytd_summary["base"]
