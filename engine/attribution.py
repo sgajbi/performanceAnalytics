@@ -47,14 +47,14 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         hedging=request.hedging,
     )
 
-    portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.daily_data])
+    portfolio_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in request.portfolio_data.valuation_points])
     portfolio_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(portfolio_df[PortfolioColumns.PERF_DATE.value])
     portfolio_df = portfolio_df.set_index(PortfolioColumns.PERF_DATE.value)
     portfolio_bop_mv = portfolio_df[PortfolioColumns.BEGIN_MV.value] + portfolio_df[PortfolioColumns.BOD_CF.value]
 
     all_instruments = []
     for inst in request.instruments_data:
-        inst_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in inst.daily_data])
+        inst_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in inst.valuation_points])
         if inst_df.empty: continue
 
         inst_twr_config = twr_config
@@ -154,6 +154,7 @@ def _align_and_prepare_data(request: AttributionRequest, portfolio_groups_data: 
     benchmark_panel = _prepare_panel_from_groups(request.benchmark_groups_data, group_by)
 
     if portfolio_panel.empty or benchmark_panel.empty: return pd.DataFrame()
+    
     freq_map = {'daily': 'D', 'monthly': 'ME', 'quarterly': 'QE', 'yearly': 'YE'}
     freq_code = freq_map.get(request.frequency.value, 'ME')
 
