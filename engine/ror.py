@@ -36,10 +36,12 @@ def calculate_daily_ror(df: pd.DataFrame, metric_basis: str, config: EngineConfi
             - df[PortfolioColumns.BOD_CF.value]
             - df[PortfolioColumns.BEGIN_MV.value]
             - df[PortfolioColumns.EOD_CF.value]
-        ).to_numpy()
+        ).to_numpy(copy=True)
         if metric_basis == "NET":
-            numerator += df[PortfolioColumns.MGMT_FEES.value].to_numpy()
-        denominator = np.abs(df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).to_numpy()
+            numerator += df[PortfolioColumns.MGMT_FEES.value].to_numpy(copy=False)
+        denominator = np.abs(df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).to_numpy(
+            copy=False
+        )
         local_ror_np = np.full(denominator.shape, 0.0, dtype=np.float64)
 
     is_after_start = df[PortfolioColumns.PERF_DATE.value] >= df[PortfolioColumns.EFFECTIVE_PERIOD_START_DATE.value]
