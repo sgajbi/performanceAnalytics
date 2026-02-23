@@ -126,6 +126,11 @@ pytest --cov=engine --cov=app --cov-report term-missing
   - **Description:** Decomposes the portfolio's active return against a benchmark into allocation, selection, and interaction effects.
   - **Example Payload:** See `docs/examples/attribution_request.json`.
 
+### 5\. Integration Capabilities
+
+  - **Endpoint:** `GET /integration/capabilities`
+  - **Description:** Returns backend-governed PA capability and workflow metadata for BFF/PAS/DPM integration.
+
 -----
 
 ## Advanced Usage
