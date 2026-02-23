@@ -9,7 +9,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 
-<<<<<<< HEAD
 from app.api.endpoints import contribution, integration_capabilities, lineage, performance
 from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
