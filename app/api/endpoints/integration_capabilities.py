@@ -52,9 +52,7 @@ def _env_bool(name: str, default: bool) -> bool:
     "/capabilities",
     response_model=IntegrationCapabilitiesResponse,
     summary="Get PA Integration Capabilities",
-    description=(
-        "Returns backend-governed PA capability/workflow controls for BFF, PAS, and DPM integration."
-    ),
+    description=("Returns backend-governed PA capability/workflow controls for BFF, PAS, and DPM integration."),
 )
 async def get_integration_capabilities(
     consumer_system: ConsumerSystem = Query("BFF", alias="consumerSystem"),

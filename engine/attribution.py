@@ -187,7 +187,7 @@ def _align_and_prepare_data(request: AttributionRequest, portfolio_groups_data: 
         resampled_data = {"w": weights}
         for col in return_cols:
             if col in panel.columns and panel[col].notna().any():
-                resampled_data[f'r_{col.split("_")[1]}'] = resampler[col].apply(
+                resampled_data[f"r_{col.split('_')[1]}"] = resampler[col].apply(
                     lambda x: (1 + x).prod() - 1 if not x.empty else None
                 )
         return pd.concat(
