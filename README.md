@@ -7,6 +7,13 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 3.  **Attribution Analysis**: An endpoint for calculating single-level, multi-period **Performance Attribution** (Brinson-style) to explain a portfolio's active return against a benchmark.
 ---
 
+## Contribution Standards
+
+- Contribution process: `CONTRIBUTING.md`
+- Docs-with-code standard: `docs/documentation/implementation-documentation-standard.md`
+- Branch-protection workflow: `docs/documentation/git-branch-protection-workflow.md`
+- PR checklist template: `.github/pull_request_template.md`
+
 ## Key Features
 
 -   **High-Performance TWR Engine:** Core daily calculations are vectorized using Pandas and NumPy.
@@ -37,8 +44,7 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 
 3.  **Install dependencies:**
     ```bash
-    pip install -r requirements.txt
-    pip install -r requirements-dev.txt
+    make install
     ```
 
 ---
@@ -47,7 +53,7 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 
 1.  **Run the FastAPI app with Uvicorn:**
     ```bash
-    uvicorn main:app --reload
+    make run
     ```
 
 2.  **Access API Documentation:**
@@ -57,31 +63,38 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 
 ## Testing & Validation
 
-### 1. Run All Tests
+### 1. Fast Local Gate
 
-To run the full suite of unit and integration tests, use the following command:
 ```bash
-pytest -q
-````
+make check
+```
 
-### 2\. Run Performance Benchmarks
+### 2. CI-Shape Local Gate
+
+```bash
+make ci-local
+```
+
+Docker parity:
+
+```bash
+make ci-local-docker
+make ci-local-docker-down
+```
+
+### 3. Full Test Coverage Gate
+
+```bash
+make test-all
+```
+
+### 4. Run Performance Benchmarks
 
 To run only the performance benchmarks, which test the engine's speed on large datasets:
 
 ```bash
 pytest --benchmark-only "tests/benchmarks/"
 ```
-
-### 3\. Check Test Coverage
-
-This project enforces high standards for test coverage to ensure correctness and maintainability. The goals are **100% coverage for the `engine` module** and **\>95% for the overall project**. To run the tests and generate a detailed coverage report, use the `pytest-cov` plugin:
-
-```bash
-pytest --cov=engine --cov=app --cov-report term-missing
-```
-
-  - `--cov=engine --cov=app`: Specifies the directories to measure coverage against.
-  - `--cov-report term-missing`: Prints a summary to the terminal, including which lines are not covered by tests.
 
 -----
 

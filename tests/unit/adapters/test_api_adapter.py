@@ -5,7 +5,11 @@ from typing import Any, Dict, List
 import pandas as pd
 import pytest
 
-from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
+from adapters.api_adapter import (
+    create_engine_config,
+    create_engine_dataframe,
+    format_breakdowns_for_response,
+)
 from app.models.requests import PerformanceRequest
 from app.models.responses import PerformanceResultItem, PerformanceSummary
 from common.enums import Frequency, PeriodType
@@ -25,7 +29,7 @@ def sample_engine_outputs():
                     PortfolioColumns.END_MV: 1010.0,
                     "net_cash_flow": 0.0,
                     "period_return_pct": 1.0,
-                    "cumulative_return_pct_to_date": 1.0, 
+                    "cumulative_return_pct_to_date": 1.0,
                 },
             }
         ],
@@ -37,7 +41,7 @@ def sample_engine_outputs():
                     PortfolioColumns.END_MV: 1010.0,
                     "net_cash_flow": 0.0,
                     "period_return_pct": 1.0,
-                    "cumulative_return_pct_to_date": 1.0, 
+                    "cumulative_return_pct_to_date": 1.0,
                 },
             }
         ],
@@ -149,10 +153,10 @@ def test_format_breakdowns_for_response_empty_input():
 def test_format_breakdowns_populates_daily_cumulative_return(sample_engine_outputs):
     """Tests that the cumulative return is correctly populated for daily summaries."""
     breakdowns_data, daily_results_df = sample_engine_outputs
-    
-    breakdowns_data[Frequency.DAILY][0]['summary'].pop('cumulative_return_pct_to_date', None)
+
+    breakdowns_data[Frequency.DAILY][0]["summary"].pop("cumulative_return_pct_to_date", None)
 
     formatted_response = format_breakdowns_for_response(breakdowns_data, daily_results_df, include_timeseries=True)
-    
+
     daily_summary = formatted_response[Frequency.DAILY][0].summary
     assert daily_summary.cumulative_return_pct_to_date is None

@@ -1,12 +1,15 @@
 # tests/unit/engine/test_rules.py
-from decimal import Decimal
-from typing import Tuple
 
-import numpy as np
 import pandas as pd
 import pytest
+
 from engine.config import EngineConfig, FeatureFlags, PeriodType
-from engine.rules import calculate_initial_resets, calculate_nip, calculate_nctrl4_reset, calculate_sign
+from engine.rules import (
+    calculate_initial_resets,
+    calculate_nctrl4_reset,
+    calculate_nip,
+    calculate_sign,
+)
 from engine.schema import PortfolioColumns
 
 
@@ -88,8 +91,7 @@ def nip_test_df() -> pd.DataFrame:
 def test_calculate_nip_v1_triggered_for_zero_value_day(nip_test_df):
     """Tests that NIP (v1) is flagged for a day where all values are zero."""
     config = EngineConfig(
-        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD,
-        feature_flags=FeatureFlags(use_nip_v2_rule=False)
+        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD, feature_flags=FeatureFlags(use_nip_v2_rule=False)
     )
     result = calculate_nip(nip_test_df, config)
     assert result.iloc[0] == 1
@@ -98,8 +100,7 @@ def test_calculate_nip_v1_triggered_for_zero_value_day(nip_test_df):
 def test_calculate_nip_v1_not_triggered_for_offsetting_cashflow(nip_test_df):
     """Tests NIP (v1) is NOT flagged for a zero-net-change day with offsetting flows."""
     config = EngineConfig(
-        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD,
-        feature_flags=FeatureFlags(use_nip_v2_rule=False)
+        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD, feature_flags=FeatureFlags(use_nip_v2_rule=False)
     )
     result = calculate_nip(nip_test_df, config)
     assert result.iloc[1] == 0
@@ -108,8 +109,7 @@ def test_calculate_nip_v1_not_triggered_for_offsetting_cashflow(nip_test_df):
 def test_calculate_nip_not_triggered_for_non_zero_day(nip_test_df):
     """Tests that NIP is not flagged for a normal day with non-zero values."""
     config = EngineConfig(
-        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD,
-        feature_flags=FeatureFlags(use_nip_v2_rule=False)
+        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD, feature_flags=FeatureFlags(use_nip_v2_rule=False)
     )
     result = calculate_nip(nip_test_df, config)
     assert result.iloc[2] == 0
@@ -118,8 +118,7 @@ def test_calculate_nip_not_triggered_for_non_zero_day(nip_test_df):
 def test_calculate_nip_v2_triggered_with_feature_flag(nip_test_df):
     """Tests that the simpler NIP v2 rule is used when the feature flag is set."""
     config = EngineConfig(
-        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD,
-        feature_flags=FeatureFlags(use_nip_v2_rule=True)
+        "2025-01-01", "2025-01-01", "NET", PeriodType.YTD, feature_flags=FeatureFlags(use_nip_v2_rule=True)
     )
     result = calculate_nip(nip_test_df, config)
     # V2 Rule: (BMV+BOD==0) AND (EMV+EOD==0)
@@ -188,9 +187,7 @@ def test_calculate_initial_resets_not_triggered_without_common_condition(reset_t
     """Tests that NCTRL flags are not set if the RoR breach occurs but no common condition is met."""
     df = reset_test_df.copy()
     df.at[2, PortfolioColumns.BOD_CF] = 0
-    df[PortfolioColumns.PERF_DATE] = pd.to_datetime(
-        ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]
-    )
+    df[PortfolioColumns.PERF_DATE] = pd.to_datetime(["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"])
     resets, _, nctrl2, _ = calculate_initial_resets(
         df,
         report_end_date=pd.to_datetime("2025-02-28"),

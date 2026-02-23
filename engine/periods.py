@@ -5,9 +5,7 @@ from common.enums import PeriodType
 from engine.config import EngineConfig
 
 
-def get_effective_period_start_dates(
-    perf_dates_dt: pd.Series, config: EngineConfig
-) -> pd.Series:
+def get_effective_period_start_dates(perf_dates_dt: pd.Series, config: EngineConfig) -> pd.Series:
     """
     Vectorized calculation of the effective period start date for each row.
     Returns a Series with dtype=datetime64[ns].
@@ -29,13 +27,15 @@ def get_effective_period_start_dates(
         start_date = pd.to_datetime(config.report_end_date) - pd.DateOffset(years=years) + pd.Timedelta(days=1)
         return pd.Series(start_date, index=perf_dates_dt.index, name=perf_dates_dt.name)
     elif config.period_type == PeriodType.ITD:
-        return pd.Series(pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index, name=perf_dates_dt.name)
+        return pd.Series(
+            pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index, name=perf_dates_dt.name
+        )
     else:
         # Fallback case, though validation should prevent this.
-        return pd.Series(pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index, name=perf_dates_dt.name)
+        return pd.Series(
+            pd.to_datetime(config.performance_start_date), index=perf_dates_dt.index, name=perf_dates_dt.name
+        )
 
     perf_start_dt = pd.to_datetime(config.performance_start_date)
 
-    return effective_starts.where(
-        effective_starts >= perf_start_dt, perf_start_dt
-    )
+    return effective_starts.where(effective_starts >= perf_start_dt, perf_start_dt)

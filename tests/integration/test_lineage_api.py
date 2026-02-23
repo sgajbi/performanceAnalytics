@@ -2,13 +2,15 @@
 import os
 import shutil
 from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
 from app.core.config import get_settings
+from main import app
 
 settings = get_settings()
+
 
 @pytest.fixture(scope="module")
 def client():
@@ -16,13 +18,14 @@ def client():
     if os.path.exists(settings.LINEAGE_STORAGE_PATH):
         shutil.rmtree(settings.LINEAGE_STORAGE_PATH)
     os.makedirs(settings.LINEAGE_STORAGE_PATH)
-    
+
     with TestClient(app) as c:
         yield c
 
     # Clean up after tests
     if os.path.exists(settings.LINEAGE_STORAGE_PATH):
         shutil.rmtree(settings.LINEAGE_STORAGE_PATH)
+
 
 def test_lineage_end_to_end_flow(client):
     """Tests the full lineage flow: TWR calc -> lineage capture -> lineage retrieval."""
@@ -48,13 +51,41 @@ def test_lineage_end_to_end_flow(client):
 
     assert lineage_data["calculation_id"] == calculation_id
     assert lineage_data["calculation_type"] == "TWR"
-    assert "Z" in lineage_data["timestamp_utc"] 
+    assert "Z" in lineage_data["timestamp_utc"]
     assert "request.json" in lineage_data["artifacts"]
     assert "response.json" in lineage_data["artifacts"]
     assert "twr_calculation_details.csv" in lineage_data["artifacts"]
+
 
 def test_get_lineage_data_not_found(client):
     """Tests that a 404 is returned for a non-existent calculation_id."""
     non_existent_id = uuid4()
     response = client.get(f"/performance/lineage/{non_existent_id}")
     assert response.status_code == 404
+
+
+def test_get_lineage_manifest_not_found(client):
+    """Tests that a 404 is returned when lineage dir exists but manifest is missing."""
+    calculation_id = uuid4()
+    lineage_dir = os.path.join(settings.LINEAGE_STORAGE_PATH, str(calculation_id))
+    os.makedirs(lineage_dir, exist_ok=True)
+
+    response = client.get(f"/performance/lineage/{calculation_id}")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Lineage manifest not found."
+
+
+def test_get_lineage_internal_error_returns_500(client, mocker):
+    """Tests that unexpected lineage retrieval failures map to HTTP 500."""
+    calculation_id = uuid4()
+    lineage_dir = os.path.join(settings.LINEAGE_STORAGE_PATH, str(calculation_id))
+    os.makedirs(lineage_dir, exist_ok=True)
+
+    manifest_path = os.path.join(lineage_dir, "manifest.json")
+    with open(manifest_path, "w") as f:
+        f.write('{"calculation_type":"TWR","timestamp_utc":"2026-01-01T00:00:00Z"}')
+
+    mocker.patch("app.api.endpoints.lineage.os.listdir", side_effect=Exception("filesystem failure"))
+    response = client.get(f"/performance/lineage/{calculation_id}")
+    assert response.status_code == 500
+    assert "Failed to retrieve lineage artifacts" in response.json()["detail"]

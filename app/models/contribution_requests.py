@@ -3,20 +3,19 @@ from datetime import date
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from common.enums import PeriodType, WeightingScheme, Frequency
+from app.models.requests import Analysis  # Import the new shared model
+from common.enums import WeightingScheme
 from core.envelope import (
     Annualization,
     Calendar,
     DataPolicy,
-    FXRequestBlock,
     Flags,
+    FXRequestBlock,
     HedgingRequestBlock,
     Output,
-    Periods,
 )
-from app.models.requests import Analysis # Import the new shared model
 
 
 class PositionDailyData(BaseModel):
@@ -75,7 +74,7 @@ class ContributionRequest(BaseModel):
     portfolio_number: str
     report_start_date: date
     report_end_date: date
-    
+
     # --- START REFACTOR: Decouple periods and frequencies ---
     analyses: List[Analysis]
     # --- END REFACTOR ---
@@ -102,9 +101,9 @@ class ContributionRequest(BaseModel):
     fx: Optional[FXRequestBlock] = None
     hedging: Optional[HedgingRequestBlock] = None
 
-    @field_validator('analyses')
+    @field_validator("analyses")
     @classmethod
     def analyses_must_not_be_empty(cls, v):
         if not v:
-            raise ValueError('analyses list cannot be empty')
+            raise ValueError("analyses list cannot be empty")
         return v

@@ -1,10 +1,12 @@
 # tests/unit/engine/test_breakdown.py
 from datetime import date
+
 import pandas as pd
 import pytest
+
 from common.enums import Frequency
 from core.envelope import Annualization
-from engine.breakdown import generate_performance_breakdowns, _calculate_period_summary_dict
+from engine.breakdown import _calculate_period_summary_dict, generate_performance_breakdowns
 from engine.schema import PortfolioColumns
 
 
@@ -12,9 +14,7 @@ from engine.schema import PortfolioColumns
 def sample_daily_results() -> pd.DataFrame:
     """Provides a sample daily performance DataFrame for testing breakdowns."""
     data = {
-        PortfolioColumns.PERF_DATE: pd.to_datetime([
-            "2025-01-30", "2025-01-31", "2025-02-01"
-        ]).date,
+        PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-30", "2025-01-31", "2025-02-01"]).date,
         PortfolioColumns.BEGIN_MV: [100.0, 110.0, 121.0],
         PortfolioColumns.BOD_CF: [0.0, 0.0, 10.0],
         PortfolioColumns.EOD_CF: [0.0, 0.0, 0.0],
@@ -39,7 +39,7 @@ def test_generate_breakdowns_monthly(sample_daily_results, default_annualization
 
     assert Frequency.MONTHLY in breakdowns
     assert len(breakdowns[Frequency.MONTHLY]) == 2
-    
+
     jan_results = breakdowns[Frequency.MONTHLY][0]
     assert jan_results["period"] == "2025-01"
     jan_summary = jan_results["summary"]
@@ -51,7 +51,7 @@ def test_generate_breakdowns_monthly(sample_daily_results, default_annualization
     feb_summary = feb_results["summary"]
     assert feb_summary["period_return_pct"] == pytest.approx(3.030303)
     assert feb_summary["cumulative_return_pct_to_date"] == pytest.approx(24.666663)
-    
+
 
 def test_generate_breakdowns_yearly(sample_daily_results, default_annualization):
     """Tests that yearly aggregation is calculated correctly."""
@@ -114,7 +114,7 @@ def test_annualization_correctly_handles_sparse_long_period():
     }
     df = pd.DataFrame(year_long_sparse_data)
     df_indexed = df.set_index(pd.to_datetime(df[PortfolioColumns.PERF_DATE]))
-    
+
     annualization_config = Annualization(enabled=True, basis="ACT/365")
 
     summary = _calculate_period_summary_dict(df_indexed, df_indexed, annualization_config, False, rounding_precision=6)

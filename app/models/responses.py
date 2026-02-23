@@ -1,9 +1,9 @@
 # app/models/responses.py
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from common.enums import Frequency
 from core.envelope import Audit, Diagnostics, Meta
@@ -81,7 +81,5 @@ class PerformanceResponse(BaseModel):
         has_legacy_structure = "breakdowns" in values and values.get("breakdowns") is not None
 
         if not (has_new_structure ^ has_legacy_structure):
-            raise ValueError(
-                "Provide either 'results_by_period' or the legacy 'breakdowns' field, but not both."
-            )
+            raise ValueError("Provide either 'results_by_period' or the legacy 'breakdowns' field, but not both.")
         return values

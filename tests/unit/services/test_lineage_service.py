@@ -2,14 +2,16 @@
 import json
 import os
 from uuid import uuid4
+
 import pandas as pd
-import pytest
 from pydantic import BaseModel
 
 from app.services.lineage_service import LineageService
 
+
 class MockModel(BaseModel):
     key: str
+
 
 def test_lineage_service_capture(tmp_path):
     """
@@ -29,7 +31,7 @@ def test_lineage_service_capture(tmp_path):
         calculation_type="TEST",
         request_model=req_model,
         response_model=res_model,
-        calculation_details={"details.csv": details_df}
+        calculation_details={"details.csv": details_df},
     )
 
     # 3. Assert
@@ -50,6 +52,6 @@ def test_lineage_service_capture(tmp_path):
     # Check manifest content
     with open(manifest_path, "r") as f:
         manifest_data = json.load(f)
-    
+
     assert manifest_data["calculation_type"] == "TEST"
     assert "timestamp_utc" in manifest_data

@@ -12,18 +12,22 @@ from engine.mwr import calculate_money_weighted_return
     "begin_mv, end_mv, cash_flows, as_of, expected_mwr",
     [
         (100.0, 110.0, [], date(2025, 12, 31), 10.0),
-        (100000.0, 115000.0, [
-            CashFlow(amount=10000.0, date=date(2025, 3, 15)),
-            CashFlow(amount=-5000.0, date=date(2025, 9, 20)),
-        ], date(2025, 12, 31), 9.756097),
+        (
+            100000.0,
+            115000.0,
+            [
+                CashFlow(amount=10000.0, date=date(2025, 3, 15)),
+                CashFlow(amount=-5000.0, date=date(2025, 9, 20)),
+            ],
+            date(2025, 12, 31),
+            9.756097,
+        ),
         (100.0, 110.0, [CashFlow(amount=-100.0, date=date(2025, 1, 1))], date(2025, 12, 31), 220.0),
-    ]
+    ],
 )
 def test_calculate_mwr_dietz(begin_mv, end_mv, cash_flows, as_of, expected_mwr):
     """Tests the Simple Dietz calculation."""
-    result = calculate_money_weighted_return(
-        begin_mv, end_mv, cash_flows, "DIETZ", Annualization(enabled=False), as_of
-    )
+    result = calculate_money_weighted_return(begin_mv, end_mv, cash_flows, "DIETZ", Annualization(enabled=False), as_of)
     assert result.mwr == pytest.approx(expected_mwr)
     assert result.method == "DIETZ"
 
@@ -51,12 +55,10 @@ def test_calculate_mwr_xirr_fallback_to_dietz():
     result = calculate_money_weighted_return(
         begin_mv=1000.0,
         end_mv=-200.0,
-        cash_flows=[
-            CashFlow(amount=100.0, date=date(2025, 3, 15))
-        ],
+        cash_flows=[CashFlow(amount=100.0, date=date(2025, 3, 15))],
         calculation_method="XIRR",
         annualization=Annualization(enabled=False),
-        as_of=date(2025, 12, 31)
+        as_of=date(2025, 12, 31),
     )
     assert result.method == "DIETZ"
     assert "No sign change in cash flows." in result.notes
@@ -91,7 +93,7 @@ def test_calculate_mwr_zero_denominator():
         cash_flows=[CashFlow(amount=100.0, date=date(2025, 1, 1))],
         calculation_method="DIETZ",
         annualization=Annualization(enabled=False),
-        as_of=date(2025, 12, 31)
+        as_of=date(2025, 12, 31),
     )
     assert result.method == "DIETZ"
     assert result.mwr == 0.0

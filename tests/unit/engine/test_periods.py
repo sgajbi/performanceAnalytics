@@ -3,6 +3,7 @@ from datetime import date
 
 import pandas as pd
 import pytest
+
 from common.enums import PeriodType
 from engine.config import EngineConfig
 from engine.periods import get_effective_period_start_dates
@@ -35,10 +36,17 @@ def sample_dates() -> pd.Series:
         (PeriodType.ONE_YEAR, None, date(2025, 8, 31), ["2024-09-01", "2024-09-01", "2024-09-01", "2024-09-01"]),
         (PeriodType.THREE_YEARS, None, date(2025, 8, 31), ["2022-09-01", "2022-09-01", "2022-09-01", "2022-09-01"]),
         (PeriodType.FIVE_YEARS, None, date(2025, 8, 31), ["2020-09-01", "2020-09-01", "2020-09-01", "2020-09-01"]),
-        (PeriodType.EXPLICIT, date(2024, 6, 30), date(2025, 12, 31), ["2024-06-30", "2024-06-30", "2024-06-30", "2024-06-30"]),
+        (
+            PeriodType.EXPLICIT,
+            date(2024, 6, 30),
+            date(2025, 12, 31),
+            ["2024-06-30", "2024-06-30", "2024-06-30", "2024-06-30"],
+        ),
     ],
 )
-def test_get_effective_period_start_dates(sample_dates, period_type, report_start_date, report_end_date, expected_dates):
+def test_get_effective_period_start_dates(
+    sample_dates, period_type, report_start_date, report_end_date, expected_dates
+):
     """
     Tests that the effective period start dates are calculated correctly for all period types.
     """

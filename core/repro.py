@@ -1,10 +1,6 @@
 # core/repro.py
 import hashlib
 import json
-from typing import Any
-from uuid import UUID
-from datetime import date, datetime
-from decimal import Decimal
 
 from pydantic import BaseModel
 
@@ -17,20 +13,15 @@ def generate_canonical_hash(request_model: BaseModel, engine_version: str) -> tu
     """
     # For Pydantic V2, dump the model to a dictionary, letting Pydantic's 'json'
     # mode handle serialization of special types like dates, UUIDs, and Decimals.
-    request_dict = request_model.model_dump(mode='json')
+    request_dict = request_model.model_dump(mode="json")
 
     # Use the standard json library to create a canonical string with sorted keys.
-    canonical_string = json.dumps(
-        request_dict,
-        sort_keys=True,
-        ensure_ascii=False,
-        separators=(',', ':')
-    )
+    canonical_string = json.dumps(request_dict, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
     input_fingerprint = f"sha256:{hashlib.sha256(canonical_string.encode('utf-8')).hexdigest()}"
-    
+
     # The calculation_hash includes the engine version
     full_string_to_hash = canonical_string + engine_version
     calculation_hash = f"sha256:{hashlib.sha256(full_string_to_hash.encode('utf-8')).hexdigest()}"
-    
+
     return input_fingerprint, calculation_hash

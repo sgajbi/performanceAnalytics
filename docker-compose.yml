@@ -1,0 +1,6 @@
+services:
+  performance-analytics:
+    build: .
+    container_name: performance-analytics
+    ports:
+      - "8000:8000"

@@ -1,13 +1,16 @@
 # app/models/attribution_responses.py
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
-from pydantic import BaseModel, model_validator
+
+from pydantic import BaseModel
+
 from common.enums import AttributionModel, LinkingMethod
-from core.envelope import Meta, Diagnostics, Audit
+from core.envelope import Audit, Diagnostics, Meta
 
 
 class AttributionGroupResult(BaseModel):
     """The calculated attribution effects for a single group."""
+
     key: Dict[str, Any]
     allocation: float
     selection: float
@@ -17,6 +20,7 @@ class AttributionGroupResult(BaseModel):
 
 class AttributionLevelTotals(BaseModel):
     """The summed attribution effects for an entire level."""
+
     allocation: float
     selection: float
     interaction: float
@@ -25,6 +29,7 @@ class AttributionLevelTotals(BaseModel):
 
 class AttributionLevelResult(BaseModel):
     """The complete set of results for a single dimension/level of the hierarchy."""
+
     dimension: str
     parent_key: Optional[Dict[str, Any]] = None
     groups: List[AttributionGroupResult]
@@ -33,6 +38,7 @@ class AttributionLevelResult(BaseModel):
 
 class Reconciliation(BaseModel):
     """Validation block to confirm the sum of effects matches the active return."""
+
     total_active_return: float
     sum_of_effects: float
     residual: float
@@ -40,15 +46,17 @@ class Reconciliation(BaseModel):
 
 class CurrencyAttributionEffects(BaseModel):
     """The four decomposed effects from the Karnosky-Singer model."""
+
     local_allocation: float
     local_selection: float
     currency_allocation: float
-    currency_selection: float # Captures interaction
+    currency_selection: float  # Captures interaction
     total_effect: float
 
 
 class CurrencyAttributionResult(BaseModel):
     """The complete currency attribution breakdown for a single currency."""
+
     currency: str
     weight_portfolio_avg: float
     weight_benchmark_avg: float
@@ -57,12 +65,14 @@ class CurrencyAttributionResult(BaseModel):
 
 class CurrencyAttributionTotals(BaseModel):
     """The summed currency attribution effects across all currencies."""
+
     effects: CurrencyAttributionEffects
     reconciliation_residual_bp: float
 
 
 class SinglePeriodAttributionResult(BaseModel):
     """Contains the full set of attribution results for a single, resolved period."""
+
     levels: List[AttributionLevelResult]
     reconciliation: Reconciliation
     currency_attribution: Optional[List[CurrencyAttributionResult]] = None
@@ -71,6 +81,7 @@ class SinglePeriodAttributionResult(BaseModel):
 
 class AttributionResponse(BaseModel):
     """Response model for the Attribution engine."""
+
     calculation_id: UUID
     portfolio_number: str
     model: AttributionModel
@@ -81,5 +92,5 @@ class AttributionResponse(BaseModel):
     # --- END REFACTOR ---
 
     meta: Meta
-    diagnostics: Optional[Diagnostics] = None # To be populated
-    audit: Optional[Audit] = None # To be populated
+    diagnostics: Optional[Diagnostics] = None  # To be populated
+    audit: Optional[Audit] = None  # To be populated

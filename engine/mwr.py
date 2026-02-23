@@ -73,9 +73,7 @@ def calculate_money_weighted_return(
     denominator = begin_mv + (net_cash_flow / 2)
     if denominator == 0:
         notes.append("Calculation resulted in a zero denominator.")
-        return MWRResult(
-            mwr=0.0, method="DIETZ", start_date=start_date, end_date=end_date, notes=notes
-        )
+        return MWRResult(mwr=0.0, method="DIETZ", start_date=start_date, end_date=end_date, notes=notes)
 
     numerator = end_mv - begin_mv - net_cash_flow
     periodic_rate = numerator / denominator
@@ -94,5 +92,5 @@ def calculate_money_weighted_return(
         method="DIETZ",
         start_date=start_date,
         end_date=end_date,
-        notes=notes
+        notes=notes,
     )

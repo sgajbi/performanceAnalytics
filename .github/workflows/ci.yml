@@ -1,0 +1,208 @@
+name: Performance Analytics Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  workflow-lint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Lint GitHub Actions Workflows
+        uses: reviewdog/action-actionlint@v1
+
+  lint-and-deps:
+    name: Lint & Dependency Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Verify Installed Dependencies
+        run: |
+          pip check
+
+      - name: Dependency Security & Freshness Check
+        run: make check-deps
+
+      - name: Run Lint Checks
+        run: make lint
+
+  test-suites:
+    name: Tests (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: unit
+            path: tests/unit
+          - suite: integration
+            path: tests/integration
+          - suite: e2e
+            path: tests/e2e
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Verify Installed Dependencies
+        run: |
+          pip check
+
+      - name: Run ${{ matrix.suite }} tests with coverage data
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.suite }}
+        run: |
+          python -m pytest ${{ matrix.path }} --cov=app --cov=engine --cov=core --cov=adapters --cov-report=
+
+      - name: Upload coverage data (${{ matrix.suite }})
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-data-${{ matrix.suite }}
+          path: .coverage.${{ matrix.suite }}
+          include-hidden-files: true
+          if-no-files-found: error
+
+  coverage-gate:
+    name: Coverage Gate (Combined)
+    needs: [test-suites]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+          path: coverage-data
+
+      - name: Enforce 95% Coverage (combined suites)
+        run: |
+          python -m coverage combine coverage-data
+          python -m coverage report --fail-under=95
+
+  mypy-src:
+    name: Mypy (Full src)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Cache mypy
+        uses: actions/cache@v5
+        with:
+          path: .mypy_cache
+          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Verify Installed Dependencies
+        run: |
+          pip check
+
+      - name: Run Mypy (Full src)
+        run: make typecheck
+
+  docker-build:
+    name: Validate Docker Build
+    needs: [lint-and-deps, mypy-src, coverage-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Build Docker Image
+        run: |
+          docker build -t performance-analytics:ci-test .
+
+      - name: Run Container Smoke Check
+        run: |
+          docker run -d --name performance-analytics-smoke -p 8000:8000 performance-analytics:ci-test
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/docs >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/docs >/dev/null
+          curl -fsS http://127.0.0.1:8000/ >/dev/null
+
+      - name: Stop Container
+        if: always()
+        run: |
+          docker rm -f performance-analytics-smoke || true

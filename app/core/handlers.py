@@ -1,7 +1,7 @@
 # app/core/handlers.py
 import logging
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
 from app.core.exceptions import (

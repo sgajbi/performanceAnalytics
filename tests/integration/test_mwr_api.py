@@ -1,7 +1,9 @@
 # tests/integration/test_mwr_api.py
 from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
+
 from main import app
 
 
@@ -57,3 +59,19 @@ def test_mwr_lineage_flow(client):
 
     assert lineage_data["calculation_type"] == "MWR"
     assert "mwr_cashflow_schedule.csv" in lineage_data["artifacts"]
+
+
+def test_calculate_mwr_endpoint_unexpected_error_returns_500(client, mocker):
+    """Tests that unexpected MWR calculation failures map to HTTP 500."""
+    mocker.patch("app.api.endpoints.performance.calculate_money_weighted_return", side_effect=Exception("boom"))
+    payload = {
+        "portfolio_number": "MWR_ERROR_01",
+        "begin_mv": 1000.0,
+        "end_mv": 1100.0,
+        "as_of": "2025-06-30",
+        "cash_flows": [],
+        "mwr_method": "XIRR",
+    }
+    response = client.post("/performance/mwr", json=payload)
+    assert response.status_code == 500
+    assert "unexpected error occurred during MWR calculation" in response.json()["detail"]

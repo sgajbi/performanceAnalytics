@@ -1,25 +1,30 @@
 # tests/unit/engine/test_attribution.py
 import pandas as pd
 import pytest
-import numpy as np
 
-from common.enums import AttributionModel, LinkingMethod
+from app.models.attribution_requests import AttributionRequest
+from common.enums import AttributionModel
 from engine.attribution import (
-    _calculate_single_period_effects,
     _align_and_prepare_data,
-    run_attribution_calculations,
+    _calculate_single_period_effects,
     _prepare_data_from_instruments,
     aggregate_attribution_results,
+    run_attribution_calculations,
 )
-from app.models.attribution_requests import AttributionRequest
 
 
 @pytest.fixture
 def single_period_data():
     """Provides aligned data for a single period for attribution testing."""
-    data = {'group': ['Equity', 'Bonds', 'Cash'], 'w_p': [0.60, 0.30, 0.10], 'r_base_p': [0.10, 0.04, 0.01], 'w_b': [0.50, 0.40, 0.10], 'r_base_b': [0.08, 0.03, 0.01]}
-    df = pd.DataFrame(data).set_index('group')
-    df['r_b_total'] = (df['w_b'] * df['r_base_b']).sum()
+    data = {
+        "group": ["Equity", "Bonds", "Cash"],
+        "w_p": [0.60, 0.30, 0.10],
+        "r_base_p": [0.10, 0.04, 0.01],
+        "w_b": [0.50, 0.40, 0.10],
+        "r_base_b": [0.08, 0.03, 0.01],
+    }
+    df = pd.DataFrame(data).set_index("group")
+    df["r_b_total"] = (df["w_b"] * df["r_base_b"]).sum()
     return df
 
 
@@ -28,16 +33,46 @@ def by_group_request_data():
     """Provides a sample AttributionRequest for by_group mode where weights sum to 1."""
     # --- START FIX: Align fixture with new model ---
     return {
-        "portfolio_number": "ATTRIB_UNIT_TEST_01", "mode": "by_group", "group_by": ["sector"], "model": "BF", "linking": "carino", "frequency": "monthly",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-02-28",
+        "portfolio_number": "ATTRIB_UNIT_TEST_01",
+        "mode": "by_group",
+        "group_by": ["sector"],
+        "model": "BF",
+        "linking": "carino",
+        "frequency": "monthly",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-02-28",
         "analyses": [{"period": "ITD", "frequencies": ["monthly"]}],
         "portfolio_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.02, "weight_bop": 0.5}, {"date": "2025-02-28", "return_base": 0.01, "weight_bop": 0.6}]},
-            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 0.5}, {"date": "2025-02-28", "return_base": 0.005, "weight_bop": 0.4}]}
+            {
+                "key": {"sector": "Tech"},
+                "observations": [
+                    {"date": "2025-01-31", "return_base": 0.02, "weight_bop": 0.5},
+                    {"date": "2025-02-28", "return_base": 0.01, "weight_bop": 0.6},
+                ],
+            },
+            {
+                "key": {"sector": "Other"},
+                "observations": [
+                    {"date": "2025-01-31", "return_base": 0.01, "weight_bop": 0.5},
+                    {"date": "2025-02-28", "return_base": 0.005, "weight_bop": 0.4},
+                ],
+            },
         ],
         "benchmark_groups_data": [
-            {"key": {"sector": "Tech"}, "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 0.4}, {"date": "2025-02-28", "return_base": -0.01, "weight_bop": 0.45}]},
-            {"key": {"sector": "Other"}, "observations": [{"date": "2025-01-31", "return_base": 0.005, "weight_bop": 0.6}, {"date": "2025-02-28", "return_base": 0.002, "weight_bop": 0.55}]}
+            {
+                "key": {"sector": "Tech"},
+                "observations": [
+                    {"date": "2025-01-31", "return_base": 0.01, "weight_bop": 0.4},
+                    {"date": "2025-02-28", "return_base": -0.01, "weight_bop": 0.45},
+                ],
+            },
+            {
+                "key": {"sector": "Other"},
+                "observations": [
+                    {"date": "2025-01-31", "return_base": 0.005, "weight_bop": 0.6},
+                    {"date": "2025-02-28", "return_base": 0.002, "weight_bop": 0.55},
+                ],
+            },
         ],
     }
     # --- END FIX ---
@@ -48,32 +83,32 @@ def test_align_and_prepare_data_by_group(by_group_request_data):
     request = AttributionRequest.model_validate(by_group_request_data)
     aligned_df = _align_and_prepare_data(request, request.portfolio_groups_data)
     assert not aligned_df.empty
-    assert aligned_df.index.names == ['date', 'sector']
+    assert aligned_df.index.names == ["date", "sector"]
 
 
 def test_calculate_single_period_brinson_fachler(single_period_data):
     """Tests the Brinson-Fachler model calculation for a single period."""
     result_df = _calculate_single_period_effects(single_period_data, AttributionModel.BRINSON_FACHLER)
-    total_effects = result_df[['allocation', 'selection', 'interaction']].sum().sum()
+    total_effects = result_df[["allocation", "selection", "interaction"]].sum().sum()
     assert total_effects == pytest.approx(0.020)
 
 
 def test_calculate_single_period_brinson_hood_beebower(single_period_data):
     """Tests the Brinson-Hood-Beebower model calculation for a single period."""
     result_df = _calculate_single_period_effects(single_period_data, AttributionModel.BRINSON_HOOD_BEEBOWER)
-    total_effects = result_df[['allocation', 'selection', 'interaction']].sum().sum()
+    total_effects = result_df[["allocation", "selection", "interaction"]].sum().sum()
     assert total_effects == pytest.approx(0.021)
 
 
 def test_run_attribution_calculations_and_aggregation(by_group_request_data):
     """Tests the two-stage process: first calculate daily effects, then aggregate."""
-    by_group_request_data['linking'] = 'none'
+    by_group_request_data["linking"] = "none"
     request = AttributionRequest.model_validate(by_group_request_data)
-    
+
     effects_df, _ = run_attribution_calculations(request)
     assert isinstance(effects_df, pd.DataFrame)
-    assert 'allocation' in effects_df.columns
-    
+    assert "allocation" in effects_df.columns
+
     final_result, _ = aggregate_attribution_results(effects_df, request)
     assert abs(final_result.reconciliation.residual) < 1e-9
 
@@ -96,15 +131,20 @@ def test_prepare_data_from_instruments():
 
     # --- START FIX: Align fixture with new model ---
     request_data = {
-        "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "linking": "none", "frequency": "daily",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
+        "portfolio_number": "TEST",
+        "mode": "by_instrument",
+        "group_by": ["sector"],
+        "linking": "none",
+        "frequency": "daily",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
         "portfolio_data": {"metric_basis": "NET", "valuation_points": daily_data_p},
         "instruments_data": [
             {"instrument_id": "AAPL", "meta": {"sector": "Tech"}, "valuation_points": daily_data_aapl},
-            {"instrument_id": "MSFT", "meta": {"sector": "Tech"}, "valuation_points": daily_data_msft}
+            {"instrument_id": "MSFT", "meta": {"sector": "Tech"}, "valuation_points": daily_data_msft},
         ],
-        "benchmark_groups_data": []
+        "benchmark_groups_data": [],
     }
     # --- END FIX ---
     request = AttributionRequest.model_validate(request_data)
@@ -115,16 +155,23 @@ def test_prepare_data_from_instruments():
     tech_group = result_groups[0]
     obs = tech_group.observations[0]
 
-    assert obs['weight_bop'] == pytest.approx(1.0)
-    assert obs['return_base'] == pytest.approx(0.025)
+    assert obs["weight_bop"] == pytest.approx(1.0)
+    assert obs["return_base"] == pytest.approx(0.025)
 
 
 def test_prepare_data_from_instruments_missing_portfolio_data():
     """Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode."""
     # --- START FIX: Align fixture with new model ---
     request_data = {
-        "portfolio_number": "TEST", "mode": "by_instrument", "group_by": ["sector"], "instruments_data": [], "benchmark_groups_data": [], "linking": "none", "frequency": "daily",
-        "report_start_date": "2025-01-01", "report_end_date": "2025-01-01",
+        "portfolio_number": "TEST",
+        "mode": "by_instrument",
+        "group_by": ["sector"],
+        "instruments_data": [],
+        "benchmark_groups_data": [],
+        "linking": "none",
+        "frequency": "daily",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
     }
     # --- END FIX ---
