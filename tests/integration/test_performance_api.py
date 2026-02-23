@@ -322,3 +322,134 @@ def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expe
     response = client.post("/performance/twr", json=payload)
     assert response.status_code == expected_status
     assert "detail" in response.json()
+
+
+def test_twr_pas_snapshot_success(client, monkeypatch):
+    async def _mock_get_core_snapshot(self, portfolio_id, as_of_date, include_sections, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": "BFF",
+                "portfolio": {"portfolio_id": portfolio_id},
+                "snapshot": {
+                    "performance": {
+                        "summary": {
+                            "MTD": {
+                                "start_date": "2026-02-01",
+                                "end_date": "2026-02-23",
+                                "net_cumulative_return": 1.23,
+                                "net_annualized_return": 7.8,
+                                "gross_cumulative_return": 1.5,
+                                "gross_annualized_return": 9.1,
+                            }
+                        }
+                    }
+                },
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_core_snapshot",
+        _mock_get_core_snapshot,
+    )
+
+    payload = {
+        "portfolioId": "PORT-1001",
+        "asOfDate": "2026-02-23",
+        "consumerSystem": "BFF",
+        "includeSections": ["PERFORMANCE"],
+    }
+
+    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["portfolio_number"] == "PORT-1001"
+    assert body["source_mode"] == "pas_ref"
+    assert body["pasContractVersion"] == "v1"
+    assert body["resultsByPeriod"]["MTD"]["net_cumulative_return"] == 1.23
+
+
+def test_twr_pas_snapshot_period_filter(client, monkeypatch):
+    async def _mock_get_core_snapshot(self, portfolio_id, as_of_date, include_sections, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": "BFF",
+                "portfolio": {"portfolio_id": portfolio_id},
+                "snapshot": {
+                    "performance": {
+                        "summary": {
+                            "MTD": {"start_date": "2026-02-01", "end_date": "2026-02-23"},
+                            "YTD": {"start_date": "2026-01-01", "end_date": "2026-02-23"},
+                        }
+                    }
+                },
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_core_snapshot",
+        _mock_get_core_snapshot,
+    )
+
+    payload = {
+        "portfolioId": "PORT-1001",
+        "asOfDate": "2026-02-23",
+        "periods": ["YTD"],
+        "includeSections": ["PERFORMANCE"],
+    }
+
+    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert "YTD" in body["resultsByPeriod"]
+    assert "MTD" not in body["resultsByPeriod"]
+
+
+def test_twr_pas_snapshot_invalid_payload_returns_502(client, monkeypatch):
+    async def _mock_get_core_snapshot(self, portfolio_id, as_of_date, include_sections, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": "BFF",
+                "portfolio": {"portfolio_id": portfolio_id},
+                "snapshot": {"performance": {}},
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_core_snapshot",
+        _mock_get_core_snapshot,
+    )
+
+    payload = {
+        "portfolioId": "PORT-1001",
+        "asOfDate": "2026-02-23",
+        "includeSections": ["PERFORMANCE"],
+    }
+
+    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    assert response.status_code == 502
+    assert "missing performance summary" in response.json()["detail"]
+
+
+def test_twr_pas_snapshot_upstream_error_passthrough(client, monkeypatch):
+    async def _mock_get_core_snapshot(self, portfolio_id, as_of_date, include_sections, consumer_system):  # noqa: ARG001
+        return 404, {"detail": "Portfolio not found"}
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_core_snapshot",
+        _mock_get_core_snapshot,
+    )
+
+    payload = {
+        "portfolioId": "UNKNOWN",
+        "asOfDate": "2026-02-23",
+        "includeSections": ["PERFORMANCE"],
+    }
+
+    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    assert response.status_code == 404

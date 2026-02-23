@@ -144,6 +144,11 @@ pytest --benchmark-only "tests/benchmarks/"
   - **Endpoint:** `GET /integration/capabilities`
   - **Description:** Returns backend-governed PA capability and workflow metadata for BFF/PAS/DPM integration.
 
+### 6\. PAS-Connected TWR
+
+  - **Endpoint:** `POST /performance/twr/pas-snapshot`
+  - **Description:** Fetches PAS Core Snapshot (`PERFORMANCE` section) and returns PA-normalized period results for UI/BFF consumption.
+
 -----
 
 ## Advanced Usage

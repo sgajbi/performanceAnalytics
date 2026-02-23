@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     decimal_precision: int = 28
     LINEAGE_STORAGE_PATH: Path = Path("lineage_data")
+    PAS_QUERY_BASE_URL: str = "http://localhost:8201"
+    PAS_TIMEOUT_SECONDS: float = 10.0
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

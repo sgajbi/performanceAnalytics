@@ -25,6 +25,7 @@ The following RFCs have been **fully implemented** and their features are part o
 | RFC 024    | Robustness Policies Framework                              | ✅ Fully Implemented |
 | RFC 025    | Deterministic Reproducibility & Drill-Down                 | ✅ Fully Implemented |
 | RFC-028    | Unified `snake_case` API Naming & Legacy Alias Removal     | ✅ Fully Implemented |
+| RFC 031    | PAS Connected TWR Input Mode                               | ✅ Fully Implemented |
 
 ---
 
