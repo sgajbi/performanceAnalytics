@@ -2,6 +2,7 @@
 from typing import Dict, List
 
 import pandas as pd
+
 from common.enums import Frequency
 from core.annualize import annualize_return
 from core.envelope import Annualization
@@ -9,7 +10,11 @@ from engine.schema import PortfolioColumns
 
 
 def _calculate_period_summary_dict(
-    period_df: pd.DataFrame, full_history_df: pd.DataFrame, annualization: Annualization, include_cumulative: bool, rounding_precision: int
+    period_df: pd.DataFrame,
+    full_history_df: pd.DataFrame,
+    annualization: Annualization,
+    include_cumulative: bool,
+    rounding_precision: int,
 ) -> Dict:
     """Calculates an aggregated summary dict for a given period DataFrame."""
     first_day = period_df.iloc[0]
@@ -25,18 +30,24 @@ def _calculate_period_summary_dict(
     }
 
     if include_cumulative:
-        summary["cumulative_return_pct_to_date"] = round(last_day[PortfolioColumns.FINAL_CUM_ROR.value], rounding_precision)
+        summary["cumulative_return_pct_to_date"] = round(
+            last_day[PortfolioColumns.FINAL_CUM_ROR.value], rounding_precision
+        )
 
     if annualization.enabled:
-        days_in_period = (last_day[PortfolioColumns.PERF_DATE.value] - first_day[PortfolioColumns.PERF_DATE.value]).days + 1
-        ppy = annualization.periods_per_year or (252 if annualization.basis == "BUS/252" else 365.25 if annualization.basis == "ACT/ACT" else 365.0)
-        
+        days_in_period = (
+            last_day[PortfolioColumns.PERF_DATE.value] - first_day[PortfolioColumns.PERF_DATE.value]
+        ).days + 1
+        ppy = annualization.periods_per_year or (
+            252 if annualization.basis == "BUS/252" else 365.25 if annualization.basis == "ACT/ACT" else 365.0
+        )
+
         # --- START FIX: Remove conditional logic to always annualize if requested ---
         if days_in_period > 0:
             annualized_return = annualize_return(period_ror, days_in_period, ppy, annualization.basis) * 100
             summary["annualized_return_pct"] = round(annualized_return, rounding_precision)
         # --- END FIX ---
-            
+
     return summary
 
 
@@ -53,7 +64,7 @@ def generate_performance_breakdowns(
     """
     if daily_df.empty:
         return {}
-    
+
     daily_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(daily_df[PortfolioColumns.PERF_DATE.value])
     daily_df_indexed = daily_df.set_index(pd.to_datetime(daily_df[PortfolioColumns.PERF_DATE.value]))
 
@@ -71,10 +82,17 @@ def generate_performance_breakdowns(
                 }
                 if include_cumulative:
                     summary["cumulative_return_pct_to_date"] = row[PortfolioColumns.FINAL_CUM_ROR.value]
-                
-                results.append({"period": row[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"), "summary": summary})
+
+                results.append(
+                    {"period": row[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"), "summary": summary}
+                )
         else:
-            freq_map = {Frequency.MONTHLY: "ME", Frequency.QUARTERLY: "QE", Frequency.YEARLY: "YE", Frequency.WEEKLY: "W-FRI"}
+            freq_map = {
+                Frequency.MONTHLY: "ME",
+                Frequency.QUARTERLY: "QE",
+                Frequency.YEARLY: "YE",
+                Frequency.WEEKLY: "W-FRI",
+            }
             resampler = daily_df_indexed.resample(freq_map[freq])
             for period_timestamp, period_df in resampler:
                 if period_df.empty:

@@ -4,11 +4,13 @@ from typing import List, Literal, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
+
 from core.envelope import Annualization, Calendar, Flags, Output, Periods
 
 
 class CashFlow(BaseModel):
     """Represents a single cash flow with its date and amount."""
+
     amount: float
     date: date
 
@@ -21,6 +23,7 @@ class Solver(BaseModel):
 
 class MoneyWeightedReturnRequest(BaseModel):
     """Request model for calculating Money-Weighted Return."""
+
     model_config = ConfigDict(extra="forbid")
 
     calculation_id: UUID = Field(default_factory=uuid4)

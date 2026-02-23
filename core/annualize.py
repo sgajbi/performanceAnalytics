@@ -1,16 +1,12 @@
 # core/annualize.py
 from typing import Literal
 
-import numpy as np
-
 from .errors import APIBadRequestError
 
 BasisType = Literal["BUS/252", "ACT/365", "ACT/ACT"]
 
 
-def annualize_return(
-    period_return: float, num_periods: int, periods_per_year: float, basis: BasisType
-) -> float:
+def annualize_return(period_return: float, num_periods: int, periods_per_year: float, basis: BasisType) -> float:
     """
     Annualizes a period return using geometric compounding.
 

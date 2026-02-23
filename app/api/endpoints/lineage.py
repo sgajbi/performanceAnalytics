@@ -3,6 +3,7 @@ import json
 import os
 from typing import Dict
 from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
@@ -11,8 +12,10 @@ from app.core.config import get_settings
 router = APIRouter()
 settings = get_settings()
 
+
 class ArtifactLink(BaseModel):
     url: str
+
 
 class LineageResponse(BaseModel):
     calculation_id: UUID
@@ -28,14 +31,16 @@ async def get_lineage_data(calculation_id: UUID, request: Request):
     """
     lineage_dir = os.path.join(settings.LINEAGE_STORAGE_PATH, str(calculation_id))
     if not os.path.isdir(lineage_dir):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lineage data not found for the given calculation_id.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lineage data not found for the given calculation_id."
+        )
 
     artifacts = {}
     try:
         manifest_path = os.path.join(lineage_dir, "manifest.json")
         if not os.path.exists(manifest_path):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lineage manifest not found.")
-        
+
         with open(manifest_path, "r") as f:
             manifest_data = json.load(f)
 
@@ -51,4 +56,6 @@ async def get_lineage_data(calculation_id: UUID, request: Request):
             artifacts=artifacts,
         )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve lineage artifacts: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve lineage artifacts: {e}"
+        )

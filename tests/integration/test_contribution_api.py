@@ -1,9 +1,9 @@
 # tests/integration/test_contribution_api.py
-from datetime import date
-from fastapi.testclient import TestClient
 import pytest
-from main import app
+from fastapi.testclient import TestClient
+
 from engine.exceptions import EngineCalculationError
+from main import app
 
 
 @pytest.fixture(scope="module")
@@ -67,11 +67,13 @@ def test_contribution_endpoint_multi_currency(client):
             "metric_basis": "GROSS",
             "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 105.0, "end_mv": 110.16}],
         },
-        "positions_data": [{
-            "position_id": "EUR_STOCK",
-            "meta": {"currency": "EUR"},
-            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}],
-        }],
+        "positions_data": [
+            {
+                "position_id": "EUR_STOCK",
+                "meta": {"currency": "EUR"},
+                "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 100.0, "end_mv": 102.0}],
+            }
+        ],
         "currency_mode": "BOTH",
         "report_ccy": "USD",
         "fx": {

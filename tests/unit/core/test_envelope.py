@@ -1,8 +1,10 @@
 # tests/unit/core/test_envelope.py
 from datetime import date
+
 import pytest
 from pydantic import ValidationError
-from core.envelope import BaseRequest, Periods, RollingPeriod, FXRequestBlock
+
+from core.envelope import BaseRequest, FXRequestBlock, Periods, RollingPeriod
 
 
 def test_base_request_validation_happy_path():
@@ -52,7 +54,7 @@ def test_fx_request_block_validation():
     payload = {
         "source": "CLIENT_SUPPLIED",
         "fixing": "EOD",
-        "rates": [{"date": "2025-09-08", "ccy": "EUR", "rate": 1.10}]
+        "rates": [{"date": "2025-09-08", "ccy": "EUR", "rate": 1.10}],
     }
     try:
         fx_block = FXRequestBlock.model_validate(payload)

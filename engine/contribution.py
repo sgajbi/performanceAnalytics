@@ -1,14 +1,15 @@
 # engine/contribution.py
 from typing import Dict, Tuple
+
 import numpy as np
 import pandas as pd
 
+from adapters.api_adapter import create_engine_dataframe
 from app.models.contribution_requests import ContributionRequest, Smoothing
 from common.enums import WeightingScheme
-from engine.schema import PortfolioColumns
 from engine.compute import run_calculations
 from engine.config import EngineConfig
-from adapters.api_adapter import create_engine_dataframe
+from engine.schema import PortfolioColumns
 
 
 def _calculate_daily_instrument_contributions(
@@ -22,7 +23,9 @@ def _calculate_daily_instrument_contributions(
 
     df = pd.merge(
         instruments_df,
-        portfolio_df[[PortfolioColumns.PERF_DATE.value, PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]],
+        portfolio_df[
+            [PortfolioColumns.PERF_DATE.value, PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]
+        ],
         on=PortfolioColumns.PERF_DATE.value,
         suffixes=("", "_port"),
     )
@@ -93,7 +96,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
     portfolio_df = create_engine_dataframe(
         [item.model_dump(by_alias=True) for item in request.portfolio_data.valuation_points]
     )
-    
+
     portfolio_twr_config = twr_config
     if twr_config.currency_mode == "BOTH":
         portfolio_twr_config = EngineConfig(
@@ -102,10 +105,10 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
             report_end_date=twr_config.report_end_date,
             metric_basis=twr_config.metric_basis,
             period_type=twr_config.period_type,
-            currency_mode="BASE_ONLY"
+            currency_mode="BASE_ONLY",
         )
     portfolio_results_df, portfolio_diags = run_calculations(portfolio_df, portfolio_twr_config)
-    
+
     portfolio_results_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(
         portfolio_results_df[PortfolioColumns.PERF_DATE.value]
     )
@@ -114,7 +117,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
     if request.currency_mode == "BOTH" and request.fx:
         fx_rates_df = pd.DataFrame([rate.model_dump() for rate in request.fx.rates])
         fx_rates_df["date"] = pd.to_datetime(fx_rates_df["date"])
-        fx_rates_df.drop_duplicates(subset=['date', 'ccy'], keep='last', inplace=True)
+        fx_rates_df.drop_duplicates(subset=["date", "ccy"], keep="last", inplace=True)
 
     all_positions_data = []
     for position in request.positions_data:
@@ -125,7 +128,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         pos_twr_config = twr_config
         position_ccy = position.meta.get("currency")
         if not (request.currency_mode == "BOTH" and position_ccy != request.report_ccy):
-             pos_twr_config = EngineConfig(
+            pos_twr_config = EngineConfig(
                 performance_start_date=twr_config.performance_start_date,
                 report_start_date=twr_config.report_start_date,
                 report_end_date=twr_config.report_end_date,
@@ -143,17 +146,21 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
             position_results_df[key] = value
 
         if request.currency_mode == "BOTH" and position_ccy != request.report_ccy and not fx_rates_df.empty:
-            pos_fx_lookup = fx_rates_df[fx_rates_df['ccy'] == position_ccy][['date', 'rate']].rename(columns={'rate': 'fx_rate'})
-            position_results_df['prior_date'] = position_results_df[PortfolioColumns.PERF_DATE.value] - pd.Timedelta(days=1)
-            
+            pos_fx_lookup = fx_rates_df[fx_rates_df["ccy"] == position_ccy][["date", "rate"]].rename(
+                columns={"rate": "fx_rate"}
+            )
+            position_results_df["prior_date"] = position_results_df[PortfolioColumns.PERF_DATE.value] - pd.Timedelta(
+                days=1
+            )
+
             position_results_df = pd.merge(
-                position_results_df, pos_fx_lookup, left_on='prior_date', right_on='date', how='left'
+                position_results_df, pos_fx_lookup, left_on="prior_date", right_on="date", how="left"
             ).ffill()
-            
-            if 'fx_rate' in position_results_df.columns:
-                 for col in [PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]:
-                    position_results_df[col] *= position_results_df['fx_rate']
-        
+
+            if "fx_rate" in position_results_df.columns:
+                for col in [PortfolioColumns.BEGIN_MV.value, PortfolioColumns.BOD_CF.value]:
+                    position_results_df[col] *= position_results_df["fx_rate"]
+
         all_positions_data.append(position_results_df)
 
     if not all_positions_data:
@@ -257,6 +264,4 @@ def _calculate_carino_factors(ror_series: pd.Series) -> pd.Series:
     if not isinstance(ror_series.index, pd.DatetimeIndex):
         ror_series.index = pd.to_datetime(ror_series.index)
 
-    return pd.Series(
-        np.where(ror_series == 0, 1.0, np.log(1 + ror_series) / ror_series), index=ror_series.index
-    )
+    return pd.Series(np.where(ror_series == 0, 1.0, np.log(1 + ror_series) / ror_series), index=ror_series.index)

@@ -2,13 +2,15 @@
 import os
 import shutil
 from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
 from app.core.config import get_settings
+from main import app
 
 settings = get_settings()
+
 
 @pytest.fixture(scope="module")
 def client():
@@ -16,13 +18,14 @@ def client():
     if os.path.exists(settings.LINEAGE_STORAGE_PATH):
         shutil.rmtree(settings.LINEAGE_STORAGE_PATH)
     os.makedirs(settings.LINEAGE_STORAGE_PATH)
-    
+
     with TestClient(app) as c:
         yield c
 
     # Clean up after tests
     if os.path.exists(settings.LINEAGE_STORAGE_PATH):
         shutil.rmtree(settings.LINEAGE_STORAGE_PATH)
+
 
 def test_lineage_end_to_end_flow(client):
     """Tests the full lineage flow: TWR calc -> lineage capture -> lineage retrieval."""
@@ -48,10 +51,11 @@ def test_lineage_end_to_end_flow(client):
 
     assert lineage_data["calculation_id"] == calculation_id
     assert lineage_data["calculation_type"] == "TWR"
-    assert "Z" in lineage_data["timestamp_utc"] 
+    assert "Z" in lineage_data["timestamp_utc"]
     assert "request.json" in lineage_data["artifacts"]
     assert "response.json" in lineage_data["artifacts"]
     assert "twr_calculation_details.csv" in lineage_data["artifacts"]
+
 
 def test_get_lineage_data_not_found(client):
     """Tests that a 404 is returned for a non-existent calculation_id."""

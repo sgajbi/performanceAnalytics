@@ -1,7 +1,7 @@
 # tests/unit/core/test_errors.py
-import pytest
 from fastapi import status
-from core.errors import APIBadRequestError, APIUnprocessableEntityError, APIConflictError
+
+from core.errors import APIBadRequestError, APIConflictError, APIUnprocessableEntityError
 
 
 def test_api_bad_request_error():

@@ -1,5 +1,5 @@
 # core/periods.py
-from datetime import date, timedelta
+from datetime import date
 from typing import List, Tuple
 
 import pandas as pd
@@ -63,9 +63,7 @@ def resolve_period(period_model: Periods, as_of: date) -> Tuple[date, date]:
     return start_date, end_date
 
 
-def resolve_periods(
-    periods: List[PeriodType], as_of: date, performance_start_date: date
-) -> List[ResolvedPeriod]:
+def resolve_periods(periods: List[PeriodType], as_of: date, performance_start_date: date) -> List[ResolvedPeriod]:
     """
     Resolves a list of PeriodType enums into a list of concrete period objects.
     """
@@ -80,9 +78,5 @@ def resolve_periods(
         if period_enum == PeriodType.ITD:
             start_date = performance_start_date
 
-        resolved_list.append(
-            ResolvedPeriod(
-                name=period_enum.value, start_date=start_date, end_date=end_date
-            )
-        )
+        resolved_list.append(ResolvedPeriod(name=period_enum.value, start_date=start_date, end_date=end_date))
     return resolved_list

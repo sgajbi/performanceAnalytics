@@ -1,6 +1,7 @@
 # tests/unit/core/test_handlers.py
 import pytest
 from fastapi import Request, status
+
 from app.core.exceptions import (
     CalculationLogicError,
     InvalidInputDataError,
@@ -18,9 +19,7 @@ from app.core.handlers import performance_calculator_exception_handler
         (CalculationLogicError, status.HTTP_500_INTERNAL_SERVER_ERROR),
     ],
 )
-async def test_performance_calculator_exception_handler(
-    exception_class, expected_status_code
-):
+async def test_performance_calculator_exception_handler(exception_class, expected_status_code):
     """
     Tests that the exception handler maps different exception types to the
     correct HTTP status codes.

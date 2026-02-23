@@ -14,6 +14,7 @@ class PrecisionMode(str, Enum):
     - FLOAT64: Uses standard NumPy float64 for high performance.
     - DECIMAL_STRICT: Uses Python's Decimal type for auditable precision.
     """
+
     FLOAT64 = "FLOAT64"
     DECIMAL_STRICT = "DECIMAL_STRICT"
 
@@ -23,6 +24,7 @@ class FeatureFlags:
     """
     Container for feature flags to enable/disable experimental or alternative logic.
     """
+
     use_nip_v2_rule: bool = False
 
 
@@ -32,6 +34,7 @@ class EngineConfig:
     A comprehensive, immutable configuration object for the performance engine.
     This object encapsulates all settings required for a calculation run.
     """
+
     performance_start_date: date
     report_end_date: date
     metric_basis: Literal["NET", "GROSS"]

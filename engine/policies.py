@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 
-from app.models.requests import DataPolicy
 from engine.schema import PortfolioColumns
 
 logger = logging.getLogger(__name__)
@@ -22,11 +21,11 @@ def _apply_overrides(df: pd.DataFrame, overrides: Dict, diagnostics: Dict) -> pd
     cf_overrides = overrides.get("cash_flows", [])
 
     for override in mv_overrides:
-        mask = (df_copy[PortfolioColumns.PERF_DATE.value] == pd.to_datetime(override["perf_date"]))
+        mask = df_copy[PortfolioColumns.PERF_DATE.value] == pd.to_datetime(override["perf_date"])
         # In a multi-position context, we would also filter by position_id
         if "position_id" in override:
-             if "position_id" in df_copy.columns:
-                mask &= (df_copy["position_id"] == override["position_id"])
+            if "position_id" in df_copy.columns:
+                mask &= df_copy["position_id"] == override["position_id"]
 
         if not df_copy.loc[mask].empty:
             for key in ["begin_mv", "end_mv"]:
@@ -35,14 +34,17 @@ def _apply_overrides(df: pd.DataFrame, overrides: Dict, diagnostics: Dict) -> pd
                     diagnostics["policy"]["overrides"]["applied_mv_count"] += 1
 
     for override in cf_overrides:
-        mask = (df_copy[PortfolioColumns.PERF_DATE.value] == pd.to_datetime(override["perf_date"]))
+        mask = df_copy[PortfolioColumns.PERF_DATE.value] == pd.to_datetime(override["perf_date"])
         if not df_copy.loc[mask].empty:
             for key in ["bod_cf", "eod_cf"]:
                 if key in override:
                     df_copy.loc[mask, key] = override[key]
                     diagnostics["policy"]["overrides"]["applied_cf_count"] += 1
 
-    if diagnostics["policy"]["overrides"]["applied_mv_count"] > 0 or diagnostics["policy"]["overrides"]["applied_cf_count"] > 0:
+    if (
+        diagnostics["policy"]["overrides"]["applied_mv_count"] > 0
+        or diagnostics["policy"]["overrides"]["applied_cf_count"] > 0
+    ):
         diagnostics["notes"].append("Applied overrides from the data_policy request.")
 
     return df_copy
@@ -73,7 +75,9 @@ def _apply_ignore_days(df: pd.DataFrame, ignore_days: list, diagnostics: Dict) -
                     diagnostics["policy"]["ignored_days_count"] += 1
 
     if diagnostics["policy"]["ignored_days_count"] > 0:
-        diagnostics["notes"].append(f"Ignored {diagnostics['policy']['ignored_days_count']} day(s) as specified in data_policy.")
+        diagnostics["notes"].append(
+            f"Ignored {diagnostics['policy']['ignored_days_count']} day(s) as specified in data_policy."
+        )
 
     return df_copy.reset_index()
 
@@ -82,7 +86,7 @@ def _flag_outliers(df: pd.DataFrame, data_policy_model: BaseModel | None, diagno
     """Detects and flags outliers, excluding ignored days from statistical analysis."""
     if not data_policy_model or not data_policy_model.outliers or not data_policy_model.outliers.enabled:
         return
-    
+
     outlier_policy = data_policy_model.outliers.model_dump()
     if outlier_policy.get("action") != "FLAG":
         return
@@ -99,11 +103,11 @@ def _flag_outliers(df: pd.DataFrame, data_policy_model: BaseModel | None, diagno
     if data_policy_model.ignore_days:
         ignored_dates = {d for item in data_policy_model.ignore_days for d in item.dates}
         valid_mask = ~df[PortfolioColumns.PERF_DATE.value].dt.date.isin(ignored_dates)
-        ror_for_stats = ror_for_stats.where(valid_mask) # Use .where to keep index alignment
+        ror_for_stats = ror_for_stats.where(valid_mask)  # Use .where to keep index alignment
 
     median = ror_for_stats.rolling(window=window, min_periods=1).median().ffill()
     mad = (ror_for_stats - median).abs().rolling(window=window, min_periods=1).median().ffill()
-    
+
     mad.replace(0, np.nan, inplace=True)
     mad.ffill(inplace=True)
     mad.fillna(1e-9, inplace=True)
@@ -116,7 +120,7 @@ def _flag_outliers(df: pd.DataFrame, data_policy_model: BaseModel | None, diagno
     # But only flag if the day was not ignored
     if data_policy_model.ignore_days:
         outliers &= valid_mask
-    
+
     diagnostics["policy"]["outliers"]["flagged_rows"] = int(outliers.sum())
 
     if int(outliers.sum()) > 0:
@@ -127,14 +131,12 @@ def _flag_outliers(df: pd.DataFrame, data_policy_model: BaseModel | None, diagno
                 {
                     "date": sample[PortfolioColumns.PERF_DATE.value].strftime("%Y-%m-%d"),
                     "raw_return": sample[PortfolioColumns.DAILY_ROR.value],
-                    "threshold": upper_bound[index] if ror_series[index] > 0 else lower_bound[index]
+                    "threshold": upper_bound[index] if ror_series[index] > 0 else lower_bound[index],
                 }
             )
 
 
-def apply_robustness_policies(
-    df: pd.DataFrame, data_policy_model: BaseModel | None
-) -> Tuple[pd.DataFrame, Dict]:
+def apply_robustness_policies(df: pd.DataFrame, data_policy_model: BaseModel | None) -> Tuple[pd.DataFrame, Dict]:
     """Orchestrator to apply pre-calculation robustness policies."""
     diagnostics = {
         "policy": {

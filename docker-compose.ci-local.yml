@@ -1,0 +1,21 @@
+services:
+  ci-local:
+    image: python:3.11-slim
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    command: >
+      bash -lc "
+      pip install --upgrade pip &&
+      pip install -r requirements.txt -r requirements-dev.txt &&
+      ruff check . &&
+      ruff format --check . &&
+      python scripts/dependency_health_check.py --requirements requirements.txt &&
+      python -m pip check &&
+      COVERAGE_FILE=.coverage.unit python -m pytest tests/unit --cov=app --cov=engine --cov=core --cov=adapters --cov-report= &&
+      COVERAGE_FILE=.coverage.integration python -m pytest tests/integration --cov=app --cov=engine --cov=core --cov=adapters --cov-report= &&
+      COVERAGE_FILE=.coverage.e2e python -m pytest tests/e2e --cov=app --cov=engine --cov=core --cov=adapters --cov-report= &&
+      python -m coverage combine .coverage.unit .coverage.integration .coverage.e2e &&
+      python -m coverage report --fail-under=95 &&
+      mypy --config-file mypy.ini
+      "

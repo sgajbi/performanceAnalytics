@@ -4,8 +4,9 @@ from decimal import Decimal
 
 import pandas as pd
 import pytest
-from engine.config import EngineConfig, PeriodType, PrecisionMode
+
 from engine.compute import run_calculations
+from engine.config import EngineConfig, PeriodType, PrecisionMode
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 from engine.schema import PortfolioColumns
 
@@ -105,7 +106,7 @@ def test_run_calculations_unexpected_exception_handling(mocker):
         PortfolioColumns.BEGIN_MV.value: [100.0],
     }
     df = pd.DataFrame(data)
-    mocker.patch('engine.compute.calculate_daily_ror', side_effect=Exception("Unexpected boom!"))
+    mocker.patch("engine.compute.calculate_daily_ror", side_effect=Exception("Unexpected boom!"))
 
     with pytest.raises(EngineCalculationError, match="Engine calculation failed unexpectedly: Unexpected boom!"):
         run_calculations(df, config)

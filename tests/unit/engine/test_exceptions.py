@@ -1,10 +1,12 @@
 # tests/unit/engine/test_exceptions.py
 import pytest
+
 from engine.exceptions import (
+    EngineCalculationError,
     EngineError,
     InvalidEngineInputError,
-    EngineCalculationError,
 )
+
 
 @pytest.mark.parametrize(
     "exception_class, default_message",
@@ -12,7 +14,7 @@ from engine.exceptions import (
         (EngineError, "An error occurred in the performance engine."),
         (InvalidEngineInputError, "Invalid input data provided to the engine."),
         (EngineCalculationError, "An error occurred during an engine calculation."),
-    ]
+    ],
 )
 def test_engine_exceptions(exception_class, default_message):
     """Tests that custom exceptions can be instantiated."""

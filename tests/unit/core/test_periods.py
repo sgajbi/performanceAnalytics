@@ -1,10 +1,12 @@
 # tests/unit/core/test_periods.py
 from datetime import date
+
 import pytest
 from pydantic import BaseModel
+
+from common.enums import PeriodType
 from core.envelope import Periods
 from core.periods import resolve_period, resolve_periods
-from common.enums import PeriodType
 
 
 class ResolvedPeriod(BaseModel):
@@ -16,11 +18,16 @@ class ResolvedPeriod(BaseModel):
 @pytest.mark.parametrize(
     "period_def, as_of, expected_start, expected_end",
     [
-        ({"type": "EXPLICIT", "explicit": {"start": "2025-02-15", "end": "2025-03-10"}}, "2025-08-31", date(2025, 2, 15), date(2025, 3, 10)),
+        (
+            {"type": "EXPLICIT", "explicit": {"start": "2025-02-15", "end": "2025-03-10"}},
+            "2025-08-31",
+            date(2025, 2, 15),
+            date(2025, 3, 10),
+        ),
         ({"type": "YTD"}, "2025-08-31", date(2025, 1, 1), date(2025, 8, 31)),
         ({"type": "QTD"}, "2025-08-31", date(2025, 7, 1), date(2025, 8, 31)),
         ({"type": "MTD"}, "2025-08-31", date(2025, 8, 1), date(2025, 8, 31)),
-        ({"type": "WTD"}, "2025-08-31", date(2025, 8, 25), date(2025, 8, 31)), # Sunday is day 6
+        ({"type": "WTD"}, "2025-08-31", date(2025, 8, 25), date(2025, 8, 31)),  # Sunday is day 6
         ({"type": "1Y"}, "2025-08-31", date(2024, 9, 1), date(2025, 8, 31)),
         ({"type": "3Y"}, "2025-08-31", date(2022, 9, 1), date(2025, 8, 31)),
         ({"type": "5Y"}, "2025-08-31", date(2020, 9, 1), date(2025, 8, 31)),
@@ -28,7 +35,7 @@ class ResolvedPeriod(BaseModel):
         ({"type": "ROLLING", "rolling": {"days": 63}}, "2025-08-31", date(2025, 6, 30), date(2025, 8, 31)),
         ({"type": "ITD"}, "2025-08-31", date.min, date(2025, 8, 31)),
     ],
-    ids=["EXPLICIT", "YTD", "QTD", "MTD", "WTD", "1Y", "3Y", "5Y", "ROLLING_M", "ROLLING_D", "ITD"]
+    ids=["EXPLICIT", "YTD", "QTD", "MTD", "WTD", "1Y", "3Y", "5Y", "ROLLING_M", "ROLLING_D", "ITD"],
 )
 def test_resolve_period(period_def, as_of, expected_start, expected_end):
     """Tests that all period types are resolved to the correct start and end dates."""
@@ -50,7 +57,7 @@ def test_resolve_periods_multi():
     resolved = resolve_periods(requested_periods, as_of, inception)
 
     assert len(resolved) == 4
-    
+
     mtd = next(p for p in resolved if p.name == PeriodType.MTD.value)
     assert mtd.start_date == date(2025, 8, 1)
     assert mtd.end_date == date(2025, 8, 15)
@@ -58,11 +65,11 @@ def test_resolve_periods_multi():
     ytd = next(p for p in resolved if p.name == PeriodType.YTD.value)
     assert ytd.start_date == date(2025, 1, 1)
     assert ytd.end_date == date(2025, 8, 15)
-    
+
     itd = next(p for p in resolved if p.name == PeriodType.ITD.value)
     assert itd.start_date == inception
     assert itd.end_date == date(2025, 8, 15)
-    
+
     y1 = next(p for p in resolved if p.name == PeriodType.ONE_YEAR.value)
     assert y1.start_date == date(2024, 8, 16)
     assert y1.end_date == date(2025, 8, 15)

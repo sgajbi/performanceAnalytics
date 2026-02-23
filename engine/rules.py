@@ -4,6 +4,7 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+
 from engine.config import EngineConfig
 from engine.schema import PortfolioColumns
 
@@ -23,14 +24,16 @@ def calculate_sign(df: pd.DataFrame) -> pd.Series:
     zero = Decimal(0) if is_decimal_mode else 0.0
 
     if is_decimal_mode:
-        initial_sign = (df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).apply(_get_decimal_sign)
+        initial_sign = (df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value]).apply(
+            _get_decimal_sign
+        )
     else:
         initial_sign = np.sign(df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value])
 
     prev_eod_cf = df[PortfolioColumns.EOD_CF.value].shift(1, fill_value=zero)
     prev_perf_reset = df[PortfolioColumns.PERF_RESET.value].shift(1, fill_value=0)
-    is_flip_event = ((df[PortfolioColumns.BOD_CF.value] != zero) | (prev_eod_cf != zero) | (prev_perf_reset == 1))
-    
+    is_flip_event = (df[PortfolioColumns.BOD_CF.value] != zero) | (prev_eod_cf != zero) | (prev_perf_reset == 1)
+
     if not df.empty:
         is_flip_event.iloc[0] = True
 
@@ -46,8 +49,9 @@ def calculate_nip(df: pd.DataFrame, config: EngineConfig) -> pd.Series:
     zero = Decimal(0) if is_decimal_mode else 0.0
 
     if config.feature_flags.use_nip_v2_rule:
-        cond = (df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value] == zero) & \
-               (df[PortfolioColumns.END_MV.value] + df[PortfolioColumns.EOD_CF.value] == zero)
+        cond = (df[PortfolioColumns.BEGIN_MV.value] + df[PortfolioColumns.BOD_CF.value] == zero) & (
+            df[PortfolioColumns.END_MV.value] + df[PortfolioColumns.EOD_CF.value] == zero
+        )
         return cond.astype(int)
 
     is_zero_value = (
@@ -75,10 +79,10 @@ def calculate_initial_resets(
     """Calculates resets based on NCTRL 1, 2, and 3. This is a pure function."""
     is_decimal_mode = df[PortfolioColumns.BOD_CF.value].dtype == "object"
     zero = Decimal(0) if is_decimal_mode else 0.0
-    
+
     eom_mask = df[PortfolioColumns.PERF_DATE.value].dt.is_month_end
     next_day_bod_cf = df[PortfolioColumns.BOD_CF.value].shift(-1).fillna(zero)
-    
+
     future_date = pd.Timestamp.max.normalize()
     next_date_is_after_end = df[PortfolioColumns.PERF_DATE.value].shift(-1, fill_value=future_date) > report_end_date
     if not df.empty:
@@ -93,7 +97,7 @@ def calculate_initial_resets(
         | next_date_is_after_end
     )
     # --- END FIX ---
-    
+
     cond_nctrl1 = df[temp_long_col] < -100
     cond_nctrl2 = df[temp_short_col] > 100
     cond_nctrl3 = (df[temp_short_col] < -100) & (df[temp_long_col] != 0)
@@ -102,7 +106,7 @@ def calculate_initial_resets(
     nctrl2 = (cond_nctrl2 & ~cond_nctrl2.shift(1, fill_value=False)) & cond_common
     nctrl3 = (cond_nctrl3 & ~cond_nctrl3.shift(1, fill_value=False)) & cond_common
 
-    resets = (nctrl1 | nctrl2 | nctrl3)
+    resets = nctrl1 | nctrl2 | nctrl3
     return resets, nctrl1, nctrl2, nctrl3
 
 

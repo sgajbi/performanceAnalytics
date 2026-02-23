@@ -1,18 +1,14 @@
 # tests/unit/engine/test_contribution.py
-from datetime import date
 import pandas as pd
 import pytest
-from app.models.contribution_requests import ContributionRequest, Emit, Smoothing
+
+from app.models.contribution_requests import ContributionRequest, Smoothing
 from common.enums import WeightingScheme
 from engine.contribution import (
     _calculate_carino_factors,
     _calculate_daily_instrument_contributions,
     _prepare_hierarchical_data,
 )
-from engine.schema import PortfolioColumns
-from engine.compute import run_calculations
-from engine.config import EngineConfig, FeatureFlags
-from common.enums import PeriodType
 
 
 @pytest.fixture
@@ -20,14 +16,16 @@ def hierarchical_request_fixture(happy_path_payload):
     """Provides a valid hierarchical request object for testing."""
     payload = happy_path_payload.copy()
     payload["hierarchy"] = ["sector", "region"]
-    payload["positions_data"].append({
-        "position_id": "Stock_B",
-        "meta": {"sector": "Healthcare", "region": "US"},
-        "valuation_points": [
-            {"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 408},
-            {"day": 2, "perf_date": "2025-01-02", "begin_mv": 408, "end_mv": 410},
-        ]
-    })
+    payload["positions_data"].append(
+        {
+            "position_id": "Stock_B",
+            "meta": {"sector": "Healthcare", "region": "US"},
+            "valuation_points": [
+                {"day": 1, "perf_date": "2025-01-01", "begin_mv": 400, "end_mv": 408},
+                {"day": 2, "perf_date": "2025-01-02", "begin_mv": 408, "end_mv": 410},
+            ],
+        }
+    )
     payload["positions_data"][0]["meta"]["region"] = "US"
     # Remove legacy field to use the one from the fixture
     payload.pop("period_type", None)

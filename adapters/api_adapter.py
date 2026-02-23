@@ -1,11 +1,16 @@
 # adapters/api_adapter.py
 import logging
-from typing import Any, Dict, List
 from datetime import date
+from typing import Any, Dict, List
 
 import pandas as pd
+
 from app.models.requests import PerformanceRequest
-from app.models.responses import PerformanceBreakdown, PerformanceResultItem, PerformanceSummary, SinglePeriodPerformanceResult
+from app.models.responses import (
+    PerformanceBreakdown,
+    PerformanceResultItem,
+    PerformanceSummary,
+)
 from common.enums import Frequency, PeriodType
 from engine.config import EngineConfig, PrecisionMode
 from engine.schema import PortfolioColumns

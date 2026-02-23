@@ -1,5 +1,6 @@
 # tests/unit/core/test_annualize.py
 import pytest
+
 from core.annualize import annualize_return
 from core.errors import APIBadRequestError
 

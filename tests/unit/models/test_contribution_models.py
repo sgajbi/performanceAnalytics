@@ -1,11 +1,11 @@
 # tests/unit/models/test_contribution_models.py
+from uuid import uuid4
+
 import pytest
 from pydantic import ValidationError
-from uuid import uuid4
 
 from app.models.contribution_requests import ContributionRequest
 from app.models.contribution_responses import ContributionResponse
-from common.enums import PeriodType, Frequency
 
 
 @pytest.fixture
@@ -20,9 +20,7 @@ def minimal_contribution_request_payload():
             "metric_basis": "NET",
             "valuation_points": [],
         },
-        "positions_data": [
-            {"position_id": "Stock_A", "meta": {"sector": "Tech"}, "valuation_points": []}
-        ],
+        "positions_data": [{"position_id": "Stock_A", "meta": {"sector": "Tech"}, "valuation_points": []}],
     }
 
 

@@ -3,26 +3,35 @@ from datetime import date
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.models.requests import Analysis, DailyInputData  # Import the shared Analysis model
 from common.enums import (
     AttributionMode,
     AttributionModel,
     Frequency,
     LinkingMethod,
 )
-from core.envelope import Annualization, Calendar, Flags, Output, FXRequestBlock, HedgingRequestBlock
-from app.models.requests import DailyInputData, Analysis  # Import the shared Analysis model
+from core.envelope import (
+    Annualization,
+    Calendar,
+    Flags,
+    FXRequestBlock,
+    HedgingRequestBlock,
+    Output,
+)
 
 
 class AttributionPortfolioData(BaseModel):
     """Contains the full time series and config for the total portfolio for attribution."""
+
     metric_basis: Literal["NET", "GROSS"]
     valuation_points: List[DailyInputData]
 
 
 class InstrumentData(BaseModel):
     """Time series and metadata for a single instrument."""
+
     instrument_id: str
     meta: Dict[str, Any]
     valuation_points: List[DailyInputData]
@@ -30,6 +39,7 @@ class InstrumentData(BaseModel):
 
 class BenchmarkObservation(BaseModel):
     """Represents a single benchmark data point for a period."""
+
     date: date
     weight_bop: float
     return_base: float
@@ -39,25 +49,28 @@ class BenchmarkObservation(BaseModel):
 
 class BenchmarkGroup(BaseModel):
     """Time series data for a single benchmark group."""
+
     key: Dict[str, Any]
     observations: List[BenchmarkObservation]
 
 
 class PortfolioGroup(BaseModel):
     """Pre-aggregated time series data for a single portfolio group."""
+
     key: Dict[str, Any]
     observations: List[Dict]
 
 
 class AttributionRequest(BaseModel):
     """Request model for the Attribution engine."""
+
     model_config = ConfigDict(extra="forbid")
 
     calculation_id: UUID = Field(default_factory=uuid4)
     portfolio_number: str
     report_start_date: date
     report_end_date: date
-    
+
     # --- START REFACTOR: Align with unified multi-period model ---
     analyses: List[Analysis]
     # --- END REFACTOR ---
@@ -83,9 +96,9 @@ class AttributionRequest(BaseModel):
     fx: Optional[FXRequestBlock] = None
     hedging: Optional[HedgingRequestBlock] = None
 
-    @field_validator('analyses')
+    @field_validator("analyses")
     @classmethod
     def analyses_must_not_be_empty(cls, v):
         if not v:
-            raise ValueError('analyses list cannot be empty')
+            raise ValueError("analyses list cannot be empty")
         return v

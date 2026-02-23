@@ -1,10 +1,10 @@
 # tests/unit/models/test_responses_models.py
 from uuid import uuid4
+
 import pytest
 from pydantic import ValidationError
 
 from app.models.responses import PerformanceResponse
-from core.envelope import Meta, Diagnostics, Audit
 
 
 @pytest.fixture
@@ -49,9 +49,7 @@ def single_period_result_payload():
     }
 
 
-def test_performance_response_new_structure_passes(
-    base_response_footer, single_period_result_payload
-):
+def test_performance_response_new_structure_passes(base_response_footer, single_period_result_payload):
     """Tests that a response with the new 'results_by_period' structure is valid."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
@@ -71,9 +69,7 @@ def test_performance_response_new_structure_passes(
         pytest.fail(f"Validation failed unexpectedly for new structure: {e}")
 
 
-def test_performance_response_legacy_structure_passes(
-    base_response_footer, single_period_result_payload
-):
+def test_performance_response_legacy_structure_passes(base_response_footer, single_period_result_payload):
     """Tests that a response with the legacy 'breakdowns' field is still valid."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
@@ -89,9 +85,7 @@ def test_performance_response_legacy_structure_passes(
         pytest.fail(f"Validation failed unexpectedly for legacy structure: {e}")
 
 
-def test_performance_response_with_both_structures_fails(
-    base_response_footer, single_period_result_payload
-):
+def test_performance_response_with_both_structures_fails(base_response_footer, single_period_result_payload):
     """Tests that validation fails if both legacy and new structures are present."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],

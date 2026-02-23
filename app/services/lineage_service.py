@@ -14,6 +14,7 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+
 class LineageService:
     def __init__(self, storage_path: str):
         self.storage_path = storage_path
@@ -38,18 +39,18 @@ class LineageService:
             # Save request and response JSON
             with open(os.path.join(target_dir, "request.json"), "w") as f:
                 f.write(request_model.model_dump_json(indent=2))
-            
+
             with open(os.path.join(target_dir, "response.json"), "w") as f:
                 f.write(response_model.model_dump_json(indent=2))
 
             # Save detailed calculation CSVs
             for filename, df in calculation_details.items():
                 df.to_csv(os.path.join(target_dir, filename), index=False)
-            
+
             # Save metadata manifest
             manifest_data = {
                 "calculation_type": calculation_type,
-                "timestamp_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                "timestamp_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             }
             with open(os.path.join(target_dir, "manifest.json"), "w") as f:
                 json.dump(manifest_data, f, indent=2)
@@ -60,7 +61,7 @@ class LineageService:
             # Add robust logging to make silent errors visible in the server console
             logger.error(
                 f"FATAL: Failed to capture lineage data for calculation_id: {calculation_id}. Reason: {e}",
-                exc_info=True
+                exc_info=True,
             )
 
 

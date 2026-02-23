@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, model_validator
+
 from core.envelope import Audit, Diagnostics, Meta
 
 
@@ -114,8 +115,9 @@ class ContributionResponse(BaseModel):
         """Ensures that exactly one result structure is used."""
         has_new_structure = "results_by_period" in values and values.get("results_by_period") is not None
         # A legacy structure is present if either the single-level key field OR the multi-level key field exists.
-        has_legacy_structure = ("total_portfolio_return" in values and values.get("total_portfolio_return") is not None) or \
-                               ("summary" in values and values.get("summary") is not None)
+        has_legacy_structure = (
+            "total_portfolio_return" in values and values.get("total_portfolio_return") is not None
+        ) or ("summary" in values and values.get("summary") is not None)
 
         if has_new_structure and has_legacy_structure:
             raise ValueError("Provide either 'results_by_period' or legacy top-level fields, but not both.")

@@ -3,7 +3,6 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.requests import PerformanceRequest
-from common.enums import PeriodType, Frequency
 
 
 @pytest.fixture

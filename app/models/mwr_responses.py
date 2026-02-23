@@ -2,7 +2,8 @@
 from datetime import date
 from typing import List, Literal, Optional
 from uuid import UUID
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict
 
 from app.models.mwr_requests import CashFlow
 from core.envelope import Audit, Diagnostics, Meta
@@ -16,6 +17,7 @@ class Convergence(BaseModel):
 
 class MWRResult(BaseModel):
     """A simple data container for the results of an MWR calculation from the engine."""
+
     mwr: float
     mwr_annualized: Optional[float] = None
     method: Literal["XIRR", "MODIFIED_DIETZ", "DIETZ"]
@@ -27,6 +29,7 @@ class MWRResult(BaseModel):
 
 class MoneyWeightedReturnResponse(BaseModel):
     """Response model for a Money-Weighted Return calculation."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     calculation_id: UUID

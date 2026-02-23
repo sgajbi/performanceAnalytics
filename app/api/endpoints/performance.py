@@ -1,20 +1,29 @@
 # app/api/endpoints/performance.py
-from datetime import date
-from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 import pandas as pd
-from adapters.api_adapter import create_engine_config, create_engine_dataframe, format_breakdowns_for_response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+
+from adapters.api_adapter import (
+    create_engine_config,
+    create_engine_dataframe,
+    format_breakdowns_for_response,
+)
 from app.core.config import get_settings
 from app.models.attribution_requests import AttributionRequest
 from app.models.attribution_responses import AttributionResponse
-from app.models.requests import PerformanceRequest
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
-from app.models.responses import PerformanceResponse, PortfolioReturnDecomposition, SinglePeriodPerformanceResult, ResetEvent
+from app.models.requests import PerformanceRequest
+from app.models.responses import (
+    PerformanceResponse,
+    PortfolioReturnDecomposition,
+    ResetEvent,
+    SinglePeriodPerformanceResult,
+)
 from app.services.lineage_service import lineage_service
 from core.envelope import Audit, Diagnostics, Meta
 from core.periods import resolve_periods
 from core.repro import generate_canonical_hash
-from engine.attribution import run_attribution_calculations, aggregate_attribution_results
+from engine.attribution import aggregate_attribution_results, run_attribution_calculations
 from engine.breakdown import generate_performance_breakdowns
 from engine.compute import run_calculations
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
@@ -65,17 +74,19 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         def get_total_return_from_slice(df_slice: pd.DataFrame) -> PortfolioReturnDecomposition:
             if df_slice.empty:
                 return PortfolioReturnDecomposition(local=0.0, fx=0.0, base=0.0)
-            
+
             if df_slice[PortfolioColumns.PERF_RESET.value].any():
                 end_row = df_slice.iloc[-1]
-                # --- START FIX: Correct column access typo ---
-                day_before_mask = daily_results_df[PortfolioColumns.PERF_DATE.value] < df_slice[PortfolioColumns.PERF_DATE.value].min()
-                # --- END FIX ---
+                full_perf_dates = pd.to_datetime(daily_results_df[PortfolioColumns.PERF_DATE.value]).dt.date
+                slice_min_date = pd.to_datetime(df_slice[PortfolioColumns.PERF_DATE.value].min()).date()
+                day_before_mask = full_perf_dates < slice_min_date
                 day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
 
-                start_cum_base = day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
+                start_cum_base = (
+                    day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
+                )
                 end_cum_base = end_row[PortfolioColumns.FINAL_CUM_ROR.value]
-                
+
                 start_base_denom = 1 + start_cum_base / 100
                 if start_base_denom == 0:
                     base_total = end_cum_base
@@ -85,7 +96,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 if "local_ror" in df_slice.columns:
                     start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
                     end_cum_local = get_total_cum_ror(end_row, "local_ror_")
-                    
+
                     start_local_denom = 1 + start_cum_local / 100
                     if start_local_denom == 0:
                         local_total = end_cum_local
@@ -94,7 +105,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
 
                     base_denom_for_fx = 1 + local_total / 100
                     if base_denom_for_fx == 0:
-                         fx_total = 0.0
+                        fx_total = 0.0
                     else:
                         fx_total = (((1 + base_total / 100) / base_denom_for_fx) - 1) * 100
                 else:
@@ -112,7 +123,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 else:
                     local_total = base_total
                     fx_total = 0.0
-            
+
             return PortfolioReturnDecomposition(local=local_total, fx=fx_total, base=base_total)
 
         for period in resolved_periods:
@@ -123,31 +134,31 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
 
             if period_slice_df.empty:
                 continue
-            
+
             requested_frequencies_for_period = freqs_by_period.get(period.name, [])
             breakdowns_data = generate_performance_breakdowns(
                 period_slice_df,
                 requested_frequencies_for_period,
                 request.annualization,
                 request.output.include_cumulative,
-                request.rounding_precision
+                request.rounding_precision,
             )
             formatted_breakdowns = format_breakdowns_for_response(
                 breakdowns_data, period_slice_df, request.output.include_timeseries
             )
-            
+
             period_return_summary = get_total_return_from_slice(period_slice_df)
             period_result = SinglePeriodPerformanceResult(
-                breakdowns=formatted_breakdowns,
-                portfolio_return=period_return_summary
+                breakdowns=formatted_breakdowns, portfolio_return=period_return_summary
             )
-            
+
             if request.reset_policy.emit and diagnostics_data.get("resets"):
                 period_result.reset_events = [
-                    ResetEvent(**event) for event in diagnostics_data["resets"] 
+                    ResetEvent(**event)
+                    for event in diagnostics_data["resets"]
                     if period.start_date <= event["date"] <= period.end_date
                 ]
-            
+
             results_by_period[period.name] = period_result
 
     except InvalidEngineInputError as e:
@@ -166,7 +177,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         precision_mode=request.precision_mode,
         calendar=request.calendar,
         annualization=request.annualization,
-        periods={"requested": [p.value for p in periods_to_resolve], "master_start": str(master_start_date), "master_end": str(master_end_date)},
+        periods={
+            "requested": [p.value for p in periods_to_resolve],
+            "master_start": str(master_start_date),
+            "master_end": str(master_end_date),
+        },
         input_fingerprint=input_fingerprint,
         calculation_hash=calculation_hash,
         report_ccy=engine_config.report_ccy,
@@ -276,7 +291,9 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest, background
     return response_model
 
 
-@router.post("/attribution", response_model=AttributionResponse, summary="Calculate Multi-Level Performance Attribution")
+@router.post(
+    "/attribution", response_model=AttributionResponse, summary="Calculate Multi-Level Performance Attribution"
+)
 async def calculate_attribution_endpoint(request: AttributionRequest, background_tasks: BackgroundTasks):
     """
     Calculates multi-level, Brinson-style performance attribution, decomposing
@@ -290,10 +307,10 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
 
         if not resolved_periods:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid periods could be resolved.")
-        
+
         master_start_date = min(p.start_date for p in resolved_periods)
         master_end_date = max(p.end_date for p in resolved_periods)
-        
+
         master_request = request.model_copy(deep=True)
         master_request.report_start_date = master_start_date
         master_request.report_end_date = master_end_date
@@ -303,13 +320,13 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
         results_by_period = {}
         for period in resolved_periods:
             period_slice_df = effects_df[
-                (effects_df.index.get_level_values('date') >= pd.to_datetime(period.start_date)) &
-                (effects_df.index.get_level_values('date') <= pd.to_datetime(period.end_date))
+                (effects_df.index.get_level_values("date") >= pd.to_datetime(period.start_date))
+                & (effects_df.index.get_level_values("date") <= pd.to_datetime(period.end_date))
             ].copy()
 
             if period_slice_df.empty:
                 continue
-            
+
             period_result, aggregation_lineage = aggregate_attribution_results(period_slice_df, request)
             if aggregation_lineage:
                 lineage_data.update({f"{period.name}_{k}": v for k, v in aggregation_lineage.items()})
@@ -321,7 +338,11 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             precision_mode=request.precision_mode,
             annualization=request.annualization,
             calendar=request.calendar,
-            periods={"requested": [p.value for p in periods_to_resolve], "master_start": str(master_start_date), "master_end": str(master_end_date)},
+            periods={
+                "requested": [p.value for p in periods_to_resolve],
+                "master_start": str(master_start_date),
+                "master_end": str(master_end_date),
+            },
             input_fingerprint=input_fingerprint,
             calculation_hash=calculation_hash,
         )
@@ -347,9 +368,7 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
     except (InvalidEngineInputError, ValueError, NotImplementedError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except EngineCalculationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Calculation Error: {e.message}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Calculation Error: {e.message}")
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

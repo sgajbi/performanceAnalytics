@@ -1,6 +1,6 @@
 # core/envelope.py
 from datetime import date
-from typing import Dict, List, Literal, Optional, Any
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -63,9 +63,17 @@ class Calendar(BaseModel):
 
 
 class Annualization(BaseModel):
-    enabled: bool = Field(False, description="Whether to enable the calculation of annualized returns for applicable periods.")
-    basis: Literal["BUS/252", "ACT/365", "ACT/ACT"] = Field("BUS/252", description="The day-count convention to use. BUS/252 for business days; ACT/365 for actual days over 365; ACT/ACT for actual days over actual days in year.")
-    periods_per_year: Optional[float] = Field(None, description="Optional override for the annualization factor (e.g., 252 or 365). If provided, this value is used instead of the 'basis'.")
+    enabled: bool = Field(
+        False, description="Whether to enable the calculation of annualized returns for applicable periods."
+    )
+    basis: Literal["BUS/252", "ACT/365", "ACT/ACT"] = Field(
+        "BUS/252",
+        description="The day-count convention to use. BUS/252 for business days; ACT/365 for actual days over 365; ACT/ACT for actual days over actual days in year.",
+    )
+    periods_per_year: Optional[float] = Field(
+        None,
+        description="Optional override for the annualization factor (e.g., 252 or 365). If provided, this value is used instead of the 'basis'.",
+    )
 
 
 class ExplicitPeriod(BaseModel):
@@ -142,6 +150,7 @@ class PolicyDiagnostics(BaseModel):
     overrides: Dict[str, int] = {"applied_mv_count": 0, "applied_cf_count": 0}
     ignored_days_count: int = 0
     outliers: Dict[str, int] = {"flagged_rows": 0}
+
 
 class Diagnostics(BaseModel):
     nip_days: int

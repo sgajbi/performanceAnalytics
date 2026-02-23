@@ -1,6 +1,5 @@
 # app/core/config.py
 
-import os
 from decimal import getcontext
 from functools import lru_cache
 from pathlib import Path
@@ -14,7 +13,7 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "API for calculating portfolio performance metrics."
     LOG_LEVEL: str = "INFO"
     decimal_precision: int = 28
-    LINEAGE_STORAGE_PATH: Path = "lineage_data"
+    LINEAGE_STORAGE_PATH: Path = Path("lineage_data")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
