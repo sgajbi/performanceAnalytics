@@ -2,6 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from core.periods import ResolvedPeriod
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 from main import app
 
@@ -258,3 +259,63 @@ def test_attribution_endpoint_error_handling(client, mocker, error_class, expect
     response = client.post("/performance/attribution", json=payload)
     assert response.status_code == expected_status
     assert "detail" in response.json()
+
+
+def test_attribution_endpoint_returns_400_when_no_resolved_periods(client, mocker):
+    """Tests explicit 400 path when period resolution yields no valid periods."""
+    mocker.patch("app.api.endpoints.performance.resolve_periods", return_value=[])
+    payload = {
+        "portfolio_number": "ATTRIB_NO_PERIODS",
+        "mode": "by_group",
+        "group_by": ["sector"],
+        "benchmark_groups_data": [],
+        "linking": "none",
+        "frequency": "monthly",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-31",
+        "analyses": [{"period": "ITD", "frequencies": ["monthly"]}],
+    }
+    response = client.post("/performance/attribution", json=payload)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No valid periods could be resolved."
+
+
+def test_attribution_endpoint_skips_empty_period_slice(client, mocker):
+    """Tests empty-slice branch where a resolved period has no matching effect rows."""
+    mocker.patch(
+        "app.api.endpoints.performance.resolve_periods",
+        return_value=[
+            ResolvedPeriod(name="ITD", start_date="2025-01-01", end_date="2025-01-31"),
+            ResolvedPeriod(name="MTD", start_date="2025-02-01", end_date="2025-02-28"),
+        ],
+    )
+    payload = {
+        "portfolio_number": "ATTRIB_EMPTY_SLICE",
+        "mode": "by_group",
+        "group_by": ["sector"],
+        "linking": "none",
+        "frequency": "monthly",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-31",
+        "analyses": [
+            {"period": "ITD", "frequencies": ["monthly"]},
+            {"period": "MTD", "frequencies": ["monthly"]},
+        ],
+        "portfolio_groups_data": [
+            {
+                "key": {"sector": "Tech"},
+                "observations": [{"date": "2025-01-31", "return_base": 0.02, "weight_bop": 1.0}],
+            }
+        ],
+        "benchmark_groups_data": [
+            {
+                "key": {"sector": "Tech"},
+                "observations": [{"date": "2025-01-31", "return_base": 0.01, "weight_bop": 1.0}],
+            }
+        ],
+    }
+    response = client.post("/performance/attribution", json=payload)
+    assert response.status_code == 200
+    results = response.json()["results_by_period"]
+    assert "ITD" in results
+    assert "MTD" not in results

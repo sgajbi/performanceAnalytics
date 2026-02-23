@@ -56,6 +56,8 @@ async def get_lineage_data(calculation_id: UUID, request: Request):
             artifacts=artifacts,
         )
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve lineage artifacts: {e}"
         )

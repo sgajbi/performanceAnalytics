@@ -165,6 +165,8 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid Input: {e.message}")
     except EngineCalculationError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Calculation Error: {e.message}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -231,6 +233,8 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest, background
             annualization=request.annualization,
             as_of=request.as_of,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -369,6 +373,8 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except EngineCalculationError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Calculation Error: {e.message}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -189,3 +189,20 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t performance-analytics:ci-test .
+
+      - name: Run Container Smoke Check
+        run: |
+          docker run -d --name performance-analytics-smoke -p 8000:8000 performance-analytics:ci-test
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/docs >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/docs >/dev/null
+          curl -fsS http://127.0.0.1:8000/ >/dev/null
+
+      - name: Stop Container
+        if: always()
+        run: |
+          docker rm -f performance-analytics-smoke || true
