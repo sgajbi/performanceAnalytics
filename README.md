@@ -13,6 +13,7 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 - Docs-with-code standard: `docs/documentation/implementation-documentation-standard.md`
 - Branch-protection workflow: `docs/documentation/git-branch-protection-workflow.md`
 - PR checklist template: `.github/pull_request_template.md`
+- Platform-wide architecture governance source: `https://github.com/sgajbi/pbwm-platform-docs`
 
 ## Key Features
 
