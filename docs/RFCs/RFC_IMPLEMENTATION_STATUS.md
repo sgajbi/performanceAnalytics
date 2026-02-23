@@ -1,5 +1,11 @@
 # RFC Implementation Status
 
+## Governance Boundary
+
+- Service-specific PA implementation RFCs are maintained in this repository.
+- Cross-cutting platform and multi-service architecture decisions are maintained in:
+  `https://github.com/sgajbi/pbwm-platform-docs`
+
 This document provides a summary of the implementation status for all RFCs related to the `performanceAnalytics` service. It also outlines a strategic, sequential roadmap for implementing the remaining features to build a cohesive and powerful analytics suite.
 
 ---
