@@ -24,7 +24,7 @@ test-e2e:
 	python -m pytest tests/e2e
 
 test-all:
-	python -m pytest --cov=app --cov=engine --cov=core --cov=adapters --cov-report=term-missing --cov-fail-under=95
+	python -m pytest --cov=app --cov=engine --cov=core --cov=adapters --cov-report=term-missing --cov-fail-under=99
 
 ci-local: lint check-deps
 	python -m pip check
@@ -32,7 +32,7 @@ ci-local: lint check-deps
 	COVERAGE_FILE=.coverage.integration python -m pytest tests/integration --cov=app --cov=engine --cov=core --cov=adapters --cov-report=
 	COVERAGE_FILE=.coverage.e2e python -m pytest tests/e2e --cov=app --cov=engine --cov=core --cov=adapters --cov-report=
 	python -m coverage combine .coverage.unit .coverage.integration .coverage.e2e
-	python -m coverage report --fail-under=95
+	python -m coverage report --fail-under=99
 	$(MAKE) typecheck
 
 ci-local-docker:
