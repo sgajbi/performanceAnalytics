@@ -69,7 +69,6 @@ These parameters are part of the unified API envelope and influence engine behav
 ### Flags
 
 -   **`fail_fast`**: When `true`, instructs the engine to raise an error on soft warnings instead of continuing.
--   **`compat_legacy_names`**: When `true`, instructs the API adapter to return legacy field names for backward compatibility.
 
 ---
 
