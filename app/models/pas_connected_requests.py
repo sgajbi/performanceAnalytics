@@ -3,7 +3,7 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 
-class PasConnectedTwrRequest(BaseModel):
+class PasInputTwrRequest(BaseModel):
     portfolio_id: str = Field(
         ...,
         alias="portfolioId",
@@ -22,11 +22,6 @@ class PasConnectedTwrRequest(BaseModel):
         default="PA",
         alias="consumerSystem",
         description="Consumer system identifier forwarded to PAS integration contract.",
-    )
-    include_sections: list[str] = Field(
-        default_factory=lambda: ["OVERVIEW", "HOLDINGS", "TRANSACTIONS"],
-        alias="includeSections",
-        description="Legacy field retained for backward compatibility; ignored by PA.",
     )
     lookback_days: int = Field(
         400,

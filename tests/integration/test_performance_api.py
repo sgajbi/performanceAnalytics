@@ -368,7 +368,7 @@ def test_twr_pas_snapshot_success(client, monkeypatch):
         "periods": ["YTD"],
     }
 
-    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 200
     body = response.json()
     assert body["portfolio_number"] == "PORT-1001"
@@ -421,7 +421,7 @@ def test_twr_pas_snapshot_period_filter(client, monkeypatch):
         "periods": ["YTD", "MTD"],
     }
 
-    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 200
     body = response.json()
     assert "YTD" in body["resultsByPeriod"]
@@ -450,7 +450,7 @@ def test_twr_pas_snapshot_invalid_payload_returns_502(client, monkeypatch):
         "asOfDate": "2026-02-23",
     }
 
-    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 502
     assert "missing valuationPoints" in response.json()["detail"]
 
@@ -469,5 +469,5 @@ def test_twr_pas_snapshot_upstream_error_passthrough(client, monkeypatch):
         "asOfDate": "2026-02-23",
     }
 
-    response = client.post("/performance/twr/pas-snapshot", json=payload)
+    response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 404

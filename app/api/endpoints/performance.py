@@ -12,10 +12,10 @@ from app.models.attribution_requests import AttributionRequest
 from app.models.attribution_responses import AttributionResponse
 from app.models.mwr_requests import MoneyWeightedReturnRequest
 from app.models.mwr_responses import MoneyWeightedReturnResponse
-from app.models.pas_connected_requests import PasConnectedTwrRequest
+from app.models.pas_connected_requests import PasInputTwrRequest
 from app.models.pas_connected_responses import (
-    PasConnectedPeriodResult,
-    PasConnectedTwrResponse,
+    PasInputPeriodResult,
+    PasInputTwrResponse,
 )
 from app.models.requests import PerformanceRequest
 from app.models.responses import (
@@ -41,11 +41,11 @@ settings = get_settings()
 
 
 @router.post(
-    "/twr/pas-snapshot",
-    response_model=PasConnectedTwrResponse,
+    "/twr/pas-input",
+    response_model=PasInputTwrResponse,
     summary="Calculate TWR from PAS raw performance input contract",
 )
-async def calculate_twr_from_pas_snapshot(request: PasConnectedTwrRequest):
+async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     """
     Retrieves PAS raw performance input series and computes PA-owned TWR analytics.
     PAS acts as data provider only; performance metrics are computed in PA.
@@ -97,7 +97,7 @@ async def calculate_twr_from_pas_snapshot(request: PasConnectedTwrRequest):
         ) from exc
 
     computed = await calculate_twr_endpoint(performance_request, BackgroundTasks())
-    results_by_period: dict[str, PasConnectedPeriodResult] = {}
+    results_by_period: dict[str, PasInputPeriodResult] = {}
     for period_key in requested_periods:
         period_result = computed.results_by_period.get(period_key)
         if period_result is None:
@@ -109,7 +109,7 @@ async def calculate_twr_from_pas_snapshot(request: PasConnectedTwrRequest):
                 break
         if summary is None:
             continue
-        results_by_period[period_key] = PasConnectedPeriodResult(
+        results_by_period[period_key] = PasInputPeriodResult(
             period=period_key,
             start_date=None,
             end_date=None,
@@ -122,7 +122,7 @@ async def calculate_twr_from_pas_snapshot(request: PasConnectedTwrRequest):
     if not results_by_period:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requested periods not found.")
 
-    return PasConnectedTwrResponse(
+    return PasInputTwrResponse(
         portfolio_number=performance_request.portfolio_number,
         as_of_date=request.as_of_date,
         pasContractVersion=upstream_payload.get("contractVersion", "v1"),
