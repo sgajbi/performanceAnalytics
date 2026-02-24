@@ -1,10 +1,13 @@
 # tests/unit/engine/test_rules.py
 
+from decimal import Decimal
+
 import pandas as pd
 import pytest
 
 from engine.config import EngineConfig, FeatureFlags, PeriodType
 from engine.rules import (
+    _get_decimal_sign,
     calculate_initial_resets,
     calculate_nctrl4_reset,
     calculate_nip,
@@ -209,3 +212,7 @@ def test_calculate_nctrl4_reset_triggered(reset_test_df):
         short_cum_col=PortfolioColumns.SHORT_CUM_ROR.value,
     )
     assert resets.iloc[2]
+
+
+def test_get_decimal_sign_negative_value():
+    assert _get_decimal_sign(Decimal("-1")) == Decimal(-1)

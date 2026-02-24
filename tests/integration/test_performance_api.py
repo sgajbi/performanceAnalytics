@@ -2,6 +2,7 @@
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from engine.exceptions import EngineCalculationError, InvalidEngineInputError
@@ -324,6 +325,56 @@ def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expe
     assert "detail" in response.json()
 
 
+def test_twr_returns_400_when_no_periods_resolve(client, mocker):
+    mocker.patch("app.api.endpoints.performance.resolve_periods", return_value=[])
+    payload = {
+        "portfolio_number": "NO_PERIODS",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-01-05",
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
+        "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 400
+    assert "No valid periods could be resolved" in response.json()["detail"]
+
+
+def test_twr_http_exception_passthrough_branch(client, mocker):
+    mocker.patch(
+        "app.api.endpoints.performance.resolve_periods",
+        side_effect=HTTPException(status_code=418, detail="teapot"),
+    )
+    payload = {
+        "portfolio_number": "HTTP_EXCEPTION",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-01-05",
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
+        "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 418
+    assert response.json()["detail"] == "teapot"
+
+
+def test_mwr_http_exception_passthrough_branch(client, mocker):
+    mocker.patch(
+        "app.api.endpoints.performance.calculate_money_weighted_return",
+        side_effect=HTTPException(status_code=409, detail="conflict"),
+    )
+    payload = {
+        "portfolio_number": "MWR_HTTP",
+        "begin_mv": 1000.0,
+        "end_mv": 1001.0,
+        "cash_flows": [],
+        "as_of": "2026-01-15",
+    }
+    response = client.post("/performance/mwr", json=payload)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "conflict"
+
+
 def test_twr_pas_snapshot_success(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
@@ -572,3 +623,54 @@ def test_twr_pas_snapshot_requested_period_not_found_returns_404(client, monkeyp
     )
     assert response.status_code == 404
     assert "Requested periods not found" in response.json()["detail"]
+
+
+def test_twr_pas_snapshot_skips_period_without_summary_and_returns_remaining(client, monkeypatch):
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": "BFF",
+                "portfolioId": portfolio_id,
+                "performanceStartDate": "2026-01-01",
+                "valuationPoints": [
+                    {"day": 1, "perf_date": "2026-01-01", "begin_mv": 100.0, "end_mv": 101.0},
+                    {"day": 2, "perf_date": "2026-02-23", "begin_mv": 101.0, "end_mv": 102.0},
+                ],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_performance_input", _mock_get_performance_input
+    )
+
+    class _Summary:
+        period_return_pct = 1.23
+        annualized_return_pct = 4.56
+
+    class _BreakdownItem:
+        summary = _Summary()
+
+    class _PeriodWithoutSummary:
+        breakdowns = {"monthly": []}
+
+    class _PeriodWithSummary:
+        breakdowns = {"monthly": [_BreakdownItem()]}
+
+    class _Computed:
+        results_by_period = {"YTD": _PeriodWithoutSummary(), "MTD": _PeriodWithSummary()}
+
+    async def _mock_calculate_twr_endpoint(request, background_tasks):  # noqa: ARG001
+        return _Computed()
+
+    monkeypatch.setattr("app.api.endpoints.performance.calculate_twr_endpoint", _mock_calculate_twr_endpoint)
+
+    response = client.post(
+        "/performance/twr/pas-input",
+        json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23", "periods": ["YTD", "MTD"]},
+    )
+    assert response.status_code == 200
+    results = response.json()["resultsByPeriod"]
+    assert "YTD" not in results
+    assert "MTD" in results

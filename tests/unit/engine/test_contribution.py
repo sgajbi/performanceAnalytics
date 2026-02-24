@@ -8,6 +8,7 @@ from engine.contribution import (
     _calculate_carino_factors,
     _calculate_daily_instrument_contributions,
     _prepare_hierarchical_data,
+    calculate_hierarchical_contribution,
 )
 
 
@@ -84,3 +85,56 @@ def test_calculate_carino_factors():
     assert k_daily.iloc[0] == pytest.approx(0.95310179)
     k_zero = _calculate_carino_factors(pd.Series([0.0]))
     assert k_zero.iloc[0] == 1.0
+
+
+def test_calculate_daily_contributions_returns_empty_for_empty_instruments(prepared_data_fixture):
+    _, portfolio_df = prepared_data_fixture
+    empty_instruments = pd.DataFrame()
+    result_df = _calculate_daily_instrument_contributions(
+        empty_instruments, portfolio_df, WeightingScheme.BOD, Smoothing(method="NONE")
+    )
+    assert result_df.empty
+
+
+def test_prepare_hierarchical_data_returns_empty_instruments_when_positions_missing(happy_path_payload):
+    payload = happy_path_payload.copy()
+    payload["hierarchy"] = ["sector"]
+    payload["positions_data"] = [{"position_id": "EMPTY", "meta": {"sector": "NA"}, "valuation_points": []}]
+    request = ContributionRequest.model_validate(payload)
+
+    instruments_df, portfolio_df = _prepare_hierarchical_data(request)
+    assert instruments_df.empty
+    assert not portfolio_df.empty
+
+
+def test_calculate_hierarchical_contribution_includes_currency_breakdown_for_both_mode(happy_path_payload, mocker):
+    payload = happy_path_payload.copy()
+    payload["hierarchy"] = ["sector"]
+    payload["currency_mode"] = "BOTH"
+    payload["report_ccy"] = "USD"
+    request = ContributionRequest.model_validate(payload)
+
+    instruments_df = pd.DataFrame(
+        [
+            {
+                "position_id": "P1",
+                "sector": "Tech",
+                "daily_weight": 1.0,
+                "smoothed_contribution": 0.01,
+                "smoothed_local_contribution": 0.006,
+                "smoothed_fx_contribution": 0.004,
+            }
+        ]
+    )
+    mocker.patch(
+        "engine.contribution._prepare_hierarchical_data",
+        return_value=(pd.DataFrame(), pd.DataFrame({"daily_ror": [1.0]})),
+    )
+    mocker.patch("engine.contribution._calculate_daily_instrument_contributions", return_value=instruments_df)
+
+    results, _ = calculate_hierarchical_contribution(request)
+    first_row = results["levels"][0]["rows"][0]
+    assert "local_contribution" in first_row
+    assert "fx_contribution" in first_row
+    assert "local_contribution" in results["summary"]
+    assert "fx_contribution" in results["summary"]

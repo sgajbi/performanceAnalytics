@@ -7,7 +7,9 @@ from common.enums import AttributionModel
 from engine.attribution import (
     _align_and_prepare_data,
     _calculate_single_period_effects,
+    _link_effects_top_down,
     _prepare_data_from_instruments,
+    _prepare_panel_from_groups,
     aggregate_attribution_results,
     run_attribution_calculations,
 )
@@ -178,3 +180,66 @@ def test_prepare_data_from_instruments_missing_portfolio_data():
     request = AttributionRequest.model_validate(request_data)
     with pytest.raises(ValueError, match="'portfolio_data' and 'instruments_data' are required"):
         _prepare_data_from_instruments(request)
+
+
+def test_prepare_data_from_instruments_returns_empty_when_all_inputs_empty():
+    request_data = {
+        "portfolio_number": "TEST",
+        "mode": "by_instrument",
+        "group_by": ["sector"],
+        "linking": "none",
+        "frequency": "daily",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
+        "portfolio_data": {
+            "metric_basis": "NET",
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1000}],
+        },
+        "instruments_data": [{"instrument_id": "EMPTY", "meta": {"sector": "Tech"}, "valuation_points": []}],
+        "benchmark_groups_data": [],
+    }
+    request = AttributionRequest.model_validate(request_data)
+    assert _prepare_data_from_instruments(request) == []
+
+
+def test_prepare_panel_from_groups_handles_empty_cases():
+    assert _prepare_panel_from_groups([], ["sector"]).empty
+
+    class _EmptyGroup:
+        key = {"sector": "Tech"}
+        observations = []
+
+    assert _prepare_panel_from_groups([_EmptyGroup()], ["sector"]).empty
+
+
+def test_align_and_prepare_data_returns_empty_when_benchmark_missing(by_group_request_data):
+    request_payload = by_group_request_data.copy()
+    request_payload["benchmark_groups_data"] = []
+    request = AttributionRequest.model_validate(request_payload)
+    aligned_df = _align_and_prepare_data(request, request.portfolio_groups_data)
+    assert aligned_df.empty
+
+
+def test_link_effects_top_down_noop_when_arithmetic_total_zero():
+    effects_df = pd.DataFrame({"allocation": [0.1], "selection": [0.2], "interaction": [-0.3]})
+    result = _link_effects_top_down(effects_df, geometric_total_ar=0.05, arithmetic_total_ar=0.0)
+    pd.testing.assert_frame_equal(result, effects_df)
+
+
+def test_run_attribution_calculations_invalid_mode_raises_value_error():
+    class _UnsupportedRequest:
+        mode = "unsupported"
+
+    with pytest.raises(ValueError, match="Invalid attribution mode specified"):
+        run_attribution_calculations(_UnsupportedRequest())
+
+
+def test_run_attribution_calculations_returns_empty_when_aligned_panel_empty(by_group_request_data):
+    request_payload = by_group_request_data.copy()
+    request_payload["portfolio_groups_data"] = []
+    request = AttributionRequest.model_validate(request_payload)
+    effects_df, lineage = run_attribution_calculations(request)
+
+    assert effects_df.empty
+    assert "aligned_panel.csv" in lineage

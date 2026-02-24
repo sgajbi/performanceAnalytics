@@ -55,3 +55,33 @@ def test_lineage_service_capture(tmp_path):
 
     assert manifest_data["calculation_type"] == "TEST"
     assert "timestamp_utc" in manifest_data
+
+
+def test_lineage_service_creates_storage_directory_if_missing(tmp_path):
+    storage_path = tmp_path / "lineage" / "captures"
+    assert not storage_path.exists()
+
+    LineageService(storage_path=str(storage_path))
+
+    assert storage_path.exists()
+    assert storage_path.is_dir()
+
+
+def test_lineage_service_capture_logs_error_on_write_failure(tmp_path, mocker, caplog):
+    service = LineageService(storage_path=str(tmp_path))
+    calc_id = uuid4()
+    req_model = MockModel(key="request")
+    res_model = MockModel(key="response")
+    details_df = pd.DataFrame([{"colA": 1, "colB": 2}])
+
+    mocker.patch.object(pd.DataFrame, "to_csv", side_effect=OSError("disk full"))
+    with caplog.at_level("ERROR"):
+        service.capture(
+            calculation_id=calc_id,
+            calculation_type="TEST",
+            request_model=req_model,
+            response_model=res_model,
+            calculation_details={"details.csv": details_df},
+        )
+
+    assert any("Failed to capture lineage data" in record.message for record in caplog.records)

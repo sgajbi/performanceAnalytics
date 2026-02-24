@@ -1,6 +1,6 @@
 # tests/integration/test_contribution_api.py
-import pytest
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 from engine.exceptions import EngineCalculationError

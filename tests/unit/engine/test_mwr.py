@@ -1,11 +1,12 @@
 # tests/unit/engine/test_mwr.py
 from datetime import date
 
+import numpy as np
 import pytest
 
 from app.models.mwr_requests import CashFlow
 from core.envelope import Annualization
-from engine.mwr import calculate_money_weighted_return
+from engine.mwr import _xirr, calculate_money_weighted_return
 
 
 @pytest.mark.parametrize(
@@ -98,3 +99,13 @@ def test_calculate_mwr_zero_denominator():
     assert result.method == "DIETZ"
     assert result.mwr == 0.0
     assert "Calculation resulted in a zero denominator." in result.notes
+
+
+def test_xirr_handles_solver_exception(mocker):
+    mocker.patch("engine.mwr.brentq", side_effect=RuntimeError("solver failed"))
+    values = [-100.0, 120.0]
+    dates = [date(2025, 1, 1), date(2025, 12, 31)]
+    result = _xirr(values=np.array(values), dates=np.array(dates))
+    assert result["converged"] is False
+    assert result["rate"] is None
+    assert "failed to converge" in result["notes"]

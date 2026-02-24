@@ -126,3 +126,45 @@ def test_run_calculations_general_exception_handling():
         run_calculations(bad_df, config)
 
     assert "Input must be a pandas DataFrame" in exc_info.value.message
+
+
+def test_run_calculations_emits_all_reset_reason_codes(mocker):
+    config = EngineConfig(
+        performance_start_date=date(2025, 1, 1),
+        report_end_date=date(2025, 1, 1),
+        metric_basis="NET",
+        period_type=PeriodType.YTD,
+    )
+    df = pd.DataFrame(
+        {
+            PortfolioColumns.PERF_DATE.value: [date(2025, 1, 1)],
+            PortfolioColumns.BEGIN_MV.value: [100.0],
+            PortfolioColumns.BOD_CF.value: [0.0],
+            PortfolioColumns.EOD_CF.value: [0.0],
+            PortfolioColumns.MGMT_FEES.value: [0.0],
+            PortfolioColumns.END_MV.value: [100.0],
+        }
+    )
+
+    mocker.patch(
+        "engine.compute.calculate_daily_ror", return_value=pd.DataFrame({PortfolioColumns.DAILY_ROR.value: [0.0]})
+    )
+    mocker.patch("engine.compute.calculate_sign", return_value=pd.Series([1]))
+    mocker.patch("engine.compute.calculate_nip", return_value=pd.Series([0]))
+
+    def _mock_cumulative(df_input, _config):  # noqa: ARG001
+        df_input[PortfolioColumns.PERF_RESET.value] = 1
+        df_input[PortfolioColumns.NCTRL_1.value] = 0
+        df_input[PortfolioColumns.NCTRL_2.value] = 1
+        df_input[PortfolioColumns.NCTRL_3.value] = 1
+        df_input[PortfolioColumns.NCTRL_4.value] = 1
+        df_input[PortfolioColumns.FINAL_CUM_ROR.value] = 0.0
+        return df_input
+
+    mocker.patch("engine.compute.calculate_cumulative_ror", side_effect=_mock_cumulative)
+
+    _, diagnostics = run_calculations(df, config)
+    assert diagnostics["resets"]
+    assert "NCTRL_2" in diagnostics["resets"][0]["reason"]
+    assert "NCTRL_3" in diagnostics["resets"][0]["reason"]
+    assert "NCTRL_4" in diagnostics["resets"][0]["reason"]
