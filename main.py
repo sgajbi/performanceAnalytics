@@ -74,6 +74,20 @@ app = FastAPI(
     title=settings.APP_NAME,
     description=settings.APP_DESCRIPTION,
     version=settings.APP_VERSION,
+    openapi_tags=[
+        {
+            "name": "Performance",
+            "description": "PA-owned performance analytics APIs including PAS-input execution mode.",
+        },
+        {
+            "name": "Analytics",
+            "description": "PA-owned advanced analytics contracts (including migration-phase endpoints).",
+        },
+        {
+            "name": "Integration",
+            "description": "Capabilities and cross-service integration metadata.",
+        },
+    ],
     default_response_class=ORJSONResponseExcludeNull,  # Set as the default for the app
 )
 

@@ -5,7 +5,7 @@ from app.models.positions_analytics_requests import PositionAnalyticsRequest
 from app.models.positions_analytics_responses import PositionAnalyticsResponse
 from app.services.pas_snapshot_service import PasSnapshotService
 
-router = APIRouter()
+router = APIRouter(tags=["Analytics"])
 settings = get_settings()
 
 
@@ -13,6 +13,14 @@ settings = get_settings()
     "/positions",
     response_model=PositionAnalyticsResponse,
     summary="Get position analytics via PA contract",
+    description=(
+        "Returns PA-owned position analytics contract. During migration, PA may source "
+        "underlying position analytics payloads from PAS and normalize for consumers."
+    ),
+    responses={
+        200: {"description": "Position analytics contract payload."},
+        502: {"description": "Invalid upstream PAS payload shape for PA contract."},
+    },
 )
 async def get_positions_analytics(request: PositionAnalyticsRequest):
     pas_service = PasSnapshotService(

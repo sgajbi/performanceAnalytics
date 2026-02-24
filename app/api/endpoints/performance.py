@@ -36,7 +36,7 @@ from engine.exceptions import EngineCalculationError, InvalidEngineInputError
 from engine.mwr import calculate_money_weighted_return
 from engine.schema import PortfolioColumns
 
-router = APIRouter()
+router = APIRouter(tags=["Performance"])
 settings = get_settings()
 
 
@@ -44,6 +44,15 @@ settings = get_settings()
     "/twr/pas-input",
     response_model=PasInputTwrResponse,
     summary="Calculate TWR from PAS raw performance input contract",
+    description=(
+        "Computes PA-owned TWR analytics from PAS-provided raw valuation input series. "
+        "PAS acts as data provider; PA remains analytics authority."
+    ),
+    responses={
+        200: {"description": "PA TWR result computed from PAS input contract."},
+        404: {"description": "Requested periods not available for the requested as-of context."},
+        502: {"description": "Invalid PAS payload for PA analytics computation."},
+    },
 )
 async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     """
