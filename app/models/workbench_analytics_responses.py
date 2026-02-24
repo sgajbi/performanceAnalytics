@@ -45,4 +45,3 @@ class WorkbenchAnalyticsResponse(BaseModel):
     risk_proxy: WorkbenchRiskProxy = Field(alias="riskProxy")
 
     model_config = {"populate_by_name": True}
-
