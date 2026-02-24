@@ -1,5 +1,6 @@
 # tests/integration/test_contribution_api.py
 import pytest
+import pandas as pd
 from fastapi.testclient import TestClient
 
 from engine.exceptions import EngineCalculationError
@@ -157,3 +158,81 @@ def test_contribution_endpoint_error_handling(client, mocker):
     }
     response = client.post("/performance/contribution", json=payload)
     assert response.status_code == 500
+
+
+def test_contribution_endpoint_no_resolved_periods_returns_400(client):
+    payload = {
+        "portfolio_number": "NO_PERIODS",
+        "report_start_date": "2025-01-10",
+        "report_end_date": "2025-01-05",
+        "analyses": [{"period": "MTD", "frequencies": ["monthly"]}],
+        "portfolio_data": {
+            "metric_basis": "NET",
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-10", "begin_mv": 1000, "end_mv": 1010}],
+        },
+        "positions_data": [],
+    }
+    from app.api.endpoints import contribution as contribution_endpoint
+
+    original_resolve_periods = contribution_endpoint.resolve_periods
+    contribution_endpoint.resolve_periods = lambda periods, end_date, inception_date: []  # type: ignore[assignment]
+    try:
+        response = client.post("/performance/contribution", json=payload)
+    finally:
+        contribution_endpoint.resolve_periods = original_resolve_periods  # type: ignore[assignment]
+
+    assert response.status_code == 400
+    assert "No valid periods could be resolved." in response.json()["detail"]
+
+
+def test_contribution_endpoint_skips_empty_period_slice(client):
+    payload = {
+        "portfolio_number": "EMPTY_SLICE",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
+        "analyses": [{"period": "YTD", "frequencies": ["monthly"]}],
+        "portfolio_data": {
+            "metric_basis": "NET",
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1010}],
+        },
+        "positions_data": [
+            {
+                "position_id": "Stock_A",
+                "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1010}],
+            }
+        ],
+    }
+    from app.api.endpoints import contribution as contribution_endpoint
+
+    original_prepare = contribution_endpoint._prepare_hierarchical_data
+    original_daily = contribution_endpoint._calculate_daily_instrument_contributions
+
+    def _mock_prepare(_request):
+        portfolio_df = pd.DataFrame(
+            [{"perf_date": "2025-01-01", "daily_ror": 0.1}],
+        )
+        return pd.DataFrame(), portfolio_df
+
+    def _mock_daily(_instruments_df, _portfolio_df, _weighting_scheme, _smoothing):
+        return pd.DataFrame(
+            [
+                {
+                    "perf_date": "2024-01-01",
+                    "position_id": "Stock_A",
+                    "smoothed_contribution": 0.0,
+                    "smoothed_local_contribution": 0.0,
+                    "daily_weight": 1.0,
+                }
+            ]
+        )
+
+    contribution_endpoint._prepare_hierarchical_data = _mock_prepare  # type: ignore[assignment]
+    contribution_endpoint._calculate_daily_instrument_contributions = _mock_daily  # type: ignore[assignment]
+    try:
+        response = client.post("/performance/contribution", json=payload)
+    finally:
+        contribution_endpoint._prepare_hierarchical_data = original_prepare  # type: ignore[assignment]
+        contribution_endpoint._calculate_daily_instrument_contributions = original_daily  # type: ignore[assignment]
+
+    assert response.status_code == 200
+    assert response.json()["results_by_period"] == {}
