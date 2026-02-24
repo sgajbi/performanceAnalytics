@@ -14,8 +14,11 @@ def test_integration_capabilities_default_contract():
     assert body["consumerSystem"] == "BFF"
     assert body["tenantId"] == "default"
     assert body["supportedInputModes"] == ["pas_ref", "inline_bundle"]
-    assert len(body["features"]) >= 4
-    assert len(body["workflows"]) >= 2
+    assert len(body["features"]) >= 6
+    assert len(body["workflows"]) >= 3
+    features = {item["key"] for item in body["features"]}
+    assert "pa.analytics.risk" in features
+    assert "pa.analytics.concentration" in features
 
 
 def test_integration_capabilities_env_override(monkeypatch):
