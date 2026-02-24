@@ -42,7 +42,9 @@ async def get_positions_analytics(request: PositionAnalyticsRequest):
         portfolio_id=request.portfolio_id,
         as_of_date=request.as_of_date,
         sections=request.sections,
-        performance_periods=request.performance_periods,
+        performance_periods=(
+            [str(period) for period in request.performance_periods] if request.performance_periods is not None else None
+        ),
     )
     if status_code >= status.HTTP_400_BAD_REQUEST:
         raise HTTPException(status_code=status_code, detail=str(payload))
@@ -72,11 +74,7 @@ def _workbench_buckets(
 
     grouped: dict[str, dict[str, float | str]] = {}
     current_total = sum(row.quantity for row in current_positions)
-    proposed_total = (
-        sum(row.proposed_quantity for row in projected_positions)
-        if projected_positions
-        else current_total
-    )
+    proposed_total = sum(row.proposed_quantity for row in projected_positions) if projected_positions else current_total
 
     for security_id in keys:
         current_row = current_map.get(security_id)
@@ -91,9 +89,7 @@ def _workbench_buckets(
             )
         else:
             asset_class = (
-                projected_row.asset_class
-                if projected_row
-                else (current_row.asset_class if current_row else None)
+                projected_row.asset_class if projected_row else (current_row.asset_class if current_row else None)
             )
             bucket_key = str(asset_class or "UNCLASSIFIED").upper()
             bucket_label = bucket_key
@@ -109,9 +105,7 @@ def _workbench_buckets(
             current_row.quantity if current_row else 0.0
         )
         grouped[bucket_key]["proposed_quantity"] = float(grouped[bucket_key]["proposed_quantity"]) + (
-            projected_row.proposed_quantity
-            if projected_row
-            else (current_row.quantity if current_row else 0.0)
+            projected_row.proposed_quantity if projected_row else (current_row.quantity if current_row else 0.0)
         )
 
     buckets: list[WorkbenchAnalyticsBucket] = []

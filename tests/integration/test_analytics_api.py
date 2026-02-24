@@ -6,9 +6,7 @@ from main import app
 def test_positions_analytics_success(monkeypatch):
     client = TestClient(app)
 
-    async def _mock_get_positions_analytics(
-        self, portfolio_id, as_of_date, sections, performance_periods
-    ):  # noqa: ARG001
+    async def _mock_get_positions_analytics(self, portfolio_id, as_of_date, sections, performance_periods):  # noqa: ARG001
         return (
             200,
             {
@@ -43,9 +41,7 @@ def test_positions_analytics_success(monkeypatch):
 def test_positions_analytics_invalid_payload(monkeypatch):
     client = TestClient(app)
 
-    async def _mock_get_positions_analytics(
-        self, portfolio_id, as_of_date, sections, performance_periods
-    ):  # noqa: ARG001
+    async def _mock_get_positions_analytics(self, portfolio_id, as_of_date, sections, performance_periods):  # noqa: ARG001
         return (200, {"portfolioId": "P1"})
 
     monkeypatch.setattr(

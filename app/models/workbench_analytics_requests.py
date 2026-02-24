@@ -33,9 +33,7 @@ class WorkbenchAnalyticsRequest(BaseModel):
     portfolio_return_pct: float | None = Field(default=None, alias="portfolioReturnPct")
     benchmark_return_pct: float | None = Field(default=None, alias="benchmarkReturnPct")
     current_positions: list[WorkbenchPositionInput] = Field(default_factory=list, alias="currentPositions")
-    projected_positions: list[WorkbenchProjectedPositionInput] = Field(
-        default_factory=list, alias="projectedPositions"
-    )
+    projected_positions: list[WorkbenchProjectedPositionInput] = Field(default_factory=list, alias="projectedPositions")
 
     model_config = {
         "populate_by_name": True,
@@ -69,4 +67,3 @@ class WorkbenchAnalyticsRequest(BaseModel):
             }
         },
     }
-
