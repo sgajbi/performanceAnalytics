@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from common.enums import PeriodType
 from core.envelope import Periods
+from core.errors import APIBadRequestError
 from core.periods import resolve_period, resolve_periods
 
 
@@ -79,3 +80,48 @@ def test_resolve_periods_handles_empty_list():
     """Tests that the resolver returns an empty list if no periods are requested."""
     resolved = resolve_periods([], date(2025, 1, 1), date(2024, 1, 1))
     assert resolved == []
+
+
+def test_resolve_period_explicit_requires_explicit_block():
+    class _ExplicitMissing:
+        type = "EXPLICIT"
+        explicit = None
+        rolling = None
+
+    period_model = _ExplicitMissing()
+    with pytest.raises(APIBadRequestError, match="Explicit period definition is missing"):
+        resolve_period(period_model, date(2025, 8, 31))
+
+
+def test_resolve_period_rolling_requires_valid_definition():
+    class _RollingMissing:
+        type = "ROLLING"
+        explicit = None
+        rolling = None
+
+    class _RollingEmpty:
+        type = "ROLLING"
+        explicit = None
+
+        class rolling:
+            months = None
+            days = None
+
+    period_model = _RollingMissing()
+    with pytest.raises(APIBadRequestError, match="Rolling period definition is missing"):
+        resolve_period(period_model, date(2025, 8, 31))
+
+    invalid_model = _RollingEmpty()
+    with pytest.raises(APIBadRequestError, match="Invalid rolling period definition"):
+        resolve_period(invalid_model, date(2025, 8, 31))
+
+
+def test_resolve_period_unsupported_period_type_raises():
+    class _UnsupportedPeriod:
+        type = "SINCE_INCEPTION"
+        explicit = None
+        rolling = None
+
+    unsupported = _UnsupportedPeriod()
+    with pytest.raises(NotImplementedError, match="not implemented"):
+        resolve_period(unsupported, date(2025, 8, 31))

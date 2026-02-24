@@ -82,3 +82,37 @@ def test_no_policy_does_nothing(sample_policy_df):
     pd.testing.assert_frame_equal(original_df, result_df)
     assert diags["policy"]["overrides"]["applied_mv_count"] == 0
     assert diags["policy"]["ignored_days_count"] == 0
+
+
+def test_flag_outliers_returns_early_when_disabled(sample_policy_df):
+    diagnostics = {"policy": {"outliers": {"flagged_rows": 0}}, "samples": {"outliers": []}}
+    policy_model = DataPolicy.model_validate({"outliers": {"enabled": False}})
+    _flag_outliers(sample_policy_df.copy(), policy_model, diagnostics)
+    assert diagnostics["policy"]["outliers"]["flagged_rows"] == 0
+
+
+def test_flag_outliers_returns_early_for_non_flag_action(sample_policy_df):
+    diagnostics = {"policy": {"outliers": {"flagged_rows": 0}}, "samples": {"outliers": []}}
+
+    class _Outliers:
+        enabled = True
+
+        @staticmethod
+        def model_dump():
+            return {"action": "IGNORE", "params": {}}
+
+    class _Policy:
+        outliers = _Outliers()
+        ignore_days = None
+
+    policy_model = _Policy()
+    _flag_outliers(sample_policy_df.copy(), policy_model, diagnostics)
+    assert diagnostics["policy"]["outliers"]["flagged_rows"] == 0
+
+
+def test_flag_outliers_returns_early_when_daily_ror_missing(sample_policy_df):
+    diagnostics = {"policy": {"outliers": {"flagged_rows": 0}}, "samples": {"outliers": []}}
+    policy_model = DataPolicy.model_validate({"outliers": {"enabled": True, "action": "FLAG"}})
+    df_without_ror = sample_policy_df.drop(columns=[PortfolioColumns.END_MV.value]).copy()
+    _flag_outliers(df_without_ror, policy_model, diagnostics)
+    assert diagnostics["policy"]["outliers"]["flagged_rows"] == 0

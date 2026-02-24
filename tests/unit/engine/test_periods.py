@@ -66,3 +66,14 @@ def test_get_effective_period_start_dates(
         expected_series.reset_index(drop=True),
         check_names=False,
     )
+
+
+def test_get_effective_period_start_dates_fallback_branch(sample_dates):
+    class _FallbackConfig:
+        period_type = "UNKNOWN"
+        performance_start_date = date(2020, 1, 1)
+        report_start_date = None
+        report_end_date = date(2025, 12, 31)
+
+    result_series = get_effective_period_start_dates(sample_dates, _FallbackConfig())
+    assert (result_series == pd.to_datetime(date(2020, 1, 1))).all()

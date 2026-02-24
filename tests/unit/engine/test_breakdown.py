@@ -121,3 +121,36 @@ def test_annualization_correctly_handles_sparse_long_period():
 
     assert "annualized_return_pct" in summary
     assert summary["annualized_return_pct"] == pytest.approx(4.986004, abs=1e-6)
+
+
+def test_generate_breakdowns_daily_includes_cumulative_when_requested(sample_daily_results, default_annualization):
+    breakdowns = generate_performance_breakdowns(
+        sample_daily_results, [Frequency.DAILY], default_annualization, True, rounding_precision=6
+    )
+    assert "cumulative_return_pct_to_date" in breakdowns[Frequency.DAILY][0]["summary"]
+
+
+def test_generate_breakdowns_weekly_period_label(sample_daily_results, default_annualization):
+    breakdowns = generate_performance_breakdowns(
+        sample_daily_results, [Frequency.WEEKLY], default_annualization, False, rounding_precision=6
+    )
+    assert Frequency.WEEKLY in breakdowns
+    assert breakdowns[Frequency.WEEKLY][0]["period"].count("-") == 2
+
+
+def test_generate_breakdowns_skips_empty_resample_buckets(default_annualization):
+    sparse = pd.DataFrame(
+        {
+            PortfolioColumns.PERF_DATE: pd.to_datetime(["2025-01-31", "2025-03-31"]).date,
+            PortfolioColumns.BEGIN_MV: [100.0, 101.0],
+            PortfolioColumns.BOD_CF: [0.0, 0.0],
+            PortfolioColumns.EOD_CF: [0.0, 0.0],
+            PortfolioColumns.END_MV: [101.0, 102.0],
+            PortfolioColumns.DAILY_ROR: [1.0, 0.99],
+            PortfolioColumns.FINAL_CUM_ROR: [1.0, 2.0],
+        }
+    )
+    breakdowns = generate_performance_breakdowns(
+        sparse, [Frequency.MONTHLY], default_annualization, False, rounding_precision=6
+    )
+    assert len(breakdowns[Frequency.MONTHLY]) == 2
