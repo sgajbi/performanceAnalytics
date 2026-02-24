@@ -103,13 +103,12 @@ def test_contribution_response_new_structure_passes(base_response_footer):
         resp = ContributionResponse.model_validate(payload)
         assert "YTD" in resp.results_by_period
         assert resp.results_by_period["YTD"].summary.portfolio_contribution == 1.82
-        assert resp.summary is None
     except ValidationError as e:
         pytest.fail(f"Validation failed for new response structure: {e}")
 
 
-def test_contribution_response_legacy_structure_passes(base_response_footer):
-    """Tests that a valid single-level contribution response payload is parsed correctly."""
+def test_contribution_response_legacy_structure_fails(base_response_footer):
+    """Tests that legacy top-level contribution fields are rejected."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
         "portfolio_id": "HIERARCHY_01",
@@ -124,9 +123,5 @@ def test_contribution_response_legacy_structure_passes(base_response_footer):
         **base_response_footer,
     }
 
-    try:
-        resp = ContributionResponse.model_validate(payload)
-        assert resp.summary.portfolio_contribution == 1.82
-        assert resp.results_by_period is None
-    except ValidationError as e:
-        pytest.fail(f"Validation failed for legacy response structure: {e}")
+    with pytest.raises(ValidationError):
+        ContributionResponse.model_validate(payload)

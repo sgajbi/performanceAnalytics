@@ -64,29 +64,24 @@ def test_performance_response_new_structure_passes(base_response_footer, single_
         response = PerformanceResponse.model_validate(payload)
         assert "YTD" in response.results_by_period
         assert "MTD" in response.results_by_period
-        assert response.breakdowns is None  # Old field should be absent
     except ValidationError as e:
         pytest.fail(f"Validation failed unexpectedly for new structure: {e}")
 
 
-def test_performance_response_legacy_structure_passes(base_response_footer, single_period_result_payload):
-    """Tests that a response with the legacy 'breakdowns' field is still valid."""
+def test_performance_response_legacy_structure_fails(base_response_footer, single_period_result_payload):
+    """Tests that a response with top-level legacy 'breakdowns' is rejected."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
         "portfolio_id": "TEST_01",
         **single_period_result_payload,
         **base_response_footer,
     }
-    try:
-        response = PerformanceResponse.model_validate(payload)
-        assert response.breakdowns is not None
-        assert response.results_by_period is None  # New field should be absent
-    except ValidationError as e:
-        pytest.fail(f"Validation failed unexpectedly for legacy structure: {e}")
+    with pytest.raises(ValidationError):
+        PerformanceResponse.model_validate(payload)
 
 
 def test_performance_response_with_both_structures_fails(base_response_footer, single_period_result_payload):
-    """Tests that validation fails if both legacy and new structures are present."""
+    """Tests that validation fails if legacy and canonical structures are both present."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
         "portfolio_id": "TEST_01",
@@ -94,7 +89,7 @@ def test_performance_response_with_both_structures_fails(base_response_footer, s
         **single_period_result_payload,
         **base_response_footer,
     }
-    with pytest.raises(ValidationError, match="Provide either 'results_by_period' or the legacy"):
+    with pytest.raises(ValidationError):
         PerformanceResponse.model_validate(payload)
 
 
@@ -105,5 +100,5 @@ def test_performance_response_with_neither_structure_fails(base_response_footer)
         "portfolio_id": "TEST_01",
         **base_response_footer,
     }
-    with pytest.raises(ValidationError, match="Provide either 'results_by_period' or the legacy"):
+    with pytest.raises(ValidationError):
         PerformanceResponse.model_validate(payload)

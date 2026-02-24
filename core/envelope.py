@@ -114,7 +114,6 @@ class Output(BaseModel):
 
 class Flags(BaseModel):
     fail_fast: bool = False
-    compat_legacy_names: bool = False
 
 
 class BaseRequest(BaseModel):
