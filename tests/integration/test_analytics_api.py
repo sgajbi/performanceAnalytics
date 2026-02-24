@@ -56,6 +56,21 @@ def test_positions_analytics_invalid_payload(monkeypatch):
     assert response.status_code == 502
 
 
+def test_positions_analytics_upstream_error_passthrough(monkeypatch):
+    client = TestClient(app)
+
+    async def _mock_get_positions_analytics(self, portfolio_id, as_of_date, sections, performance_periods):  # noqa: ARG001
+        return (503, {"detail": "pas unavailable"})
+
+    monkeypatch.setattr(
+        "app.api.endpoints.analytics.PasSnapshotService.get_positions_analytics",
+        _mock_get_positions_analytics,
+    )
+
+    response = client.post("/analytics/positions", json={"portfolioId": "P1", "asOfDate": "2026-02-24"})
+    assert response.status_code == 503
+
+
 def test_workbench_analytics_success():
     client = TestClient(app)
     response = client.post(
@@ -100,3 +115,30 @@ def test_workbench_analytics_success():
     assert len(body["allocationBuckets"]) >= 1
     assert "riskProxy" in body
     assert body["activeReturnPct"] is not None
+
+
+def test_workbench_analytics_security_group_uses_security_bucket_keys():
+    client = TestClient(app)
+    response = client.post(
+        "/analytics/workbench",
+        json={
+            "portfolioId": "P1",
+            "asOfDate": "2026-02-24",
+            "period": "YTD",
+            "groupBy": "SECURITY",
+            "benchmarkCode": "CUSTOM",
+            "currentPositions": [
+                {
+                    "securityId": "MSFT.US",
+                    "instrumentName": "Microsoft",
+                    "assetClass": "EQUITY",
+                    "quantity": 50.0,
+                }
+            ],
+            "projectedPositions": [],
+        },
+    )
+    assert response.status_code == 200
+    bucket = response.json()["allocationBuckets"][0]
+    assert bucket["bucketKey"] == "MSFT.US"
+    assert bucket["bucketLabel"] == "Microsoft"

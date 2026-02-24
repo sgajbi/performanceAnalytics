@@ -471,3 +471,104 @@ def test_twr_pas_snapshot_upstream_error_passthrough(client, monkeypatch):
 
     response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 404
+
+
+def test_twr_pas_snapshot_missing_performance_start_date_returns_502(client, monkeypatch):
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": "BFF",
+                "portfolioId": portfolio_id,
+                "valuationPoints": [{"day": 1, "perf_date": "2026-02-01", "begin_mv": 100, "end_mv": 101}],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        _mock_get_performance_input,
+    )
+
+    response = client.post("/performance/twr/pas-input", json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23"})
+    assert response.status_code == 502
+    assert "missing performanceStartDate" in response.json()["detail"]
+
+
+def test_twr_pas_snapshot_invalid_valuation_shape_returns_502(client, monkeypatch):
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": "BFF",
+                "portfolioId": portfolio_id,
+                "performanceStartDate": "2026-01-01",
+                "valuationPoints": [{"perf_date": "2026-02-01"}],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        _mock_get_performance_input,
+    )
+
+    response = client.post("/performance/twr/pas-input", json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23"})
+    assert response.status_code == 502
+    assert "Invalid PAS performance input payload" in response.json()["detail"]
+
+
+def test_twr_pas_snapshot_requested_period_not_found_returns_404(client, monkeypatch):
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": "BFF",
+                "portfolioId": portfolio_id,
+                "performanceStartDate": "2026-01-01",
+                "valuationPoints": [
+                    {
+                        "day": 1,
+                        "perf_date": "2026-02-01",
+                        "begin_mv": 100.0,
+                        "bod_cf": 0.0,
+                        "eod_cf": 0.0,
+                        "mgmt_fees": 0.0,
+                        "end_mv": 101.0,
+                    },
+                    {
+                        "day": 2,
+                        "perf_date": "2026-02-23",
+                        "begin_mv": 101.0,
+                        "bod_cf": 0.0,
+                        "eod_cf": 0.0,
+                        "mgmt_fees": 0.0,
+                        "end_mv": 102.0,
+                    },
+                ],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        _mock_get_performance_input,
+    )
+
+    class _Computed:
+        results_by_period = {}
+
+    async def _mock_calculate_twr_endpoint(request, background_tasks):  # noqa: ARG001
+        return _Computed()
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.calculate_twr_endpoint",
+        _mock_calculate_twr_endpoint,
+    )
+
+    response = client.post(
+        "/performance/twr/pas-input",
+        json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23", "periods": ["YTD"]},
+    )
+    assert response.status_code == 404
+    assert "Requested periods not found" in response.json()["detail"]
