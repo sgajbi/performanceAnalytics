@@ -39,6 +39,11 @@ The following RFCs have been **fully implemented** and their features are part o
 
 The following RFCs are not yet implemented. This roadmap presents a logical order for their development, prioritizing foundational capabilities that enable more advanced analytics.
 
+### Phase 0: Vocabulary and Contract Hygiene
+
+1.  **RFC 038 — PA Domain Vocabulary Alignment with Platform Glossary**
+    * **Reasoning:** **Eliminate cross-platform semantic drift first.** Aligns PA to canonical platform language (`portfolio_id`, `pas-input`) before further contract expansion.
+
 ### Phase 1: Foundational Enhancements
 
 1.  **RFC 032 — Real-Time Analytics Surfaces for Iterative Advisory and DPM Simulation**
