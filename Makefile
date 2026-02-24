@@ -1,4 +1,4 @@
-.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci-local ci-local-docker ci-local-docker-down typecheck lint format clean run check-deps pre-commit docker-up docker-down
+.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci ci-local ci-local-docker ci-local-docker-down typecheck lint format clean run check-deps security-audit pre-commit docker-up docker-down
 
 install:
 	pip install -r requirements.txt
@@ -10,6 +10,8 @@ pre-commit:
 	pre-commit run --all-files
 
 check: lint typecheck test
+
+ci: lint typecheck test-all security-audit
 
 test:
 	$(MAKE) test-unit
@@ -60,6 +62,9 @@ run:
 	uvicorn main:app --reload --port 8000
 
 check-deps:
+	python scripts/dependency_health_check.py --requirements requirements.txt
+
+security-audit:
 	python scripts/dependency_health_check.py --requirements requirements.txt
 
 docker-up:
