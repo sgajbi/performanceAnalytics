@@ -1,4 +1,4 @@
-.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci ci-local ci-local-docker ci-local-docker-down typecheck lint format clean run check-deps security-audit pre-commit docker-up docker-down
+.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci ci-local ci-local-docker ci-local-docker-down typecheck lint format clean run check-deps security-audit openapi-gate pre-commit docker-up docker-down
 
 install:
 	pip install -r requirements.txt
@@ -9,9 +9,9 @@ install:
 pre-commit:
 	pre-commit run --all-files
 
-check: lint typecheck test
+check: lint typecheck openapi-gate test
 
-ci: lint typecheck test-all security-audit
+ci: lint typecheck openapi-gate test-all security-audit
 
 test:
 	$(MAKE) test-unit
@@ -47,6 +47,9 @@ check-all: lint typecheck test-all
 
 typecheck:
 	mypy --config-file mypy.ini
+
+openapi-gate:
+	python scripts/openapi_quality_gate.py
 
 lint:
 	ruff check .
