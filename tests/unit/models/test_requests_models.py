@@ -47,4 +47,3 @@ def test_performance_request_without_analyses_fails(base_twr_payload):
     """Tests that validation fails if the 'analyses' field is missing."""
     with pytest.raises(ValidationError, match="Field required"):
         PerformanceRequest.model_validate(base_twr_payload)
-

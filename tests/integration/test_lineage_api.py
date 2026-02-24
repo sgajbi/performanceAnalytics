@@ -89,4 +89,3 @@ def test_get_lineage_internal_error_returns_500(client, mocker):
     response = client.get(f"/performance/lineage/{calculation_id}")
     assert response.status_code == 500
     assert "Failed to retrieve lineage artifacts" in response.json()["detail"]
-

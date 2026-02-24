@@ -44,4 +44,3 @@ class MoneyWeightedReturnRequest(BaseModel):
     output: Output = Field(default_factory=Output)
     flags: Flags = Field(default_factory=Flags)
     report_ccy: Optional[str] = None
-

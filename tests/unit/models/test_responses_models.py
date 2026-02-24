@@ -107,4 +107,3 @@ def test_performance_response_with_neither_structure_fails(base_response_footer)
     }
     with pytest.raises(ValidationError, match="Provide either 'results_by_period' or the legacy"):
         PerformanceResponse.model_validate(payload)
-

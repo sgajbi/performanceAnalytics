@@ -83,4 +83,3 @@ class PerformanceResponse(BaseModel):
         if not (has_new_structure ^ has_legacy_structure):
             raise ValueError("Provide either 'results_by_period' or the legacy 'breakdowns' field, but not both.")
         return values
-

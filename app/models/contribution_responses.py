@@ -126,4 +126,3 @@ class ContributionResponse(BaseModel):
             raise ValueError("A result structure ('results_by_period' or legacy fields) must be provided.")
 
         return values
-

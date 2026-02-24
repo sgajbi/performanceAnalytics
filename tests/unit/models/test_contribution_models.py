@@ -130,4 +130,3 @@ def test_contribution_response_legacy_structure_passes(base_response_footer):
         assert resp.results_by_period is None
     except ValidationError as e:
         pytest.fail(f"Validation failed for legacy response structure: {e}")
-

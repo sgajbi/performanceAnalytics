@@ -674,4 +674,3 @@ def test_twr_pas_input_skips_period_without_summary_and_returns_remaining(client
     results = response.json()["resultsByPeriod"]
     assert "YTD" not in results
     assert "MTD" in results
-

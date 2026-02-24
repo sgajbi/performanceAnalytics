@@ -157,4 +157,3 @@ async def test_text_error_payload_is_mapped_to_detail():
     )
     assert status_code == 503
     assert payload["detail"] == "upstream unavailable"
-
