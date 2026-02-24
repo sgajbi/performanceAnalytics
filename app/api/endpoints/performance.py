@@ -1,6 +1,4 @@
 # app/api/endpoints/performance.py
-from datetime import date
-
 import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
@@ -42,107 +40,93 @@ router = APIRouter()
 settings = get_settings()
 
 
-def _parse_optional_date(value: object) -> date | None:
-    if value is None:
-        return None
-    if isinstance(value, date):
-        return value
-    if isinstance(value, str):
-        return date.fromisoformat(value)
-    raise ValueError(f"Unsupported date value type: {type(value)}")
-
-
 @router.post(
     "/twr/pas-snapshot",
     response_model=PasConnectedTwrResponse,
-    summary="Calculate TWR from PAS Core Snapshot",
+    summary="Calculate TWR from PAS raw performance input contract",
 )
 async def calculate_twr_from_pas_snapshot(request: PasConnectedTwrRequest):
     """
-    Retrieves PAS integration core snapshot and returns PA performance summary mapped from
-    PAS performance section. This is the first PAS-connected PA execution mode contract.
+    Retrieves PAS raw performance input series and computes PA-owned TWR analytics.
+    PAS acts as data provider only; performance metrics are computed in PA.
     """
-    if "PERFORMANCE" not in {section.upper() for section in request.include_sections}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="includeSections must contain PERFORMANCE for pas-snapshot mode.",
-        )
-
     pas_service = PasSnapshotService(
         base_url=settings.PAS_QUERY_BASE_URL,
         timeout_seconds=settings.PAS_TIMEOUT_SECONDS,
     )
-    upstream_status, upstream_payload = await pas_service.get_core_snapshot(
+    upstream_status, upstream_payload = await pas_service.get_performance_input(
         portfolio_id=request.portfolio_id,
         as_of_date=request.as_of_date,
-        include_sections=request.include_sections,
+        lookback_days=request.lookback_days,
         consumer_system=request.consumer_system,
     )
     if upstream_status >= status.HTTP_400_BAD_REQUEST:
         raise HTTPException(status_code=upstream_status, detail=str(upstream_payload))
 
-    snapshot = upstream_payload.get("snapshot")
-    if not isinstance(snapshot, dict):
+    valuation_points = upstream_payload.get("valuationPoints")
+    if not isinstance(valuation_points, list) or not valuation_points:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid PAS snapshot payload: missing snapshot object.",
+            detail="Invalid PAS performance input payload: missing valuationPoints.",
         )
 
-    performance_section = snapshot.get("performance")
-    if not isinstance(performance_section, dict):
+    performance_start_date = upstream_payload.get("performanceStartDate")
+    if not isinstance(performance_start_date, str):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid PAS snapshot payload: missing performance section.",
+            detail="Invalid PAS performance input payload: missing performanceStartDate.",
         )
 
-    summary = performance_section.get("summary")
-    if not isinstance(summary, dict):
+    requested_periods = request.periods or ["YTD"]
+    analyses = [{"period": period_key, "frequencies": ["monthly"]} for period_key in requested_periods]
+    try:
+        performance_request = PerformanceRequest.model_validate(
+            {
+                "portfolio_number": upstream_payload.get("portfolioId", request.portfolio_id),
+                "performance_start_date": performance_start_date,
+                "metric_basis": "NET",
+                "report_end_date": str(request.as_of_date),
+                "analyses": analyses,
+                "valuation_points": valuation_points,
+            }
+        )
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid PAS snapshot payload: missing performance summary.",
-        )
+            detail=f"Invalid PAS performance input payload: {exc}",
+        ) from exc
 
-    requested_periods = set(request.periods or [])
+    computed = await calculate_twr_endpoint(performance_request, BackgroundTasks())
     results_by_period: dict[str, PasConnectedPeriodResult] = {}
-    for period_key, period_value in summary.items():
-        if requested_periods and period_key not in requested_periods:
+    for period_key in requested_periods:
+        period_result = computed.results_by_period.get(period_key)
+        if period_result is None:
             continue
-        if not isinstance(period_value, dict):
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Invalid PAS snapshot payload: summary[{period_key}] must be object.",
-            )
-
-        try:
-            results_by_period[period_key] = PasConnectedPeriodResult(
-                period=period_key,
-                start_date=_parse_optional_date(period_value.get("start_date")),
-                end_date=_parse_optional_date(period_value.get("end_date")),
-                net_cumulative_return=period_value.get("net_cumulative_return"),
-                net_annualized_return=period_value.get("net_annualized_return"),
-                gross_cumulative_return=period_value.get("gross_cumulative_return"),
-                gross_annualized_return=period_value.get("gross_annualized_return"),
-            )
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Invalid PAS snapshot payload for {period_key}: {exc}",
-            ) from exc
-
-    if requested_periods and not results_by_period:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Requested periods not found in PAS performance summary.",
+        summary = None
+        for items in period_result.breakdowns.values():
+            if items:
+                summary = items[-1].summary
+                break
+        if summary is None:
+            continue
+        results_by_period[period_key] = PasConnectedPeriodResult(
+            period=period_key,
+            start_date=None,
+            end_date=None,
+            net_cumulative_return=summary.period_return_pct,
+            net_annualized_return=summary.annualized_return_pct,
+            gross_cumulative_return=None,
+            gross_annualized_return=None,
         )
 
-    portfolio_payload = upstream_payload.get("portfolio", {})
-    portfolio_number = portfolio_payload.get("portfolio_id", request.portfolio_id)
+    if not results_by_period:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requested periods not found.")
 
     return PasConnectedTwrResponse(
-        portfolio_number=portfolio_number,
+        portfolio_number=performance_request.portfolio_number,
         as_of_date=request.as_of_date,
         pasContractVersion=upstream_payload.get("contractVersion", "v1"),
-        consumerSystem=upstream_payload.get("consumerSystem"),
+        consumerSystem=upstream_payload.get("consumerSystem", request.consumer_system),
         resultsByPeriod=results_by_period,
     )
 

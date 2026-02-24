@@ -24,9 +24,16 @@ class PasConnectedTwrRequest(BaseModel):
         description="Consumer system identifier forwarded to PAS integration contract.",
     )
     include_sections: list[str] = Field(
-        default_factory=lambda: ["PERFORMANCE"],
+        default_factory=lambda: ["OVERVIEW", "HOLDINGS", "TRANSACTIONS"],
         alias="includeSections",
-        description="PAS snapshot sections requested; PERFORMANCE required for this endpoint.",
+        description="Legacy field retained for backward compatibility; ignored by PA.",
+    )
+    lookback_days: int = Field(
+        400,
+        ge=30,
+        le=2000,
+        alias="lookbackDays",
+        description="Maximum days of PAS raw valuation history requested for PA calculation.",
     )
 
     model_config = {"populate_by_name": True}

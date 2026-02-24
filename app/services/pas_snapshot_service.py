@@ -26,6 +26,38 @@ class PasSnapshotService:
             response = await client.post(url, json=payload)
             return response.status_code, self._response_payload(response)
 
+    async def get_performance_input(
+        self,
+        portfolio_id: str,
+        as_of_date: date,
+        lookback_days: int,
+        consumer_system: str,
+    ) -> tuple[int, dict[str, Any]]:
+        url = f"{self._base_url}/integration/portfolios/{portfolio_id}/performance-input"
+        payload = {
+            "asOfDate": str(as_of_date),
+            "lookbackDays": lookback_days,
+            "consumerSystem": consumer_system,
+        }
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(url, json=payload)
+            return response.status_code, self._response_payload(response)
+
+    async def get_positions_analytics(
+        self,
+        portfolio_id: str,
+        as_of_date: date,
+        sections: list[str],
+        performance_periods: list[str] | None,
+    ) -> tuple[int, dict[str, Any]]:
+        url = f"{self._base_url}/portfolios/{portfolio_id}/positions-analytics"
+        payload: dict[str, Any] = {"asOfDate": str(as_of_date), "sections": sections}
+        if performance_periods:
+            payload["performanceOptions"] = {"periods": performance_periods}
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(url, json=payload)
+            return response.status_code, self._response_payload(response)
+
     def _response_payload(self, response: httpx.Response) -> dict[str, Any]:
         try:
             payload = response.json()
