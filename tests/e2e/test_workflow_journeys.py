@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from main import app
 
@@ -196,3 +197,214 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
     assert positions_response.status_code == 200
     assert twr_pas_response.json()["source_mode"] == "pas_ref"
     assert positions_response.json()["portfolioId"] == "PORT-1001"
+
+
+def test_e2e_pas_ref_capability_and_execution_contract(monkeypatch) -> None:
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "contractVersion": "v1",
+                "consumerSystem": consumer_system,
+                "portfolioId": portfolio_id,
+                "performanceStartDate": "2026-01-01",
+                "valuationPoints": [
+                    {"day": 1, "perf_date": "2026-02-01", "begin_mv": 100.0, "end_mv": 101.0},
+                    {"day": 2, "perf_date": "2026-02-23", "begin_mv": 101.0, "end_mv": 102.0},
+                ],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        _mock_get_performance_input,
+    )
+
+    with TestClient(app) as client:
+        capabilities = client.get("/integration/capabilities?consumerSystem=BFF&tenantId=default")
+        twr_pas = client.post(
+            "/performance/twr/pas-input",
+            json={"portfolioId": "PORT-1002", "asOfDate": "2026-02-23", "consumerSystem": "BFF", "periods": ["YTD"]},
+        )
+
+    assert capabilities.status_code == 200
+    assert twr_pas.status_code == 200
+    assert "pas_ref" in capabilities.json()["supportedInputModes"]
+    assert twr_pas.json()["source_mode"] == "pas_ref"
+    assert "YTD" in twr_pas.json()["resultsByPeriod"]
+
+
+def test_e2e_pas_ref_upstream_failure_passthrough(monkeypatch) -> None:
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return 503, {"detail": "PAS unavailable"}
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        _mock_get_performance_input,
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/performance/twr/pas-input",
+            json={"portfolioId": "PORT-DOWN", "asOfDate": "2026-02-23", "consumerSystem": "BFF"},
+        )
+
+    assert response.status_code == 503
+    assert "PAS unavailable" in response.json()["detail"]
+
+
+def test_e2e_positions_pas_payload_contract_failure(monkeypatch) -> None:
+    async def _mock_get_positions_analytics(self, portfolio_id, as_of_date, sections, performance_periods):  # noqa: ARG001
+        return 200, {"portfolioId": portfolio_id, "asOfDate": str(as_of_date)}
+
+    monkeypatch.setattr(
+        "app.api.endpoints.analytics.PasSnapshotService.get_positions_analytics",
+        _mock_get_positions_analytics,
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/analytics/positions",
+            json={"portfolioId": "P-CONTRACT", "asOfDate": "2026-02-24", "sections": ["BASE"]},
+        )
+
+    assert response.status_code == 502
+    assert "Invalid PAS positions analytics payload" in response.json()["detail"]
+
+
+def test_e2e_contribution_lineage_roundtrip() -> None:
+    contribution_payload = {
+        "portfolio_number": "E2E_CONTRIB_002",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
+        "portfolio_data": {
+            "metric_basis": "NET",
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1015}],
+        },
+        "positions_data": [
+            {
+                "position_id": "AAPL",
+                "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1015}],
+            }
+        ],
+        "emit": {"timeseries": True},
+    }
+
+    with TestClient(app) as client:
+        contribution_response = client.post("/performance/contribution", json=contribution_payload)
+        lineage_response = client.get(f"/performance/lineage/{contribution_response.json()['calculation_id']}")
+
+    assert contribution_response.status_code == 200
+    assert lineage_response.status_code == 200
+    assert len(lineage_response.json()["artifacts"]) >= 1
+
+
+def test_e2e_attribution_lineage_roundtrip() -> None:
+    attribution_payload = {
+        "portfolio_number": "E2E_ATTRIB_002",
+        "mode": "by_group",
+        "group_by": ["sector"],
+        "linking": "none",
+        "frequency": "daily",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
+        "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
+        "portfolio_groups_data": [
+            {
+                "key": {"sector": "Tech"},
+                "observations": [{"date": "2025-01-01", "return_base": 0.015, "weight_bop": 1.0}],
+            }
+        ],
+        "benchmark_groups_data": [
+            {
+                "key": {"sector": "Tech"},
+                "observations": [{"date": "2025-01-01", "return_base": 0.01, "weight_bop": 1.0}],
+            }
+        ],
+    }
+
+    with TestClient(app) as client:
+        attribution_response = client.post("/performance/attribution", json=attribution_payload)
+        lineage_response = client.get(f"/performance/lineage/{attribution_response.json()['calculation_id']}")
+
+    assert attribution_response.status_code == 200
+    assert lineage_response.status_code == 200
+    assert len(lineage_response.json()["artifacts"]) >= 1
+
+
+def test_e2e_mwr_lineage_roundtrip() -> None:
+    mwr_payload = {
+        "portfolio_number": "E2E_MWR_002",
+        "begin_mv": 1000.0,
+        "end_mv": 1045.0,
+        "cash_flows": [{"date": "2025-01-15", "amount": 25.0}],
+        "as_of": "2025-01-31",
+        "annualization": {"enabled": True, "basis": "ACT/365"},
+    }
+
+    with TestClient(app) as client:
+        mwr_response = client.post("/performance/mwr", json=mwr_payload)
+        lineage_response = client.get(f"/performance/lineage/{mwr_response.json()['calculation_id']}")
+
+    assert mwr_response.status_code == 200
+    assert lineage_response.status_code == 200
+    assert mwr_response.json()["method"] is not None
+    assert len(lineage_response.json()["artifacts"]) >= 1
+
+
+def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
+    monkeypatch.setenv("PA_CAP_INPUT_MODE_PAS_REF_ENABLED", "false")
+    monkeypatch.setenv("PA_CAP_INPUT_MODE_INLINE_BUNDLE_ENABLED", "false")
+    monkeypatch.setenv("PA_CAP_ATTRIBUTION_ENABLED", "false")
+
+    with TestClient(app) as client:
+        response = client.get("/integration/capabilities?consumerSystem=DPM&tenantId=tenant-b")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["supportedInputModes"] == []
+    features = {item["key"]: item["enabled"] for item in body["features"]}
+    assert features["pa.analytics.attribution"] is False
+
+
+def test_e2e_workbench_active_return_and_risk_proxy_signal() -> None:
+    payload = {
+        "portfolioId": "P2",
+        "asOfDate": "2026-02-24",
+        "period": "YTD",
+        "groupBy": "ASSET_CLASS",
+        "benchmarkCode": "MODEL_60_40",
+        "portfolioReturnPct": 5.4,
+        "currentPositions": [
+            {"securityId": "EQ1", "instrumentName": "Equity 1", "assetClass": "EQUITY", "quantity": 100.0},
+            {"securityId": "FI1", "instrumentName": "Bond 1", "assetClass": "FIXED_INCOME", "quantity": 100.0},
+        ],
+        "projectedPositions": [
+            {
+                "securityId": "EQ1",
+                "instrumentName": "Equity 1",
+                "assetClass": "EQUITY",
+                "baselineQuantity": 100.0,
+                "proposedQuantity": 170.0,
+                "deltaQuantity": 70.0,
+            },
+            {
+                "securityId": "FI1",
+                "instrumentName": "Bond 1",
+                "assetClass": "FIXED_INCOME",
+                "baselineQuantity": 100.0,
+                "proposedQuantity": 30.0,
+                "deltaQuantity": -70.0,
+            },
+        ],
+    }
+
+    with TestClient(app) as client:
+        response = client.post("/analytics/workbench", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["activeReturnPct"] == pytest.approx(2.3)
+    assert body["riskProxy"]["hhiDelta"] > 0
+    assert len(body["topChanges"]) == 2
