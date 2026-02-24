@@ -58,3 +58,49 @@ def test_positions_analytics_invalid_payload(monkeypatch):
         json={"portfolioId": "P1", "asOfDate": "2026-02-24"},
     )
     assert response.status_code == 502
+
+
+def test_workbench_analytics_success():
+    client = TestClient(app)
+    response = client.post(
+        "/analytics/workbench",
+        json={
+            "portfolioId": "P1",
+            "asOfDate": "2026-02-24",
+            "period": "YTD",
+            "groupBy": "ASSET_CLASS",
+            "benchmarkCode": "MODEL_60_40",
+            "portfolioReturnPct": 4.2,
+            "currentPositions": [
+                {
+                    "securityId": "AAPL.US",
+                    "instrumentName": "Apple Inc",
+                    "assetClass": "EQUITY",
+                    "quantity": 120.0,
+                },
+                {
+                    "securityId": "UST10Y",
+                    "instrumentName": "US Treasury 10Y",
+                    "assetClass": "FIXED_INCOME",
+                    "quantity": 80.0,
+                },
+            ],
+            "projectedPositions": [
+                {
+                    "securityId": "AAPL.US",
+                    "instrumentName": "Apple Inc",
+                    "assetClass": "EQUITY",
+                    "baselineQuantity": 120.0,
+                    "proposedQuantity": 100.0,
+                    "deltaQuantity": -20.0,
+                }
+            ],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source_mode"] == "pa_calc"
+    assert body["portfolioId"] == "P1"
+    assert len(body["allocationBuckets"]) >= 1
+    assert "riskProxy" in body
+    assert body["activeReturnPct"] is not None

@@ -62,6 +62,8 @@ async def get_integration_capabilities(
     mwr_enabled = _env_bool("PA_CAP_MWR_ENABLED", True)
     contribution_enabled = _env_bool("PA_CAP_CONTRIBUTION_ENABLED", True)
     attribution_enabled = _env_bool("PA_CAP_ATTRIBUTION_ENABLED", True)
+    risk_enabled = _env_bool("PA_CAP_RISK_ENABLED", True)
+    concentration_enabled = _env_bool("PA_CAP_CONCENTRATION_ENABLED", True)
 
     features = [
         FeatureCapability(
@@ -88,6 +90,18 @@ async def get_integration_capabilities(
             owner_service="PA",
             description="Attribution analytics APIs.",
         ),
+        FeatureCapability(
+            key="pa.analytics.risk",
+            enabled=risk_enabled,
+            owner_service="PA",
+            description="Risk analytics APIs.",
+        ),
+        FeatureCapability(
+            key="pa.analytics.concentration",
+            enabled=concentration_enabled,
+            owner_service="PA",
+            description="Concentration analytics APIs.",
+        ),
     ]
 
     workflows = [
@@ -100,6 +114,15 @@ async def get_integration_capabilities(
             workflow_key="performance_explainability",
             enabled=contribution_enabled and attribution_enabled,
             required_features=["pa.analytics.contribution", "pa.analytics.attribution"],
+        ),
+        WorkflowCapability(
+            workflow_key="workbench_analytics",
+            enabled=risk_enabled and concentration_enabled and twr_enabled,
+            required_features=[
+                "pa.analytics.twr",
+                "pa.analytics.risk",
+                "pa.analytics.concentration",
+            ],
         ),
     ]
 
