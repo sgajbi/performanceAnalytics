@@ -140,7 +140,7 @@ jobs:
       - name: Enforce 95% Coverage (combined suites)
         run: |
           python -m coverage combine coverage-data
-          python -m coverage report --fail-under=95
+          python -m coverage report --fail-under=99
 
   mypy-src:
     name: Mypy (Full src)
