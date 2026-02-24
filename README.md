@@ -60,6 +60,10 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 2.  **Access API Documentation:**
     -   **Swagger UI**: `http://127.0.0.1:8000/docs`
 
+Docker runtime note:
+- `docker compose up` exposes container port `8000` on host `${PA_HOST_PORT:-8002}` by default.
+- Example Swagger URL with default compose port: `http://127.0.0.1:8002/docs`
+
 ---
 
 ## Testing & Validation
