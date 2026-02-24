@@ -3,4 +3,4 @@ services:
     build: .
     container_name: performance-analytics
     ports:
-      - "8000:8000"
+      - "${PA_HOST_PORT:-8002}:8000"
