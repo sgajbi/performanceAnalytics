@@ -9,7 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 
-from app.api.endpoints import contribution, integration_capabilities, lineage, performance
+from app.api.endpoints import analytics, contribution, integration_capabilities, lineage, performance
 from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
 from app.core.handlers import performance_calculator_exception_handler
@@ -74,6 +74,20 @@ app = FastAPI(
     title=settings.APP_NAME,
     description=settings.APP_DESCRIPTION,
     version=settings.APP_VERSION,
+    openapi_tags=[
+        {
+            "name": "Performance",
+            "description": "PA-owned performance analytics APIs including PAS-input execution mode.",
+        },
+        {
+            "name": "Analytics",
+            "description": "PA-owned advanced analytics contracts (including migration-phase endpoints).",
+        },
+        {
+            "name": "Integration",
+            "description": "Capabilities and cross-service integration metadata.",
+        },
+    ],
     default_response_class=ORJSONResponseExcludeNull,  # Set as the default for the app
 )
 
@@ -89,6 +103,7 @@ app.add_exception_handler(PerformanceCalculatorError, performance_calculator_exc
 app.include_router(performance.router, prefix="/performance")
 app.include_router(contribution.router, prefix="/performance")
 app.include_router(lineage.router, prefix="/performance")
+app.include_router(analytics.router, prefix="/analytics")
 app.include_router(integration_capabilities.router, prefix="/integration")
 
 

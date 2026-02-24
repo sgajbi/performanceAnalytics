@@ -24,3 +24,7 @@ class PasConnectedTwrResponse(BaseModel):
     results_by_period: dict[str, PasConnectedPeriodResult] = Field(alias="resultsByPeriod")
 
     model_config = {"populate_by_name": True}
+
+
+PasInputPeriodResult = PasConnectedPeriodResult
+PasInputTwrResponse = PasConnectedTwrResponse
