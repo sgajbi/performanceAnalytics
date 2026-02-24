@@ -66,7 +66,7 @@ The engine translates abstract scenario definitions into concrete P\&L calculati
 
 ```json
 {
-  "portfolio_number": "RISK_ANALYSIS_01",
+  "portfolio_id": "RISK_ANALYSIS_01",
   "as_of": "2025-09-07",
   "mode": "hypothetical",
   "holdings": {

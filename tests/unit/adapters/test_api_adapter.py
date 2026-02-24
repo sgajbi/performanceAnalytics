@@ -61,7 +61,7 @@ def sample_engine_outputs():
 def test_create_engine_config():
     """Tests that the adapter correctly converts a PerformanceRequest into an EngineConfig object."""
     request_data = {
-        "portfolio_number": "TEST_01",
+        "portfolio_id": "TEST_01",
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-31",
         "metric_basis": "NET",
@@ -160,3 +160,4 @@ def test_format_breakdowns_populates_daily_cumulative_return(sample_engine_outpu
 
     daily_summary = formatted_response[Frequency.DAILY][0].summary
     assert daily_summary.cumulative_return_pct_to_date is None
+

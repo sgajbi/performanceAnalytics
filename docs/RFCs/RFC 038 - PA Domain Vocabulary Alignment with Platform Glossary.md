@@ -8,20 +8,20 @@ Proposed
 
 ## Problem Statement
 
-`performanceAnalytics` still uses legacy shared terms (`portfolio_number`, `pas-snapshot`) in API contracts, models, tests, and documentation.
+`performanceAnalytics` still uses legacy shared terms (`portfolio_id`, `pas-input`) in API contracts, models, tests, and documentation.
 This conflicts with the platform glossary in `pbwm-platform-docs/Domain Vocabulary Glossary.md`, which mandates canonical cross-service terms such as `portfolio_id`, `as_of_date`, and `pas-input` terminology.
 
 Current measurable drift (baseline from `Validate-Domain-Vocabulary.ps1`):
-- `portfolio_number`: 121 findings
-- `pas-snapshot`: 5 findings
+- `portfolio_id`: 121 findings
+- `pas-input`: 5 findings
 
 ## Decision
 
 Perform a phased vocabulary migration in PA to align with platform glossary while preserving service stability during rollout.
 
 1. Canonical request/response field names use `snake_case` internally and canonical cross-service aliases (`portfolioId`, `asOfDate`) at BFF-facing integration boundaries where required.
-2. Remove `portfolio_number` from PA public contracts and replace with `portfolio_id`.
-3. Deprecate `pas-snapshot` naming and replace with `pas-input` terminology in endpoints/docs/contracts.
+2. Remove `portfolio_id` from PA public contracts and replace with `portfolio_id`.
+3. Deprecate `pas-input` naming and replace with `pas-input` terminology in endpoints/docs/contracts.
 4. Keep compatibility shims only for an explicitly time-boxed transition window (if needed), with clear removal milestones.
 
 ## Scope
@@ -40,11 +40,11 @@ Perform a phased vocabulary migration in PA to align with platform glossary whil
 
 ### Phase A - Contract Surface Alignment
 - Introduce canonical PA models using `portfolio_id`.
-- Replace `/performance/twr/pas-snapshot` naming with `pas-input` terminology.
+- Replace `/performance/twr/pas-input` naming with `pas-input` terminology.
 - Keep temporary alias compatibility only where required by existing tests.
 
 ### Phase B - Test and Fixture Migration
-- Rename all fixtures/assertions from `portfolio_number` to `portfolio_id`.
+- Rename all fixtures/assertions from `portfolio_id` to `portfolio_id`.
 - Update integration/e2e tests to canonical terminology.
 - Ensure no behavior regression.
 
@@ -67,7 +67,8 @@ Mitigation:
 
 ## Acceptance Criteria
 
-1. PA has zero `portfolio_number` and zero `pas-snapshot` occurrences in active code/contracts/docs.
+1. PA has zero `portfolio_id` and zero `pas-input` occurrences in active code/contracts/docs.
 2. OpenAPI reflects canonical vocabulary.
 3. All PA CI gates remain green (`lint`, `typecheck`, `openapi-gate`, tests, coverage, security).
 4. Platform vocabulary conformance report marks PA as `ok`.
+

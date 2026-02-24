@@ -29,7 +29,7 @@ Use the `overrides` policy to provide an in-memory correction for a specific cal
     "cash_flows": [
       {
         "perf_date": "2025-03-20",
-        "portfolio_number": "PORT123",
+        "portfolio_id": "PORT123",
         "bod_cf": 0.0
       }
     ]

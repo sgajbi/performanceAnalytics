@@ -114,7 +114,7 @@ pytest --benchmark-only "tests/benchmarks/"
     curl -X POST "[http://127.0.0.1:8000/performance/twr](http://127.0.0.1:8000/performance/twr)" \
     -H "Content-Type: application/json" \
     -d '{
-      "portfolio_number": "MULTI_PERIOD_01",
+      "portfolio_id": "MULTI_PERIOD_01",
       "performance_start_date": "2024-12-31",
       "as_of": "2025-02-28",
       "metric_basis": "NET",
@@ -149,9 +149,9 @@ pytest --benchmark-only "tests/benchmarks/"
   - **Endpoint:** `GET /integration/capabilities`
   - **Description:** Returns backend-governed PA capability and workflow metadata for BFF/PAS/DPM integration.
 
-### 6\. PAS-Connected TWR
+### 6\. PAS-Input TWR
 
-  - **Endpoint:** `POST /performance/twr/pas-snapshot`
+  - **Endpoint:** `POST /performance/twr/pas-input`
   - **Description:** Fetches PAS Core Snapshot (`PERFORMANCE` section) and returns PA-normalized period results for UI/BFF consumption.
 
 -----
@@ -163,4 +163,5 @@ The core calculation logic is a standalone library. For instructions on how to u
   - **[Using the Performance Engine as a Standalone Library](https://www.google.com/search?q=docs/guides/standalone_engine_usage.md)**
 
 <!-- end list -->
+
 

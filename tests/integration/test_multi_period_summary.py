@@ -19,7 +19,7 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
     This test specifically validates the fix for this bug.
     """
     payload = {
-        "portfolio_number": "MULTI_PERIOD_SUMMARY_TEST",
+        "portfolio_id": "MULTI_PERIOD_SUMMARY_TEST",
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-02-28",
         "analyses": [
@@ -70,3 +70,4 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
 
     # Crucially, assert the MTD and YTD summaries are NOT the same
     assert mtd_summary["base"] != ytd_summary["base"]
+

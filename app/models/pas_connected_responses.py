@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class PasConnectedPeriodResult(BaseModel):
@@ -15,7 +15,10 @@ class PasConnectedPeriodResult(BaseModel):
 
 
 class PasConnectedTwrResponse(BaseModel):
-    portfolio_number: str
+    portfolio_id: str = Field(
+        validation_alias=AliasChoices("portfolio_id", "portfolioId"),
+        serialization_alias="portfolio_id",
+    )
     as_of_date: date
     source_mode: Literal["pas_ref"] = "pas_ref"
     source_service: str = "performance-analytics"
@@ -28,3 +31,4 @@ class PasConnectedTwrResponse(BaseModel):
 
 PasInputPeriodResult = PasConnectedPeriodResult
 PasInputTwrResponse = PasConnectedTwrResponse
+

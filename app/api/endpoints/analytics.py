@@ -13,7 +13,7 @@ from app.models.workbench_analytics_responses import (
     WorkbenchRiskProxy,
     WorkbenchTopChange,
 )
-from app.services.pas_snapshot_service import PasSnapshotService
+from app.services.pas_input_service import PasInputService
 
 router = APIRouter(tags=["Analytics"])
 settings = get_settings()
@@ -34,7 +34,7 @@ _BENCHMARK_FALLBACK_RETURNS = {"MODEL_60_40": 3.1, "MSCI_ACWI": 4.2, "CUSTOM": 2
     },
 )
 async def get_positions_analytics(request: PositionAnalyticsRequest):
-    pas_service = PasSnapshotService(
+    pas_service = PasInputService(
         base_url=settings.PAS_QUERY_BASE_URL,
         timeout_seconds=settings.PAS_TIMEOUT_SECONDS,
     )
@@ -199,3 +199,4 @@ async def get_workbench_analytics(request: WorkbenchAnalyticsRequest):
         topChanges=top_changes,
         riskProxy=risk_proxy,
     )
+

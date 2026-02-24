@@ -88,7 +88,7 @@ The following shows a complete TWR response, including the data payload (`breakd
 ```json
 {
   "calculation_id": "a4b7e289-7e28-4b7e-8e28-7e284b7e8e28",
-  "portfolio_number": "TWR_EXAMPLE_01",
+  "portfolio_id": "TWR_EXAMPLE_01",
   "breakdowns": {
     "daily": [
       {
@@ -142,4 +142,5 @@ The following shows a complete TWR response, including the data payload (`breakd
   }
 }
 ```
+
 

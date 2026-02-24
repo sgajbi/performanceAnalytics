@@ -27,7 +27,7 @@ class MoneyWeightedReturnRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     calculation_id: UUID = Field(default_factory=uuid4)
-    portfolio_number: str
+    portfolio_id: str
     begin_mv: float
     end_mv: float
     cash_flows: List[CashFlow]
@@ -44,3 +44,4 @@ class MoneyWeightedReturnRequest(BaseModel):
     output: Output = Field(default_factory=Output)
     flags: Flags = Field(default_factory=Flags)
     report_ccy: Optional[str] = None
+

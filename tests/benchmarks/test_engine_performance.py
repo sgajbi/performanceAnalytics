@@ -12,7 +12,7 @@ from engine.compute import run_calculations
 def large_input_data():
     """Creates a large, realistic dataset for benchmarking per the RFC."""
     base_payload = {
-        "portfolio_number": "BENCHMARK_PORT_01",
+        "portfolio_id": "BENCHMARK_PORT_01",
         "performance_start_date": "2023-12-31",
         "metric_basis": "NET",
         "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
@@ -61,3 +61,4 @@ def test_vectorized_engine_performance(benchmark, large_input_data):
 
     benchmark.group = "Engine Performance (500k rows)"
     benchmark(run)
+

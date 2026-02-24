@@ -12,7 +12,7 @@ from app.models.contribution_responses import ContributionResponse
 def minimal_contribution_request_payload():
     """Provides a minimal valid payload for a contribution request."""
     return {
-        "portfolio_number": "CONTRIB_001",
+        "portfolio_id": "CONTRIB_001",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-31",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -50,7 +50,7 @@ def test_contribution_request_with_analyses_passes(minimal_contribution_request_
     """Tests that a request using the new 'analyses' field is valid."""
     try:
         req = ContributionRequest.model_validate(minimal_contribution_request_payload)
-        assert req.portfolio_number == "CONTRIB_001"
+        assert req.portfolio_id == "CONTRIB_001"
         assert len(req.analyses) == 1
     except ValidationError as e:
         pytest.fail(f"Validation failed unexpectedly with 'analyses': {e}")
@@ -94,7 +94,7 @@ def test_contribution_response_new_structure_passes(base_response_footer):
     }
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
-        "portfolio_number": "HIERARCHY_01",
+        "portfolio_id": "HIERARCHY_01",
         "results_by_period": {"YTD": single_period_payload, "MTD": single_period_payload},
         **base_response_footer,
     }
@@ -112,7 +112,7 @@ def test_contribution_response_legacy_structure_passes(base_response_footer):
     """Tests that a valid single-level contribution response payload is parsed correctly."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
-        "portfolio_number": "HIERARCHY_01",
+        "portfolio_id": "HIERARCHY_01",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-31",
         "summary": {
@@ -130,3 +130,4 @@ def test_contribution_response_legacy_structure_passes(base_response_footer):
         assert resp.results_by_period is None
     except ValidationError as e:
         pytest.fail(f"Validation failed for legacy response structure: {e}")
+

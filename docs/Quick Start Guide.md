@@ -24,7 +24,7 @@ POST /performance/twr
 You will need to provide a **JSON payload** in the body of your POST request.  
 The minimum required fields are:
 
-- `portfolio_number`: A unique identifier for your portfolio.  
+- `portfolio_id`: A unique identifier for your portfolio.  
 - `performance_start_date`: The inception date of the portfolio.  
 - `report_end_date`: The last day of the period you want to analyze.  
 - `metric_basis`: Whether to calculate returns `"NET"` (after fees) or `"GROSS"` (before fees).  
@@ -42,7 +42,7 @@ It sends a request with a minimal, valid payload to a locally running instance o
 curl -X POST "http://127.0.0.1:8000/performance/twr" \
 -H "Content-Type: application/json" \
 -d '{
-  "portfolio_number": "QUICK_START_01",
+  "portfolio_id": "QUICK_START_01",
   "performance_start_date": "2024-12-31",
   "report_end_date": "2025-01-02",
   "metric_basis": "NET",
@@ -75,7 +75,7 @@ The key part is the `breakdowns` object:
 ```json
 {
   "calculation_id": "uuid-goes-here...",
-  "portfolio_number": "QUICK_START_01",
+  "portfolio_id": "QUICK_START_01",
   "breakdowns": {
     "daily": [
       {

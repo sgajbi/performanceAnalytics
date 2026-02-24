@@ -14,7 +14,7 @@ def client():
 def test_twr_endpoint_respects_rounding_precision(client):
     """Tests that aggregated summary values in the response are rounded correctly."""
     payload = {
-        "portfolio_number": "ROUNDING_TEST",
+        "portfolio_id": "ROUNDING_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-31",
@@ -31,3 +31,4 @@ def test_twr_endpoint_respects_rounding_precision(client):
 
     # The raw return is 1.123456%. It should be rounded to 1.12.
     assert summary["period_return_pct"] == 1.12
+

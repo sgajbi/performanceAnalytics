@@ -67,7 +67,7 @@ This top-down approach infers factor exposures by analyzing the historical relat
 
 ```json
 {
-  "portfolio_number": "FACTOR_TEST_01",
+  "portfolio_id": "FACTOR_TEST_01",
   "as_of": "2025-09-07",
   "mode": "snapshot",
   "model": {

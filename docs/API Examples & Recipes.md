@@ -19,7 +19,7 @@ POST /performance/twr
 **Payload:**
 ```json
 {
-  "portfolio_number": "TWR_EXAMPLE_01",
+  "portfolio_id": "TWR_EXAMPLE_01",
   "performance_start_date": "2024-12-31",
   "metric_basis": "NET",
   "report_start_date": "2025-01-01",
@@ -52,7 +52,7 @@ POST /performance/twr
 
 ```json
 {
-  "portfolio_number": "TWR_MCY_HEDGED_01",
+  "portfolio_id": "TWR_MCY_HEDGED_01",
   "performance_start_date": "2024-12-31",
   "metric_basis": "GROSS",
   "report_start_date": "2025-01-01",
@@ -95,7 +95,7 @@ POST /performance/contribution
 
 ```json
 {
-  "portfolio_number": "MULTI_ASSET_MCY_01",
+  "portfolio_id": "MULTI_ASSET_MCY_01",
   "portfolio_data": {
     "report_start_date": "2025-01-01",
     "report_end_date": "2025-01-01",
@@ -144,7 +144,7 @@ POST /performance/attribution
 
 ```json
 {
-  "portfolio_number": "ATTRIB_MCY_01",
+  "portfolio_id": "ATTRIB_MCY_01",
   "mode": "by_instrument",
   "group_by": ["currency"],
   "linking": "none",

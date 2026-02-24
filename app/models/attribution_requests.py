@@ -67,7 +67,7 @@ class AttributionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     calculation_id: UUID = Field(default_factory=uuid4)
-    portfolio_number: str
+    portfolio_id: str
     report_start_date: date
     report_end_date: date
 
@@ -102,3 +102,4 @@ class AttributionRequest(BaseModel):
         if not v:
             raise ValueError("analyses list cannot be empty")
         return v
+

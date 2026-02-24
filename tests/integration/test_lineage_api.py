@@ -30,7 +30,7 @@ def client():
 def test_lineage_end_to_end_flow(client):
     """Tests the full lineage flow: TWR calc -> lineage capture -> lineage retrieval."""
     twr_payload = {
-        "portfolio_number": "LINEAGE_TEST",
+        "portfolio_id": "LINEAGE_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-01",
@@ -89,3 +89,4 @@ def test_get_lineage_internal_error_returns_500(client, mocker):
     response = client.get(f"/performance/lineage/{calculation_id}")
     assert response.status_code == 500
     assert "Failed to retrieve lineage artifacts" in response.json()["detail"]
+

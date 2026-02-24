@@ -25,7 +25,7 @@ from app.models.responses import (
     SinglePeriodPerformanceResult,
 )
 from app.services.lineage_service import lineage_service
-from app.services.pas_snapshot_service import PasSnapshotService
+from app.services.pas_input_service import PasInputService
 from core.envelope import Audit, Diagnostics, Meta
 from core.periods import resolve_periods
 from core.repro import generate_canonical_hash
@@ -59,7 +59,7 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     Retrieves PAS raw performance input series and computes PA-owned TWR analytics.
     PAS acts as data provider only; performance metrics are computed in PA.
     """
-    pas_service = PasSnapshotService(
+    pas_service = PasInputService(
         base_url=settings.PAS_QUERY_BASE_URL,
         timeout_seconds=settings.PAS_TIMEOUT_SECONDS,
     )
@@ -91,7 +91,7 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     try:
         performance_request = PerformanceRequest.model_validate(
             {
-                "portfolio_number": upstream_payload.get("portfolioId", request.portfolio_id),
+                "portfolio_id": upstream_payload.get("portfolioId", request.portfolio_id),
                 "performance_start_date": performance_start_date,
                 "metric_basis": "NET",
                 "report_end_date": str(request.as_of_date),
@@ -132,7 +132,7 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requested periods not found.")
 
     return PasInputTwrResponse(
-        portfolio_number=performance_request.portfolio_number,
+        portfolio_id=performance_request.portfolio_id,
         as_of_date=request.as_of_date,
         pasContractVersion=upstream_payload.get("contractVersion", "v1"),
         consumerSystem=upstream_payload.get("consumerSystem", request.consumer_system),
@@ -306,7 +306,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
 
     response_model = PerformanceResponse(
         calculation_id=request.calculation_id,
-        portfolio_number=request.portfolio_number,
+        portfolio_id=request.portfolio_id,
         results_by_period=results_by_period,
         meta=meta,
         diagnostics=diagnostics,
@@ -367,7 +367,7 @@ async def calculate_mwr_endpoint(request: MoneyWeightedReturnRequest, background
 
     response_payload = {
         "calculation_id": request.calculation_id,
-        "portfolio_number": request.portfolio_number,
+        "portfolio_id": request.portfolio_id,
         "money_weighted_return": mwr_result.mwr,
         "mwr_annualized": mwr_result.mwr_annualized,
         "method": mwr_result.method,
@@ -459,7 +459,7 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
 
         response_model = AttributionResponse(
             calculation_id=request.calculation_id,
-            portfolio_number=request.portfolio_number,
+            portfolio_id=request.portfolio_id,
             model=request.model,
             linking=request.linking,
             results_by_period=results_by_period,
@@ -486,3 +486,4 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected server error occurred: {str(e)}",
         )
+

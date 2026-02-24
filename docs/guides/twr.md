@@ -103,7 +103,7 @@ The engine applies several rules to ensure mathematical robustness.
 
 ```json
 {
-  "portfolio_number": "TWR_EXAMPLE_01",
+  "portfolio_id": "TWR_EXAMPLE_01",
   "performance_start_date": "2024-12-31",
   "metric_basis": "NET",
   "report_start_date": "2025-01-01",
@@ -128,7 +128,7 @@ The engine applies several rules to ensure mathematical robustness.
 ```json
 {
   "calculation_id": "uuid-goes-here",
-  "portfolio_number": "TWR_EXAMPLE_01",
+  "portfolio_id": "TWR_EXAMPLE_01",
   "breakdowns": {
     "daily": [
       {
@@ -148,3 +148,4 @@ The engine applies several rules to ensure mathematical robustness.
   "audit": { ... }
 }
 ```
+

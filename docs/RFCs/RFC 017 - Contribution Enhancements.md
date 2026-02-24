@@ -70,7 +70,7 @@ The request model will be updated to include the new configuration options and w
 ```jsonc
 {
   "calculation_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "portfolio_number": "CONTRIB_ENHANCED_01",
+  "portfolio_id": "CONTRIB_ENHANCED_01",
   "portfolio_data": { /* ... */ },
   "positions_data": [ /* ... */ ],
 
@@ -100,7 +100,7 @@ The response model will be updated to include the optional time-series fields an
 ```jsonc
 {
   "calculation_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "portfolio_number": "CONTRIB_ENHANCED_01",
+  "portfolio_id": "CONTRIB_ENHANCED_01",
   "report_start_date": "2025-02-01",
   "report_end_date": "2025-02-28",
   "total_portfolio_return": 1.25,

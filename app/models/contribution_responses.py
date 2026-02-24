@@ -88,7 +88,7 @@ class ContributionResponse(BaseModel):
     """Response model for the Contribution engine."""
 
     calculation_id: UUID
-    portfolio_number: str
+    portfolio_id: str
 
     # New multi-period structure
     results_by_period: Optional[Dict[str, SinglePeriodContributionResult]] = None
@@ -126,3 +126,4 @@ class ContributionResponse(BaseModel):
             raise ValueError("A result structure ('results_by_period' or legacy fields) must be provided.")
 
         return values
+

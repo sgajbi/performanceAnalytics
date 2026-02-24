@@ -69,7 +69,7 @@ class PerformanceRequest(BaseModel):
         default_factory=uuid4,
         description="A unique identifier for the calculation request. If not provided, one will be generated.",
     )
-    portfolio_number: str = Field(..., description="A unique identifier for the portfolio being analyzed.")
+    portfolio_id: str = Field(..., description="A unique identifier for the portfolio being analyzed.")
     performance_start_date: date = Field(
         ...,
         description="The inception date of the portfolio or the earliest date for which performance data is available.",
@@ -115,3 +115,4 @@ class PerformanceRequest(BaseModel):
         if not v:
             raise ValueError("analyses list cannot be empty")
         return v
+

@@ -61,7 +61,7 @@ The framework will apply user-defined policies as a pre-processing step before t
           "cash_flows": [
             {
               "perf_date": "2025-03-20",
-              "portfolio_number": "PORT123",
+              "portfolio_id": "PORT123",
               "bod_cf": 0.0
             }
           ]

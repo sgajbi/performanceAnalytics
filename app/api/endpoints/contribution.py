@@ -149,7 +149,7 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
 
     response_model = ContributionResponse(
         calculation_id=request.calculation_id,
-        portfolio_number=request.portfolio_number,
+        portfolio_id=request.portfolio_id,
         results_by_period=results_by_period,
         meta=meta,
         diagnostics=diagnostics,
@@ -169,3 +169,4 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     )
 
     return response_model
+
