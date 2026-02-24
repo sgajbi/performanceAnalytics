@@ -13,6 +13,7 @@ from app.api.endpoints import analytics, contribution, integration_capabilities,
 from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
 from app.core.handlers import performance_calculator_exception_handler
+from app.observability import setup_observability
 
 
 # --- FIX START: Create a robust custom JSON response class ---
@@ -68,8 +69,6 @@ class ORJSONResponseExcludeNull(JSONResponse):
 
 settings = get_settings()
 
-logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
 app = FastAPI(
     title=settings.APP_NAME,
     description=settings.APP_DESCRIPTION,
@@ -90,6 +89,7 @@ app = FastAPI(
     ],
     default_response_class=ORJSONResponseExcludeNull,  # Set as the default for the app
 )
+setup_observability(app, log_level=settings.LOG_LEVEL)
 
 # Create lineage directory if it doesn't exist
 if not os.path.exists(settings.LINEAGE_STORAGE_PATH):
@@ -105,6 +105,21 @@ app.include_router(contribution.router, prefix="/performance")
 app.include_router(lineage.router, prefix="/performance")
 app.include_router(analytics.router, prefix="/analytics")
 app.include_router(integration_capabilities.router, prefix="/integration")
+
+
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/health/live")
+async def health_live() -> dict[str, str]:
+    return {"status": "live"}
+
+
+@app.get("/health/ready")
+async def health_ready() -> dict[str, str]:
+    return {"status": "ready"}
 
 
 @app.get("/")
