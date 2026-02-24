@@ -3,7 +3,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict
 
 from core.envelope import Audit, Diagnostics, Meta
 
@@ -87,43 +87,14 @@ class SinglePeriodContributionResult(BaseModel):
 class ContributionResponse(BaseModel):
     """Response model for the Contribution engine."""
 
+    model_config = ConfigDict(extra="forbid")
+
     calculation_id: UUID
     portfolio_id: str
 
-    # New multi-period structure
-    results_by_period: Optional[Dict[str, SinglePeriodContributionResult]] = None
-
-    # Legacy single-period fields for backward compatibility
-    report_start_date: Optional[date] = None
-    report_end_date: Optional[date] = None
-    total_portfolio_return: Optional[float] = None
-    total_contribution: Optional[float] = None
-    position_contributions: Optional[List[PositionContribution]] = None
-    timeseries: Optional[List[DailyContribution]] = None
-    by_position_timeseries: Optional[List[PositionContributionSeries]] = None
-    summary: Optional[ContributionSummary] = None
-    levels: Optional[List[ContributionLevel]] = None
+    results_by_period: Dict[str, SinglePeriodContributionResult]
 
     # Shared footer
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_result_structure(cls, values):
-        """Ensures that exactly one result structure is used."""
-        has_new_structure = "results_by_period" in values and values.get("results_by_period") is not None
-        # A legacy structure is present if either the single-level key field OR the multi-level key field exists.
-        has_legacy_structure = (
-            "total_portfolio_return" in values and values.get("total_portfolio_return") is not None
-        ) or ("summary" in values and values.get("summary") is not None)
-
-        if has_new_structure and has_legacy_structure:
-            raise ValueError("Provide either 'results_by_period' or legacy top-level fields, but not both.")
-
-        if not has_new_structure and not has_legacy_structure:
-            raise ValueError("A result structure ('results_by_period' or legacy fields) must be provided.")
-
-        return values
-
