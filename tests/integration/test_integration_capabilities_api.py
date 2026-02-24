@@ -19,10 +19,13 @@ def test_integration_capabilities_default_contract():
     features = {item["key"] for item in body["features"]}
     assert "pa.analytics.risk" in features
     assert "pa.analytics.concentration" in features
+    assert "pa.execution.stateful_pas_ref" in features
+    assert "pa.execution.stateless_inline_bundle" in features
 
 
 def test_integration_capabilities_env_override(monkeypatch):
     monkeypatch.setenv("PA_CAP_ATTRIBUTION_ENABLED", "false")
+    monkeypatch.setenv("PA_CAP_INPUT_MODE_INLINE_BUNDLE_ENABLED", "false")
     monkeypatch.setenv("PA_POLICY_VERSION", "tenant-a-v4")
     with TestClient(app) as client:
         response = client.get("/integration/capabilities?consumerSystem=DPM&tenantId=tenant-a")
@@ -34,3 +37,4 @@ def test_integration_capabilities_env_override(monkeypatch):
     assert body["policyVersion"] == "tenant-a-v4"
     features = {item["key"]: item["enabled"] for item in body["features"]}
     assert features["pa.analytics.attribution"] is False
+    assert body["supportedInputModes"] == ["pas_ref"]

@@ -64,6 +64,8 @@ async def get_integration_capabilities(
     attribution_enabled = _env_bool("PA_CAP_ATTRIBUTION_ENABLED", True)
     risk_enabled = _env_bool("PA_CAP_RISK_ENABLED", True)
     concentration_enabled = _env_bool("PA_CAP_CONCENTRATION_ENABLED", True)
+    pas_ref_mode_enabled = _env_bool("PA_CAP_INPUT_MODE_PAS_REF_ENABLED", True)
+    inline_bundle_mode_enabled = _env_bool("PA_CAP_INPUT_MODE_INLINE_BUNDLE_ENABLED", True)
 
     features = [
         FeatureCapability(
@@ -102,6 +104,18 @@ async def get_integration_capabilities(
             owner_service="PA",
             description="Concentration analytics APIs.",
         ),
+        FeatureCapability(
+            key="pa.execution.stateful_pas_ref",
+            enabled=pas_ref_mode_enabled,
+            owner_service="PA",
+            description="PA resolves analytics inputs by API-calling PAS contracts.",
+        ),
+        FeatureCapability(
+            key="pa.execution.stateless_inline_bundle",
+            enabled=inline_bundle_mode_enabled,
+            owner_service="PA",
+            description="PA executes analytics from request-supplied inline input bundle.",
+        ),
     ]
 
     workflows = [
@@ -124,7 +138,23 @@ async def get_integration_capabilities(
                 "pa.analytics.concentration",
             ],
         ),
+        WorkflowCapability(
+            workflow_key="execution_stateful_pas_ref",
+            enabled=pas_ref_mode_enabled,
+            required_features=["pa.execution.stateful_pas_ref"],
+        ),
+        WorkflowCapability(
+            workflow_key="execution_stateless_inline_bundle",
+            enabled=inline_bundle_mode_enabled,
+            required_features=["pa.execution.stateless_inline_bundle"],
+        ),
     ]
+
+    supported_input_modes: list[str] = []
+    if pas_ref_mode_enabled:
+        supported_input_modes.append("pas_ref")
+    if inline_bundle_mode_enabled:
+        supported_input_modes.append("inline_bundle")
 
     return IntegrationCapabilitiesResponse(
         contractVersion="v1",
@@ -134,7 +164,7 @@ async def get_integration_capabilities(
         generatedAt=datetime.now(UTC),
         asOfDate=date.today(),
         policyVersion=os.getenv("PA_POLICY_VERSION", "tenant-default-v1"),
-        supportedInputModes=["pas_ref", "inline_bundle"],
+        supportedInputModes=supported_input_modes,
         features=features,
         workflows=workflows,
     )
