@@ -18,7 +18,7 @@ Deliver an incremental hardening wave focused on highest-risk uncovered backend 
 
 ## Scope
 
-- Add unit tests for `PasSnapshotService` request/response contract behavior and fallback payload parsing.
+- Add unit tests for `PasInputService` request/response contract behavior and fallback payload parsing.
 - Add unit tests for observability helpers (correlation/request/trace resolution and propagation header generation).
 - Add integration tests for:
   - analytics upstream failure passthrough
@@ -30,7 +30,7 @@ Deliver an incremental hardening wave focused on highest-risk uncovered backend 
 
 - Full test suite: `209 passed`
 - Coverage improved from ~`95%` to `97%`
-- `app/services/pas_snapshot_service.py`: now `100%`
+- `app/services/pas_input_service.py`: now `100%`
 - `app/observability.py`: now `100%`
 - `app/api/endpoints/analytics.py`: now `100%`
 - `app/api/endpoints/contribution.py`: now `100%`
@@ -40,3 +40,4 @@ Deliver an incremental hardening wave focused on highest-risk uncovered backend 
 Wave 2 will target remaining concentrated misses in:
 - `app/api/endpoints/performance.py`
 - `app/services/lineage_service.py`
+

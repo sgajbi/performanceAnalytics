@@ -16,7 +16,7 @@ def client():
 def test_attribution_endpoint_by_instrument_happy_path(client):
     """Tests the /performance/attribution endpoint end-to-end with a valid 'by_instrument' payload."""
     payload = {
-        "portfolio_number": "ATTRIB_BY_INST_01",
+        "portfolio_id": "ATTRIB_BY_INST_01",
         "mode": "by_instrument",
         "group_by": ["sector"],
         "linking": "none",
@@ -64,7 +64,7 @@ def test_attribution_endpoint_by_instrument_happy_path(client):
 def test_attribution_lineage_flow(client):
     """Tests that lineage is correctly captured for an attribution request."""
     payload = {
-        "portfolio_number": "ATTRIB_LINEAGE_01",
+        "portfolio_id": "ATTRIB_LINEAGE_01",
         "mode": "by_group",
         "group_by": ["sector"],
         "linking": "none",
@@ -101,7 +101,7 @@ def test_attribution_lineage_flow(client):
 def test_attribution_endpoint_hierarchical(client):
     """Tests multi-level hierarchical attribution, ensuring bottom-up aggregation is correct."""
     payload = {
-        "portfolio_number": "HIERARCHY_01",
+        "portfolio_id": "HIERARCHY_01",
         "mode": "by_instrument",
         "group_by": ["assetClass", "sector"],
         "linking": "none",
@@ -165,7 +165,7 @@ def test_attribution_endpoint_hierarchical(client):
 def test_attribution_endpoint_currency_attribution(client):
     """Tests the Karnosky-Singer currency attribution model end-to-end."""
     payload = {
-        "portfolio_number": "FX_ATTRIB_01",
+        "portfolio_id": "FX_ATTRIB_01",
         "mode": "by_instrument",
         "group_by": ["currency"],
         "linking": "none",
@@ -246,7 +246,7 @@ def test_attribution_endpoint_error_handling(client, mocker, error_class, expect
     """Tests that the attribution endpoint correctly handles engine exceptions."""
     mocker.patch("app.api.endpoints.performance.run_attribution_calculations", side_effect=error_class("Test Error"))
     payload = {
-        "portfolio_number": "ERROR",
+        "portfolio_id": "ERROR",
         "mode": "by_group",
         "group_by": ["sector"],
         "benchmark_groups_data": [],
@@ -265,7 +265,7 @@ def test_attribution_endpoint_returns_400_when_no_resolved_periods(client, mocke
     """Tests explicit 400 path when period resolution yields no valid periods."""
     mocker.patch("app.api.endpoints.performance.resolve_periods", return_value=[])
     payload = {
-        "portfolio_number": "ATTRIB_NO_PERIODS",
+        "portfolio_id": "ATTRIB_NO_PERIODS",
         "mode": "by_group",
         "group_by": ["sector"],
         "benchmark_groups_data": [],
@@ -290,7 +290,7 @@ def test_attribution_endpoint_skips_empty_period_slice(client, mocker):
         ],
     )
     payload = {
-        "portfolio_number": "ATTRIB_EMPTY_SLICE",
+        "portfolio_id": "ATTRIB_EMPTY_SLICE",
         "mode": "by_group",
         "group_by": ["sector"],
         "linking": "none",
@@ -319,3 +319,4 @@ def test_attribution_endpoint_skips_empty_period_slice(client, mocker):
     results = response.json()["results_by_period"]
     assert "ITD" in results
     assert "MTD" not in results
+

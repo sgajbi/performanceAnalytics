@@ -12,7 +12,7 @@ To align PAS, PA, and DPM contracts, PA needs a first-class PAS-connected API th
 
 ## Decision
 Add a PAS-connected TWR endpoint:
-- `POST /performance/twr/pas-snapshot`
+- `POST /performance/twr/pas-input`
 
 Request contract:
 - `portfolioId`

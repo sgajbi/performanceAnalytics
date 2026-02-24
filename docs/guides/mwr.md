@@ -84,7 +84,7 @@ $$
 
 ```json
 {
-  "portfolio_number": "MWR_EXAMPLE_01",
+  "portfolio_id": "MWR_EXAMPLE_01",
   "begin_mv": 100000.0,
   "end_mv": 115000.0,
   "as_of": "2025-12-31",
@@ -103,7 +103,7 @@ $$
 
 {
   "calculation_id": "uuid-goes-here",
-  "portfolio_number": "MWR_EXAMPLE_01",
+  "portfolio_id": "MWR_EXAMPLE_01",
   "money_weighted_return": 11.723,
   "mwr_annualized": 11.723,
   "method": "XIRR",

@@ -19,7 +19,7 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
 
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["portfolio_number"] == "CONTRIB_TEST_01"
+    assert response_data["portfolio_id"] == "CONTRIB_TEST_01"
     assert "results_by_period" in response_data
     assert "ITD" in response_data["results_by_period"]
 
@@ -27,7 +27,7 @@ def test_contribution_endpoint_happy_path_and_envelope(client, happy_path_payloa
 def test_contribution_endpoint_multi_period(client):
     """Tests a multi-period request for MTD and YTD contribution."""
     payload = {
-        "portfolio_number": "MULTI_PERIOD_CONTRIB",
+        "portfolio_id": "MULTI_PERIOD_CONTRIB",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-02-15",
         "analyses": [{"period": "MTD", "frequencies": ["monthly"]}, {"period": "YTD", "frequencies": ["monthly"]}],
@@ -60,7 +60,7 @@ def test_contribution_endpoint_multi_period(client):
 def test_contribution_endpoint_multi_currency(client):
     """Tests an end-to-end multi-currency contribution request."""
     payload = {
-        "portfolio_number": "MULTI_CCY_CONTRIB_01",
+        "portfolio_id": "MULTI_CCY_CONTRIB_01",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-01",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -146,7 +146,7 @@ def test_contribution_endpoint_error_handling(client, mocker):
         "app.api.endpoints.contribution._prepare_hierarchical_data", side_effect=EngineCalculationError("Test Error")
     )
     payload = {
-        "portfolio_number": "ERROR",
+        "portfolio_id": "ERROR",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-02",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -162,7 +162,7 @@ def test_contribution_endpoint_error_handling(client, mocker):
 
 def test_contribution_endpoint_no_resolved_periods_returns_400(client):
     payload = {
-        "portfolio_number": "NO_PERIODS",
+        "portfolio_id": "NO_PERIODS",
         "report_start_date": "2025-01-10",
         "report_end_date": "2025-01-05",
         "analyses": [{"period": "MTD", "frequencies": ["monthly"]}],
@@ -187,7 +187,7 @@ def test_contribution_endpoint_no_resolved_periods_returns_400(client):
 
 def test_contribution_endpoint_skips_empty_period_slice(client):
     payload = {
-        "portfolio_number": "EMPTY_SLICE",
+        "portfolio_id": "EMPTY_SLICE",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-01",
         "analyses": [{"period": "YTD", "frequencies": ["monthly"]}],
@@ -236,3 +236,4 @@ def test_contribution_endpoint_skips_empty_period_slice(client):
 
     assert response.status_code == 200
     assert response.json()["results_by_period"] == {}
+

@@ -22,7 +22,7 @@ def test_twr_reports_reset_events_when_requested(client):
     """
     # This payload is based on the 'long_flip_scenario' which triggers an NCTRL_1 reset
     payload = {
-        "portfolio_number": "RESET_SCENARIO_TEST",
+        "portfolio_id": "RESET_SCENARIO_TEST",
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-04",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -52,7 +52,7 @@ def test_twr_reports_reset_events_when_requested(client):
 def test_calculate_twr_endpoint_with_annualization(client):
     """Tests that a request with annualization enabled correctly returns annualized figures."""
     payload = {
-        "portfolio_number": "ANNUALIZATION_TEST",
+        "portfolio_id": "ANNUALIZATION_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-03-31",
@@ -77,7 +77,7 @@ def test_calculate_twr_endpoint_with_annualization(client):
 def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
     """Tests the /performance/twr endpoint using the new 'analyses' structure and verifies the shared response footer."""
     payload = {
-        "portfolio_number": "PORT_STANDARD_GROWTH",
+        "portfolio_id": "PORT_STANDARD_GROWTH",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-05",
@@ -114,7 +114,7 @@ def test_calculate_twr_endpoint_legacy_path_and_diagnostics(client):
 def test_calculate_twr_endpoint_multi_period(client):
     """Tests a multi-period request for MTD and YTD."""
     payload = {
-        "portfolio_number": "MULTI_PERIOD_TEST",
+        "portfolio_id": "MULTI_PERIOD_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-02-15",
@@ -156,7 +156,7 @@ def test_calculate_twr_endpoint_multi_period(client):
 def test_calculate_twr_endpoint_multi_currency(client):
     """Tests an end-to-end multi-currency TWR request."""
     payload = {
-        "portfolio_number": "MULTI_CCY_API_TEST",
+        "portfolio_id": "MULTI_CCY_API_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "GROSS",
         "report_end_date": "2025-01-02",
@@ -190,7 +190,7 @@ def test_calculate_twr_endpoint_multi_currency(client):
 def test_calculate_twr_endpoint_with_data_policy(client):
     """Tests that a request with data_policy overrides and flagging works end-to-end."""
     payload = {
-        "portfolio_number": "POLICY_TEST",
+        "portfolio_id": "POLICY_TEST",
         "performance_start_date": "2024-12-27",
         "metric_basis": "NET",
         "report_end_date": "2025-01-03",
@@ -228,7 +228,7 @@ def test_calculate_twr_endpoint_with_data_policy(client):
 def test_twr_respects_include_timeseries_flag(client):
     """Tests that the include_timeseries flag correctly includes or excludes the daily_data block."""
     base_payload = {
-        "portfolio_number": "TIMESERIES_FLAG_TEST",
+        "portfolio_id": "TIMESERIES_FLAG_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-01",
@@ -257,7 +257,7 @@ def test_twr_respects_include_timeseries_flag(client):
 def test_twr_response_includes_portfolio_return_summary(client):
     """Tests that the top-level portfolio_return object is present for single-currency requests."""
     payload = {
-        "portfolio_number": "PORTFOLIO_RETURN_TEST",
+        "portfolio_id": "PORTFOLIO_RETURN_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-02",
@@ -283,7 +283,7 @@ def test_twr_reset_scenario_has_correct_summary(client):
     portfolio_return summary uses the correct final cumulative return from the engine.
     """
     payload = {
-        "portfolio_number": "TWR_STRESS_TEST_03",
+        "portfolio_id": "TWR_STRESS_TEST_03",
         "performance_start_date": "2024-12-31",
         "report_end_date": "2025-01-04",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -313,7 +313,7 @@ def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expe
     """Tests that the TWR endpoint correctly handles engine exceptions."""
     mocker.patch("app.api.endpoints.performance.run_calculations", side_effect=error_class("Test Error"))
     payload = {
-        "portfolio_number": "ERROR_TEST",
+        "portfolio_id": "ERROR_TEST",
         "performance_start_date": "2023-12-31",
         "metric_basis": "NET",
         "report_end_date": "2024-01-05",
@@ -328,7 +328,7 @@ def test_calculate_twr_endpoint_error_handling(client, mocker, error_class, expe
 def test_twr_returns_400_when_no_periods_resolve(client, mocker):
     mocker.patch("app.api.endpoints.performance.resolve_periods", return_value=[])
     payload = {
-        "portfolio_number": "NO_PERIODS",
+        "portfolio_id": "NO_PERIODS",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-05",
@@ -346,7 +346,7 @@ def test_twr_http_exception_passthrough_branch(client, mocker):
         side_effect=HTTPException(status_code=418, detail="teapot"),
     )
     payload = {
-        "portfolio_number": "HTTP_EXCEPTION",
+        "portfolio_id": "HTTP_EXCEPTION",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-05",
@@ -364,7 +364,7 @@ def test_mwr_http_exception_passthrough_branch(client, mocker):
         side_effect=HTTPException(status_code=409, detail="conflict"),
     )
     payload = {
-        "portfolio_number": "MWR_HTTP",
+        "portfolio_id": "MWR_HTTP",
         "begin_mv": 1000.0,
         "end_mv": 1001.0,
         "cash_flows": [],
@@ -375,7 +375,7 @@ def test_mwr_http_exception_passthrough_branch(client, mocker):
     assert response.json()["detail"] == "conflict"
 
 
-def test_twr_pas_snapshot_success(client, monkeypatch):
+def test_twr_pas_input_success(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -408,7 +408,7 @@ def test_twr_pas_snapshot_success(client, monkeypatch):
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -422,14 +422,14 @@ def test_twr_pas_snapshot_success(client, monkeypatch):
     response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 200
     body = response.json()
-    assert body["portfolio_number"] == "PORT-1001"
+    assert body["portfolio_id"] == "PORT-1001"
     assert body["source_mode"] == "pas_ref"
     assert body["pasContractVersion"] == "v1"
     assert "YTD" in body["resultsByPeriod"]
     assert body["resultsByPeriod"]["YTD"]["net_cumulative_return"] is not None
 
 
-def test_twr_pas_snapshot_period_filter(client, monkeypatch):
+def test_twr_pas_input_period_filter(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -462,7 +462,7 @@ def test_twr_pas_snapshot_period_filter(client, monkeypatch):
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -479,7 +479,7 @@ def test_twr_pas_snapshot_period_filter(client, monkeypatch):
     assert "MTD" in body["resultsByPeriod"]
 
 
-def test_twr_pas_snapshot_invalid_payload_returns_502(client, monkeypatch):
+def test_twr_pas_input_invalid_payload_returns_502(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -492,7 +492,7 @@ def test_twr_pas_snapshot_invalid_payload_returns_502(client, monkeypatch):
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -506,12 +506,12 @@ def test_twr_pas_snapshot_invalid_payload_returns_502(client, monkeypatch):
     assert "missing valuationPoints" in response.json()["detail"]
 
 
-def test_twr_pas_snapshot_upstream_error_passthrough(client, monkeypatch):
+def test_twr_pas_input_upstream_error_passthrough(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return 404, {"detail": "Portfolio not found"}
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -524,7 +524,7 @@ def test_twr_pas_snapshot_upstream_error_passthrough(client, monkeypatch):
     assert response.status_code == 404
 
 
-def test_twr_pas_snapshot_missing_performance_start_date_returns_502(client, monkeypatch):
+def test_twr_pas_input_missing_performance_start_date_returns_502(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -537,7 +537,7 @@ def test_twr_pas_snapshot_missing_performance_start_date_returns_502(client, mon
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -546,7 +546,7 @@ def test_twr_pas_snapshot_missing_performance_start_date_returns_502(client, mon
     assert "missing performanceStartDate" in response.json()["detail"]
 
 
-def test_twr_pas_snapshot_invalid_valuation_shape_returns_502(client, monkeypatch):
+def test_twr_pas_input_invalid_valuation_shape_returns_502(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -560,7 +560,7 @@ def test_twr_pas_snapshot_invalid_valuation_shape_returns_502(client, monkeypatc
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -569,7 +569,7 @@ def test_twr_pas_snapshot_invalid_valuation_shape_returns_502(client, monkeypatc
     assert "Invalid PAS performance input payload" in response.json()["detail"]
 
 
-def test_twr_pas_snapshot_requested_period_not_found_returns_404(client, monkeypatch):
+def test_twr_pas_input_requested_period_not_found_returns_404(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -602,7 +602,7 @@ def test_twr_pas_snapshot_requested_period_not_found_returns_404(client, monkeyp
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -625,7 +625,7 @@ def test_twr_pas_snapshot_requested_period_not_found_returns_404(client, monkeyp
     assert "Requested periods not found" in response.json()["detail"]
 
 
-def test_twr_pas_snapshot_skips_period_without_summary_and_returns_remaining(client, monkeypatch):
+def test_twr_pas_input_skips_period_without_summary_and_returns_remaining(client, monkeypatch):
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -642,7 +642,7 @@ def test_twr_pas_snapshot_skips_period_without_summary_and_returns_remaining(cli
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input", _mock_get_performance_input
+        "app.api.endpoints.performance.PasInputService.get_performance_input", _mock_get_performance_input
     )
 
     class _Summary:
@@ -674,3 +674,4 @@ def test_twr_pas_snapshot_skips_period_without_summary_and_returns_remaining(cli
     results = response.json()["resultsByPeriod"]
     assert "YTD" not in results
     assert "MTD" in results
+

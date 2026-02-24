@@ -33,7 +33,7 @@ class MoneyWeightedReturnResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     calculation_id: UUID
-    portfolio_number: str
+    portfolio_id: str
 
     money_weighted_return: float
     mwr_annualized: Optional[float] = None
@@ -47,3 +47,4 @@ class MoneyWeightedReturnResponse(BaseModel):
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit
+

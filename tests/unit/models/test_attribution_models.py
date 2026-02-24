@@ -10,7 +10,7 @@ from common.enums import PeriodType
 def base_attribution_payload():
     """Provides a base payload for attribution requests, excluding period definitions."""
     return {
-        "portfolio_number": "ATTRIB_001",
+        "portfolio_id": "ATTRIB_001",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-31",
         "mode": "by_group",
@@ -53,3 +53,4 @@ def test_attribution_request_with_no_analyses_fails(base_attribution_payload):
     with pytest.raises(ValidationError, match="Field required"):
         AttributionRequest.model_validate(base_attribution_payload)
     # --- END FIX ---
+

@@ -17,7 +17,7 @@ def test_calculate_mwr_endpoint_xirr_happy_path(client):
     """Tests the /performance/mwr endpoint with the XIRR method."""
     payload = {
         "calculation_id": str(uuid4()),
-        "portfolio_number": "MWR_XIRR_TEST_01",
+        "portfolio_id": "MWR_XIRR_TEST_01",
         "begin_mv": 100000.0,
         "end_mv": 115000.0,
         "as_of": "2025-12-31",
@@ -33,7 +33,7 @@ def test_calculate_mwr_endpoint_xirr_happy_path(client):
 
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["portfolio_number"] == "MWR_XIRR_TEST_01"
+    assert response_data["portfolio_id"] == "MWR_XIRR_TEST_01"
     assert response_data["method"] == "XIRR"
     assert response_data["money_weighted_return"] == pytest.approx(11.723, abs=1e-3)
     assert response_data["mwr_annualized"] is not None
@@ -42,7 +42,7 @@ def test_calculate_mwr_endpoint_xirr_happy_path(client):
 def test_mwr_lineage_flow(client):
     """Tests that lineage is correctly captured for an MWR request."""
     payload = {
-        "portfolio_number": "MWR_LINEAGE_01",
+        "portfolio_id": "MWR_LINEAGE_01",
         "begin_mv": 5000.0,
         "end_mv": 5500.0,
         "as_of": "2025-06-30",
@@ -65,7 +65,7 @@ def test_calculate_mwr_endpoint_unexpected_error_returns_500(client, mocker):
     """Tests that unexpected MWR calculation failures map to HTTP 500."""
     mocker.patch("app.api.endpoints.performance.calculate_money_weighted_return", side_effect=Exception("boom"))
     payload = {
-        "portfolio_number": "MWR_ERROR_01",
+        "portfolio_id": "MWR_ERROR_01",
         "begin_mv": 1000.0,
         "end_mv": 1100.0,
         "as_of": "2025-06-30",
@@ -75,3 +75,4 @@ def test_calculate_mwr_endpoint_unexpected_error_returns_500(client, mocker):
     response = client.post("/performance/mwr", json=payload)
     assert response.status_code == 500
     assert "unexpected error occurred during MWR calculation" in response.json()["detail"]
+

@@ -80,7 +80,7 @@ The correlation is computed on the cleaned and aligned return panel.
 
 ```json
 {
-  "portfolio_number": "CORR_MATRIX_01",
+  "portfolio_id": "CORR_MATRIX_01",
   "timeseries_kind": "prices",
   "return_method": "log",
   "frequency": "D",

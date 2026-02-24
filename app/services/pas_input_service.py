@@ -6,7 +6,7 @@ import httpx
 from app.observability import propagation_headers
 
 
-class PasSnapshotService:
+class PasInputService:
     def __init__(self, base_url: str, timeout_seconds: float):
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout_seconds
@@ -71,3 +71,4 @@ class PasSnapshotService:
         if isinstance(payload, dict):
             return payload
         return {"detail": payload}
+

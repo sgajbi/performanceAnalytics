@@ -78,7 +78,7 @@ If factor model data is provided, the engine computes:
 
 ```json
 {
-  "portfolio_number": "PORT123",
+  "portfolio_id": "PORT123",
   "as_of": "2025-08-31",
   "mode": "snapshot",
   "dimension": "sector",

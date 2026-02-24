@@ -1,5 +1,5 @@
 {
-  "portfolio_number": "ATTRIB_EXAMPLE_01",
+  "portfolio_id": "ATTRIB_EXAMPLE_01",
   "mode": "by_instrument",
   "group_by": [
     "sector"

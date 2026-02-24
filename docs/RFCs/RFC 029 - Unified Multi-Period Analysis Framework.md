@@ -114,7 +114,7 @@ The response structure will be modified to accommodate results for multiple peri
 ```jsonc
 {
   "calculation_id": "a4b7e289-7e28-4b7e-8e28-7e284b7e8e28",
-  "portfolio_number": "MULTI_PERIOD_01",
+  "portfolio_id": "MULTI_PERIOD_01",
   "results_by_period": {
     "MTD": {
       // Standard TWR breakdown object for the MTD period
@@ -199,3 +199,4 @@ The implementation of this RFC will be considered complete when the following cr
 7.  All relevant documentation, including `README.md`, `docs/guides/api_reference.md`, and all usage examples, is updated to reflect the new multi-period request and response structure.
 
 <!-- end list -->
+

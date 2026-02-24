@@ -23,7 +23,7 @@ def test_e2e_platform_readiness_and_capabilities_contract() -> None:
 
 def test_e2e_performance_twr_and_mwr_workflow() -> None:
     twr_payload = {
-        "portfolio_number": "E2E_WORKFLOW_001",
+        "portfolio_id": "E2E_WORKFLOW_001",
         "performance_start_date": "2025-01-01",
         "report_end_date": "2025-01-03",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -35,7 +35,7 @@ def test_e2e_performance_twr_and_mwr_workflow() -> None:
         ],
     }
     mwr_payload = {
-        "portfolio_number": "E2E_WORKFLOW_001",
+        "portfolio_id": "E2E_WORKFLOW_001",
         "begin_mv": 1000.0,
         "end_mv": 1030.301,
         "cash_flows": [],
@@ -54,12 +54,12 @@ def test_e2e_performance_twr_and_mwr_workflow() -> None:
     assert twr_body["results_by_period"]["ITD"]["portfolio_return"]["base"] > 0
 
     mwr_body = mwr_response.json()
-    assert mwr_body["portfolio_number"] == "E2E_WORKFLOW_001"
+    assert mwr_body["portfolio_id"] == "E2E_WORKFLOW_001"
 
 
 def test_e2e_contribution_attribution_and_lineage() -> None:
     contribution_payload = {
-        "portfolio_number": "E2E_CONTRIB_001",
+        "portfolio_id": "E2E_CONTRIB_001",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-01",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -76,7 +76,7 @@ def test_e2e_contribution_attribution_and_lineage() -> None:
         "emit": {"timeseries": True},
     }
     attribution_payload = {
-        "portfolio_number": "E2E_ATTRIB_001",
+        "portfolio_id": "E2E_ATTRIB_001",
         "mode": "by_group",
         "group_by": ["sector"],
         "linking": "none",
@@ -173,11 +173,11 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
     monkeypatch.setattr(
-        "app.api.endpoints.analytics.PasSnapshotService.get_positions_analytics",
+        "app.api.endpoints.analytics.PasInputService.get_positions_analytics",
         _mock_get_positions_analytics,
     )
 
@@ -216,7 +216,7 @@ def test_e2e_pas_ref_capability_and_execution_contract(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -239,7 +239,7 @@ def test_e2e_pas_ref_upstream_failure_passthrough(monkeypatch) -> None:
         return 503, {"detail": "PAS unavailable"}
 
     monkeypatch.setattr(
-        "app.api.endpoints.performance.PasSnapshotService.get_performance_input",
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
 
@@ -258,7 +258,7 @@ def test_e2e_positions_pas_payload_contract_failure(monkeypatch) -> None:
         return 200, {"portfolioId": portfolio_id, "asOfDate": str(as_of_date)}
 
     monkeypatch.setattr(
-        "app.api.endpoints.analytics.PasSnapshotService.get_positions_analytics",
+        "app.api.endpoints.analytics.PasInputService.get_positions_analytics",
         _mock_get_positions_analytics,
     )
 
@@ -274,7 +274,7 @@ def test_e2e_positions_pas_payload_contract_failure(monkeypatch) -> None:
 
 def test_e2e_contribution_lineage_roundtrip() -> None:
     contribution_payload = {
-        "portfolio_number": "E2E_CONTRIB_002",
+        "portfolio_id": "E2E_CONTRIB_002",
         "report_start_date": "2025-01-01",
         "report_end_date": "2025-01-01",
         "analyses": [{"period": "ITD", "frequencies": ["daily"]}],
@@ -302,7 +302,7 @@ def test_e2e_contribution_lineage_roundtrip() -> None:
 
 def test_e2e_attribution_lineage_roundtrip() -> None:
     attribution_payload = {
-        "portfolio_number": "E2E_ATTRIB_002",
+        "portfolio_id": "E2E_ATTRIB_002",
         "mode": "by_group",
         "group_by": ["sector"],
         "linking": "none",
@@ -335,7 +335,7 @@ def test_e2e_attribution_lineage_roundtrip() -> None:
 
 def test_e2e_mwr_lineage_roundtrip() -> None:
     mwr_payload = {
-        "portfolio_number": "E2E_MWR_002",
+        "portfolio_id": "E2E_MWR_002",
         "begin_mv": 1000.0,
         "end_mv": 1045.0,
         "cash_flows": [{"date": "2025-01-15", "amount": 25.0}],
@@ -408,3 +408,4 @@ def test_e2e_workbench_active_return_and_risk_proxy_signal() -> None:
     assert body["activeReturnPct"] == pytest.approx(2.3)
     assert body["riskProxy"]["hhiDelta"] > 0
     assert len(body["topChanges"]) == 2
+

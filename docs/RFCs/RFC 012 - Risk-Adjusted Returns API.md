@@ -78,7 +78,7 @@ The engine calculates the portfolio's equity curve over time to identify periods
 
 ```json
 {
-  "portfolio_number": "RISK_METRICS_01",
+  "portfolio_id": "RISK_METRICS_01",
   "as_of": "2025-09-07",
   "mode": "snapshot",
   "timeseries_kind": "returns",

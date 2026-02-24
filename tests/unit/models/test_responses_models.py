@@ -53,7 +53,7 @@ def test_performance_response_new_structure_passes(base_response_footer, single_
     """Tests that a response with the new 'results_by_period' structure is valid."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
-        "portfolio_number": "TEST_01",
+        "portfolio_id": "TEST_01",
         "results_by_period": {
             "YTD": single_period_result_payload,
             "MTD": single_period_result_payload,
@@ -73,7 +73,7 @@ def test_performance_response_legacy_structure_passes(base_response_footer, sing
     """Tests that a response with the legacy 'breakdowns' field is still valid."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
-        "portfolio_number": "TEST_01",
+        "portfolio_id": "TEST_01",
         **single_period_result_payload,
         **base_response_footer,
     }
@@ -89,7 +89,7 @@ def test_performance_response_with_both_structures_fails(base_response_footer, s
     """Tests that validation fails if both legacy and new structures are present."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
-        "portfolio_number": "TEST_01",
+        "portfolio_id": "TEST_01",
         "results_by_period": {"YTD": single_period_result_payload},
         **single_period_result_payload,
         **base_response_footer,
@@ -102,8 +102,9 @@ def test_performance_response_with_neither_structure_fails(base_response_footer)
     """Tests that validation fails if no result structure is provided."""
     payload = {
         "calculation_id": base_response_footer["meta"]["calculation_id"],
-        "portfolio_number": "TEST_01",
+        "portfolio_id": "TEST_01",
         **base_response_footer,
     }
     with pytest.raises(ValidationError, match="Provide either 'results_by_period' or the legacy"):
         PerformanceResponse.model_validate(payload)
+

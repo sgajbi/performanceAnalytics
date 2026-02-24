@@ -68,7 +68,7 @@ If a `groupBy` hierarchy is provided, the engine performs a bottom-up aggregatio
 
 ```json
 {
-  "portfolio_number": "PORT123",
+  "portfolio_id": "PORT123",
   "as_of": "2025-08-31",
   "currency": "USD",
   "mode": "snapshot",

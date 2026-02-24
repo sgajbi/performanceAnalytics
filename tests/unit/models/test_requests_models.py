@@ -9,7 +9,7 @@ from app.models.requests import PerformanceRequest
 def base_twr_payload():
     """Provides a base payload for TWR requests, excluding period definitions."""
     return {
-        "portfolio_number": "VALIDATION_TEST",
+        "portfolio_id": "VALIDATION_TEST",
         "performance_start_date": "2024-12-31",
         "metric_basis": "NET",
         "report_end_date": "2025-01-31",
@@ -47,3 +47,4 @@ def test_performance_request_without_analyses_fails(base_twr_payload):
     """Tests that validation fails if the 'analyses' field is missing."""
     with pytest.raises(ValidationError, match="Field required"):
         PerformanceRequest.model_validate(base_twr_payload)
+

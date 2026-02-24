@@ -68,7 +68,7 @@ If rebalancing is enabled, the engine simulates trades to resolve the breaches u
 
 ```json
 {
-  "portfolio_number": "DRIFT_MONITOR_01",
+  "portfolio_id": "DRIFT_MONITOR_01",
   "as_of": "2025-09-07",
   "mode": "snapshot",
   "holdings": {

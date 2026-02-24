@@ -3,7 +3,7 @@ from datetime import date
 import httpx
 import pytest
 
-from app.services.pas_snapshot_service import PasSnapshotService
+from app.services.pas_input_service import PasInputService
 
 
 class _FakeAsyncClient:
@@ -54,12 +54,12 @@ class _FakeAsyncClient:
 def _patch_async_client(monkeypatch):
     _FakeAsyncClient.responses = []
     _FakeAsyncClient.calls = []
-    monkeypatch.setattr("app.services.pas_snapshot_service.httpx.AsyncClient", _FakeAsyncClient)
+    monkeypatch.setattr("app.services.pas_input_service.httpx.AsyncClient", _FakeAsyncClient)
 
 
 @pytest.mark.asyncio
 async def test_get_core_snapshot_posts_contract_payload():
-    service = PasSnapshotService(base_url="http://pas", timeout_seconds=2.0)
+    service = PasInputService(base_url="http://pas", timeout_seconds=2.0)
     _FakeAsyncClient.queue_json(200, {"snapshot": {"overview": {}}})
 
     status_code, payload = await service.get_core_snapshot(
@@ -78,7 +78,7 @@ async def test_get_core_snapshot_posts_contract_payload():
 
 @pytest.mark.asyncio
 async def test_get_performance_input_posts_contract_payload():
-    service = PasSnapshotService(base_url="http://pas", timeout_seconds=2.0)
+    service = PasInputService(base_url="http://pas", timeout_seconds=2.0)
     _FakeAsyncClient.queue_json(200, {"valuationPoints": []})
 
     status_code, payload = await service.get_performance_input(
@@ -96,7 +96,7 @@ async def test_get_performance_input_posts_contract_payload():
 
 @pytest.mark.asyncio
 async def test_get_positions_analytics_with_and_without_performance_periods():
-    service = PasSnapshotService(base_url="http://pas", timeout_seconds=2.0)
+    service = PasInputService(base_url="http://pas", timeout_seconds=2.0)
     _FakeAsyncClient.queue_json(200, {"portfolioId": "PORT-3"})
     _FakeAsyncClient.queue_json(200, {"portfolioId": "PORT-3"})
 
@@ -129,7 +129,7 @@ async def test_get_positions_analytics_with_and_without_performance_periods():
     ],
 )
 def test_response_payload_parsing(payload, text, expected):
-    service = PasSnapshotService(base_url="http://pas", timeout_seconds=2.0)
+    service = PasInputService(base_url="http://pas", timeout_seconds=2.0)
 
     class _Resp:
         def __init__(self, value, raw_text: str):
@@ -147,7 +147,7 @@ def test_response_payload_parsing(payload, text, expected):
 
 @pytest.mark.asyncio
 async def test_text_error_payload_is_mapped_to_detail():
-    service = PasSnapshotService(base_url="http://pas", timeout_seconds=2.0)
+    service = PasInputService(base_url="http://pas", timeout_seconds=2.0)
     _FakeAsyncClient.queue_text(503, "upstream unavailable")
     status_code, payload = await service.get_core_snapshot(
         portfolio_id="PORT-4",
@@ -157,3 +157,4 @@ async def test_text_error_payload_is_mapped_to_detail():
     )
     assert status_code == 503
     assert payload["detail"] == "upstream unavailable"
+

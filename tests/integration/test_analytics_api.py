@@ -18,7 +18,7 @@ def test_positions_analytics_success(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "app.api.endpoints.analytics.PasSnapshotService.get_positions_analytics",
+        "app.api.endpoints.analytics.PasInputService.get_positions_analytics",
         _mock_get_positions_analytics,
     )
 
@@ -45,7 +45,7 @@ def test_positions_analytics_invalid_payload(monkeypatch):
         return (200, {"portfolioId": "P1"})
 
     monkeypatch.setattr(
-        "app.api.endpoints.analytics.PasSnapshotService.get_positions_analytics",
+        "app.api.endpoints.analytics.PasInputService.get_positions_analytics",
         _mock_get_positions_analytics,
     )
 
@@ -63,7 +63,7 @@ def test_positions_analytics_upstream_error_passthrough(monkeypatch):
         return (503, {"detail": "pas unavailable"})
 
     monkeypatch.setattr(
-        "app.api.endpoints.analytics.PasSnapshotService.get_positions_analytics",
+        "app.api.endpoints.analytics.PasInputService.get_positions_analytics",
         _mock_get_positions_analytics,
     )
 
@@ -142,3 +142,4 @@ def test_workbench_analytics_security_group_uses_security_bucket_keys():
     bucket = response.json()["allocationBuckets"][0]
     assert bucket["bucketKey"] == "MSFT.US"
     assert bucket["bucketLabel"] == "Microsoft"
+

@@ -8,7 +8,7 @@ All endpoints live under `/performance` in `app/api/endpoints/performance.py`.
 ### Minimal Request
 ```json
 {
-  "portfolio_number": "PF-001",
+  "portfolio_id": "PF-001",
   "performance_start_date": "2024-12-31",
   "report_end_date": "2025-01-31",
   "as_of": "2025-01-31",
@@ -30,7 +30,7 @@ All endpoints live under `/performance` in `app/api/endpoints/performance.py`.
 ```json
 {
   "calculation_id": "uuid",
-  "portfolio_number": "PF-001",
+  "portfolio_id": "PF-001",
   "results_by_period": {
     "MTD": {
       "breakdowns": {
@@ -60,7 +60,7 @@ All endpoints live under `/performance` in `app/api/endpoints/performance.py`.
 
 ```json
 {
-  "portfolio_number": "PF-MWR-001",
+  "portfolio_id": "PF-MWR-001",
   "begin_mv": 1000000.0,
   "end_mv": 1030000.0,
   "as_of": "2025-01-31",
@@ -122,7 +122,7 @@ Key controls:
 **Updated File: `docs/examples/twr_request.json`**
 ```json
 {
-  "portfolio_number": "TWR_EXAMPLE_01",
+  "portfolio_id": "TWR_EXAMPLE_01",
   "performance_start_date": "2024-12-31",
   "metric_basis": "NET",
   "report_end_date": "2025-01-05",
@@ -187,7 +187,7 @@ Key controls:
 
 ```json
 {
-  "portfolio_number": "CONTRIB_EXAMPLE_01",
+  "portfolio_id": "CONTRIB_EXAMPLE_01",
   "report_start_date": "2025-01-01",
   "report_end_date": "2025-01-02",
   "periods": [
@@ -265,7 +265,7 @@ Key controls:
 
 ```json
 {
-  "portfolio_number": "ATTRIB_EXAMPLE_01",
+  "portfolio_id": "ATTRIB_EXAMPLE_01",
   "report_start_date": "2025-01-01",
   "report_end_date": "2025-01-01",
   "periods": [

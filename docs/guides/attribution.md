@@ -102,7 +102,7 @@ To solve this, the engine uses a **top-down geometric linking** method. It ensur
 
 ```json
 {
-  "portfolio_number": "ATTRIB_EXAMPLE_01",
+  "portfolio_id": "ATTRIB_EXAMPLE_01",
   "mode": "by_instrument",
   "group_by": [ "sector" ],
   "linking": "none",
@@ -141,7 +141,7 @@ To solve this, the engine uses a **top-down geometric linking** method. It ensur
 ```json
 {
     "calculation_id": "uuid-goes-here",
-    "portfolio_number": "ATTRIB_EXAMPLE_01",
+    "portfolio_id": "ATTRIB_EXAMPLE_01",
     "model": "BF",
     "linking": "none",
     "levels": [

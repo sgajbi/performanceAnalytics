@@ -83,7 +83,7 @@ class AttributionResponse(BaseModel):
     """Response model for the Attribution engine."""
 
     calculation_id: UUID
-    portfolio_number: str
+    portfolio_id: str
     model: AttributionModel
     linking: LinkingMethod
 
@@ -94,3 +94,4 @@ class AttributionResponse(BaseModel):
     meta: Meta
     diagnostics: Optional[Diagnostics] = None  # To be populated
     audit: Optional[Audit] = None  # To be populated
+

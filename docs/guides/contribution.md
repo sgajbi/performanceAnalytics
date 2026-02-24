@@ -88,7 +88,7 @@ This bottom-up approach guarantees that the sum of contributions at any level pe
 
 ```json
 {
-  "portfolio_number": "CONTRIB_EXAMPLE_01",
+  "portfolio_id": "CONTRIB_EXAMPLE_01",
   "hierarchy": [ "sector", "position_id" ],
   "portfolio_data": {
     "report_start_date": "2025-01-01",
@@ -123,7 +123,7 @@ This bottom-up approach guarantees that the sum of contributions at any level pe
 ```json
 {
   "calculation_id": "uuid-goes-here",
-  "portfolio_number": "CONTRIB_EXAMPLE_01",
+  "portfolio_id": "CONTRIB_EXAMPLE_01",
   "summary": {
     "portfolio_contribution": 2.953...,
     "coverage_mv_pct": 100.0, "weighting_scheme": "BOD"

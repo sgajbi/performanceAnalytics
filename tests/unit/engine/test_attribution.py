@@ -35,7 +35,7 @@ def by_group_request_data():
     """Provides a sample AttributionRequest for by_group mode where weights sum to 1."""
     # --- START FIX: Align fixture with new model ---
     return {
-        "portfolio_number": "ATTRIB_UNIT_TEST_01",
+        "portfolio_id": "ATTRIB_UNIT_TEST_01",
         "mode": "by_group",
         "group_by": ["sector"],
         "model": "BF",
@@ -133,7 +133,7 @@ def test_prepare_data_from_instruments():
 
     # --- START FIX: Align fixture with new model ---
     request_data = {
-        "portfolio_number": "TEST",
+        "portfolio_id": "TEST",
         "mode": "by_instrument",
         "group_by": ["sector"],
         "linking": "none",
@@ -165,7 +165,7 @@ def test_prepare_data_from_instruments_missing_portfolio_data():
     """Tests that a ValueError is raised if portfolio_data is missing in by_instrument mode."""
     # --- START FIX: Align fixture with new model ---
     request_data = {
-        "portfolio_number": "TEST",
+        "portfolio_id": "TEST",
         "mode": "by_instrument",
         "group_by": ["sector"],
         "instruments_data": [],
@@ -184,7 +184,7 @@ def test_prepare_data_from_instruments_missing_portfolio_data():
 
 def test_prepare_data_from_instruments_returns_empty_when_all_inputs_empty():
     request_data = {
-        "portfolio_number": "TEST",
+        "portfolio_id": "TEST",
         "mode": "by_instrument",
         "group_by": ["sector"],
         "linking": "none",
@@ -243,3 +243,4 @@ def test_run_attribution_calculations_returns_empty_when_aligned_panel_empty(by_
 
     assert effects_df.empty
     assert "aligned_panel.csv" in lineage
+

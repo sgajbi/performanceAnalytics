@@ -67,7 +67,7 @@ The contribution engine will be a new, distinct module within our existing `engi
 ```json
 {
   "calculation_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "portfolio_number": "CONTRIB_TEST_01",
+  "portfolio_id": "CONTRIB_TEST_01",
   "portfolio_data": {
     "report_start_date": "2025-01-01",
     "report_end_date": "2025-01-31",
@@ -118,7 +118,7 @@ The contribution engine will be a new, distinct module within our existing `engi
 ```json
 {
   "calculation_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "portfolio_number": "CONTRIB_TEST_01",
+  "portfolio_id": "CONTRIB_TEST_01",
   "report_start_date": "2025-01-01",
   "report_end_date": "2025-01-31",
   "total_portfolio_return": 15.75,

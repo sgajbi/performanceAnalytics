@@ -94,7 +94,7 @@ The following new blocks are added to the shared request envelope for all releva
 ```jsonc
 // Example for a Contribution Request in Multi-Currency Mode
 {
-  "portfolio_number": "MULTI_CCY_01",
+  "portfolio_id": "MULTI_CCY_01",
   "portfolio_data": { /* ... portfolio totals, values in base currency ... */ },
   "positions_data": [
     {
@@ -149,7 +149,7 @@ The response for each endpoint will be enhanced to include the currency decompos
 // Example for a TWR Response in Multi-Currency Mode
 {
   "calculation_id": "a4b7e289-7e28-4b7e-8e28-7e284b7e8e28",
-  "portfolio_number": "MULTI_CCY_01",
+  "portfolio_id": "MULTI_CCY_01",
 
   // --- New Multi-Currency Response Blocks ---
   "portfolio_return": {    // Decomposition of the total portfolio TWR
