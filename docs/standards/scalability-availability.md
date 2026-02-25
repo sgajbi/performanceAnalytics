@@ -17,6 +17,19 @@ This repository adopts the platform-wide standard defined in pbwm-platform-docs/
 - Compliance matrix entry in pbwm-platform-docs/output/scalability-availability-compliance.md.
 - Service-specific tests covering resilience and concurrency-critical paths.
 
+## Database Scalability Fundamentals
+
+- Query plan checks are required for analytics endpoints that persist or read materialized results.
+- Index coverage must be explicit for attribution/performance lookup keys and time-window filters.
+- Data growth assumptions are maintained for analytics payload volume and stored result history.
+- Retention and archival windows are documented for generated analytics artifacts.
+
+## Availability Baseline
+
+- Internal SLO baseline: p95 analytics API latency < 500 ms for cached reads; error rate < 1%.
+- Recovery targets: RTO 30 minutes and RPO 15 minutes for persisted analytics state.
+- Backup and restore validation: restoration drill evidence is required in environment runbooks before go-live.
+
 ## Deviation Rule
 
 Any deviation from this standard requires ADR/RFC with remediation timeline.
