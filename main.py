@@ -1,6 +1,7 @@
 # main.py
 import os
-from typing import Any
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator
 
 import orjson
 from fastapi import FastAPI
@@ -75,6 +76,14 @@ class ORJSONResponseExcludeNull(JSONResponse):
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def _app_lifespan(application: FastAPI) -> AsyncIterator[None]:
+    application.state.is_draining = False
+    yield
+    application.state.is_draining = True
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     description=settings.APP_DESCRIPTION,
@@ -94,6 +103,7 @@ app = FastAPI(
         },
     ],
     default_response_class=ORJSONResponseExcludeNull,  # Set as the default for the app
+    lifespan=_app_lifespan,
 )
 setup_observability(app, log_level=settings.LOG_LEVEL)
 
