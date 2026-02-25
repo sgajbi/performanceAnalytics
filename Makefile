@@ -1,4 +1,4 @@
-.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci ci-local ci-local-docker ci-local-docker-down typecheck lint format clean run check-deps security-audit openapi-gate pre-commit docker-up docker-down
+.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci ci-local ci-local-docker ci-local-docker-down typecheck lint format clean run check-deps security-audit openapi-gate migration-smoke migration-apply pre-commit docker-up docker-down
 
 install:
 	pip install -r requirements.txt
@@ -11,7 +11,7 @@ pre-commit:
 
 check: lint typecheck openapi-gate test
 
-ci: lint typecheck openapi-gate test-all security-audit
+ci: lint typecheck openapi-gate migration-smoke test-all security-audit
 
 test:
 	$(MAKE) test-unit
@@ -50,6 +50,12 @@ typecheck:
 
 openapi-gate:
 	python scripts/openapi_quality_gate.py
+
+migration-smoke:
+	python scripts/migration_contract_check.py --mode no-schema
+
+migration-apply:
+	python scripts/migration_contract_check.py --mode no-schema
 
 lint:
 	ruff check .
