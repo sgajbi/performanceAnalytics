@@ -47,4 +47,3 @@ class MoneyWeightedReturnResponse(BaseModel):
     meta: Meta
     diagnostics: Diagnostics
     audit: Audit
-

@@ -75,4 +75,3 @@ def test_calculate_mwr_endpoint_unexpected_error_returns_500(client, mocker):
     response = client.post("/performance/mwr", json=payload)
     assert response.status_code == 500
     assert "unexpected error occurred during MWR calculation" in response.json()["detail"]
-

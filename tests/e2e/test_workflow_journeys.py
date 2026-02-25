@@ -408,4 +408,3 @@ def test_e2e_workbench_active_return_and_risk_proxy_signal() -> None:
     assert body["activeReturnPct"] == pytest.approx(2.3)
     assert body["riskProxy"]["hhiDelta"] > 0
     assert len(body["topChanges"]) == 2
-

@@ -236,4 +236,3 @@ def test_contribution_endpoint_skips_empty_period_slice(client):
 
     assert response.status_code == 200
     assert response.json()["results_by_period"] == {}
-

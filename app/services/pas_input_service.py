@@ -71,4 +71,3 @@ class PasInputService:
         if isinstance(payload, dict):
             return payload
         return {"detail": payload}
-

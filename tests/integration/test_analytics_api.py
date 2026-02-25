@@ -142,4 +142,3 @@ def test_workbench_analytics_security_group_uses_security_bucket_keys():
     bucket = response.json()["allocationBuckets"][0]
     assert bucket["bucketKey"] == "MSFT.US"
     assert bucket["bucketLabel"] == "Microsoft"
-

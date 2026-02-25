@@ -60,4 +60,3 @@ def happy_path_payload():
             }
         ],
     }
-

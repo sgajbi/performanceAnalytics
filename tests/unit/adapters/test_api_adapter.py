@@ -160,4 +160,3 @@ def test_format_breakdowns_populates_daily_cumulative_return(sample_engine_outpu
 
     daily_summary = formatted_response[Frequency.DAILY][0].summary
     assert daily_summary.cumulative_return_pct_to_date is None
-

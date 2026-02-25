@@ -94,4 +94,3 @@ class AttributionResponse(BaseModel):
     meta: Meta
     diagnostics: Optional[Diagnostics] = None  # To be populated
     audit: Optional[Audit] = None  # To be populated
-

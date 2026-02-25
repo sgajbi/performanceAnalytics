@@ -61,4 +61,3 @@ def test_vectorized_engine_performance(benchmark, large_input_data):
 
     benchmark.group = "Engine Performance (500k rows)"
     benchmark(run)
-

@@ -53,4 +53,3 @@ def test_attribution_request_with_no_analyses_fails(base_attribution_payload):
     with pytest.raises(ValidationError, match="Field required"):
         AttributionRequest.model_validate(base_attribution_payload)
     # --- END FIX ---
-

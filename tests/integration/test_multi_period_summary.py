@@ -70,4 +70,3 @@ def test_multi_period_portfolio_return_summary_is_correct(client):
 
     # Crucially, assert the MTD and YTD summaries are NOT the same
     assert mtd_summary["base"] != ytd_summary["base"]
-
