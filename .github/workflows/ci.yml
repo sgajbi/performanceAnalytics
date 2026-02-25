@@ -63,6 +63,8 @@ jobs:
 
       - name: OpenAPI Gate
         run: make openapi-gate
+      - name: Migration Contract Smoke
+        run: make migration-smoke
 
   test-suites:
     name: Tests (${{ matrix.suite }})
@@ -140,7 +142,7 @@ jobs:
           merge-multiple: true
           path: coverage-data
 
-      - name: Enforce 95% Coverage (combined suites)
+      - name: Enforce 99% Coverage (combined suites)
         run: |
           python -m coverage combine coverage-data
           python -m coverage report --fail-under=99

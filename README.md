@@ -165,3 +165,14 @@ The core calculation logic is a standalone library. For instructions on how to u
 <!-- end list -->
 
 
+
+## Platform Foundation Commands
+
+- `make migration-smoke`
+- `make migration-apply`
+- `make security-audit`
+
+Standards documentation:
+
+- `docs/standards/migration-contract.md`
+- `docs/standards/data-model-ownership.md`
