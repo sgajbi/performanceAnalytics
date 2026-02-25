@@ -3,6 +3,7 @@ from typing import Dict, List
 
 import pandas as pd
 
+from app.precision_policy import quantize_performance
 from common.enums import Frequency
 from core.annualize import annualize_return
 from core.envelope import Annualization
@@ -26,12 +27,12 @@ def _calculate_period_summary_dict(
         PortfolioColumns.BEGIN_MV.value: first_day[PortfolioColumns.BEGIN_MV.value],
         PortfolioColumns.END_MV.value: last_day[PortfolioColumns.END_MV.value],
         "net_cash_flow": (period_df[PortfolioColumns.BOD_CF.value] + period_df[PortfolioColumns.EOD_CF.value]).sum(),
-        "period_return_pct": round(period_ror * 100, rounding_precision),
+        "period_return_pct": float(quantize_performance(period_ror * 100)),
     }
 
     if include_cumulative:
-        summary["cumulative_return_pct_to_date"] = round(
-            last_day[PortfolioColumns.FINAL_CUM_ROR.value], rounding_precision
+        summary["cumulative_return_pct_to_date"] = float(
+            quantize_performance(last_day[PortfolioColumns.FINAL_CUM_ROR.value])
         )
 
     if annualization.enabled:
@@ -45,7 +46,7 @@ def _calculate_period_summary_dict(
         # --- START FIX: Remove conditional logic to always annualize if requested ---
         if days_in_period > 0:
             annualized_return = annualize_return(period_ror, days_in_period, ppy, annualization.basis) * 100
-            summary["annualized_return_pct"] = round(annualized_return, rounding_precision)
+            summary["annualized_return_pct"] = float(quantize_performance(annualized_return))
         # --- END FIX ---
 
     return summary
