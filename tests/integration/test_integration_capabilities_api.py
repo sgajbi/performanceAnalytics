@@ -70,3 +70,13 @@ def test_health_and_metrics_endpoints_available():
     assert ready.json() == {"status": "ready"}
     assert metrics.status_code == 200
     assert "http_requests_total" in metrics.text or "http_request_duration" in metrics.text
+
+
+def test_health_ready_returns_503_when_draining():
+    with TestClient(app) as client:
+        app.state.is_draining = True
+        response = client.get("/health/ready")
+    app.state.is_draining = False
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "draining"}
