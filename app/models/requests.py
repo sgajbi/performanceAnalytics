@@ -115,4 +115,3 @@ class PerformanceRequest(BaseModel):
         if not v:
             raise ValueError("analyses list cannot be empty")
         return v
-

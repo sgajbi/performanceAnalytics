@@ -199,4 +199,3 @@ async def get_workbench_analytics(request: WorkbenchAnalyticsRequest):
         topChanges=top_changes,
         riskProxy=risk_proxy,
     )
-

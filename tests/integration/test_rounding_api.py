@@ -31,4 +31,3 @@ def test_twr_endpoint_respects_rounding_precision(client):
 
     # The raw return is 1.123456%. It should be rounded to 1.12.
     assert summary["period_return_pct"] == 1.12
-

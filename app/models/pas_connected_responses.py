@@ -31,4 +31,3 @@ class PasConnectedTwrResponse(BaseModel):
 
 PasInputPeriodResult = PasConnectedPeriodResult
 PasInputTwrResponse = PasConnectedTwrResponse
-

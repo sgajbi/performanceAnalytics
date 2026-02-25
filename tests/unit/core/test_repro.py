@@ -58,4 +58,3 @@ def test_generate_canonical_hash_is_order_invariant(sample_twr_request):
     # Hashes will be different because Pydantic does not sort lists by default.
     # This confirms the behavior, which can be addressed if strict invariance is required.
     assert hash1 != hash2
-

@@ -319,4 +319,3 @@ def test_attribution_endpoint_skips_empty_period_slice(client, mocker):
     results = response.json()["results_by_period"]
     assert "ITD" in results
     assert "MTD" not in results
-

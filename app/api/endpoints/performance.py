@@ -486,4 +486,3 @@ async def calculate_attribution_endpoint(request: AttributionRequest, background
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected server error occurred: {str(e)}",
         )
-

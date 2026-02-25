@@ -169,4 +169,3 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
     )
 
     return response_model
-

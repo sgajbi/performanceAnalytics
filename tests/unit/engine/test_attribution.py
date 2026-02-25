@@ -243,4 +243,3 @@ def test_run_attribution_calculations_returns_empty_when_aligned_panel_empty(by_
 
     assert effects_df.empty
     assert "aligned_panel.csv" in lineage
-
