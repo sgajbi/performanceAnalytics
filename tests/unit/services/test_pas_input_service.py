@@ -54,7 +54,7 @@ class _FakeAsyncClient:
 def _patch_async_client(monkeypatch):
     _FakeAsyncClient.responses = []
     _FakeAsyncClient.calls = []
-    monkeypatch.setattr("app.services.pas_input_service.httpx.AsyncClient", _FakeAsyncClient)
+    monkeypatch.setattr("app.services.http_resilience.httpx.AsyncClient", _FakeAsyncClient)
 
 
 @pytest.mark.asyncio

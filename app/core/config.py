@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     LINEAGE_STORAGE_PATH: Path = Path("lineage_data")
     PAS_QUERY_BASE_URL: str = "http://localhost:8201"
     PAS_TIMEOUT_SECONDS: float = 10.0
+    PAS_MAX_RETRIES: int = 2
+    PAS_RETRY_BACKOFF_SECONDS: float = 0.2
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

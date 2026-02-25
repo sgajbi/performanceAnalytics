@@ -4,12 +4,21 @@ from typing import Any
 import httpx
 
 from app.observability import propagation_headers
+from app.services.http_resilience import post_with_retry, response_payload
 
 
 class PasInputService:
-    def __init__(self, base_url: str, timeout_seconds: float):
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float,
+        max_retries: int = 2,
+        retry_backoff_seconds: float = 0.2,
+    ):
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout_seconds
+        self._max_retries = max_retries
+        self._retry_backoff_seconds = retry_backoff_seconds
 
     async def get_core_snapshot(
         self,
@@ -25,9 +34,17 @@ class PasInputService:
             "consumerSystem": consumer_system,
         }
         headers = propagation_headers()
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            return response.status_code, self._response_payload(response)
+        return await post_with_retry(
+            url=url,
+            timeout_seconds=self._timeout,
+            json_body=payload,
+            headers=headers,
+            max_retries=self._max_retries,
+            backoff_seconds=self._retry_backoff_seconds,
+        )
+
+    def _response_payload(self, response: httpx.Response) -> dict[str, Any]:
+        return response_payload(response)
 
     async def get_performance_input(
         self,
@@ -43,9 +60,14 @@ class PasInputService:
             "consumerSystem": consumer_system,
         }
         headers = propagation_headers()
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            return response.status_code, self._response_payload(response)
+        return await post_with_retry(
+            url=url,
+            timeout_seconds=self._timeout,
+            json_body=payload,
+            headers=headers,
+            max_retries=self._max_retries,
+            backoff_seconds=self._retry_backoff_seconds,
+        )
 
     async def get_positions_analytics(
         self,
@@ -59,15 +81,11 @@ class PasInputService:
         if performance_periods:
             payload["performanceOptions"] = {"periods": performance_periods}
         headers = propagation_headers()
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            return response.status_code, self._response_payload(response)
-
-    def _response_payload(self, response: httpx.Response) -> dict[str, Any]:
-        try:
-            payload = response.json()
-        except ValueError:
-            payload = {"detail": response.text}
-        if isinstance(payload, dict):
-            return payload
-        return {"detail": payload}
+        return await post_with_retry(
+            url=url,
+            timeout_seconds=self._timeout,
+            json_body=payload,
+            headers=headers,
+            max_retries=self._max_retries,
+            backoff_seconds=self._retry_backoff_seconds,
+        )
