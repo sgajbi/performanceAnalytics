@@ -62,6 +62,8 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     pas_service = PasInputService(
         base_url=settings.PAS_QUERY_BASE_URL,
         timeout_seconds=settings.PAS_TIMEOUT_SECONDS,
+        max_retries=settings.PAS_MAX_RETRIES,
+        retry_backoff_seconds=settings.PAS_RETRY_BACKOFF_SECONDS,
     )
     upstream_status, upstream_payload = await pas_service.get_performance_input(
         portfolio_id=request.portfolio_id,

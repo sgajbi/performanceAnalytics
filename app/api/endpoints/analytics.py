@@ -37,6 +37,8 @@ async def get_positions_analytics(request: PositionAnalyticsRequest):
     pas_service = PasInputService(
         base_url=settings.PAS_QUERY_BASE_URL,
         timeout_seconds=settings.PAS_TIMEOUT_SECONDS,
+        max_retries=settings.PAS_MAX_RETRIES,
+        retry_backoff_seconds=settings.PAS_RETRY_BACKOFF_SECONDS,
     )
     status_code, payload = await pas_service.get_positions_analytics(
         portfolio_id=request.portfolio_id,
