@@ -97,9 +97,7 @@ def load_allowlist(path: Path) -> tuple[dict[str, dict], list[str], list[str]]:
     return entries, errors, stale
 
 
-def write_allowlist(
-    path: Path, findings: list[str], existing_entries: dict[str, dict], review_by: str
-) -> None:
+def write_allowlist(path: Path, findings: list[str], existing_entries: dict[str, dict], review_by: str) -> None:
     generated_at = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     allowlist_entries: list[dict] = []
     for finding in sorted(set(findings)):
@@ -175,10 +173,7 @@ def main() -> int:
         print("If intentional and approved, run with --update-allowlist in dedicated PR.")
         return 1
 
-    print(
-        "Monetary float guard passed. "
-        f"Findings={len(findings)}, allowlisted={len(allowlist_entries)}"
-    )
+    print(f"Monetary float guard passed. Findings={len(findings)}, allowlisted={len(allowlist_entries)}")
     return 0
 
 

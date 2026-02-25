@@ -44,9 +44,7 @@ def normalize_input(value: Any, semantic_type: str) -> Decimal:
     max_scale = INPUT_MAX_SCALE[semantic_type]
     actual_scale = _decimal_scale(decimal_value)
     if actual_scale > max_scale:
-        raise ValueError(
-            f"{semantic_type} scale {actual_scale} exceeds max {max_scale}; value={value!r}"
-        )
+        raise ValueError(f"{semantic_type} scale {actual_scale} exceeds max {max_scale}; value={value!r}")
     return decimal_value
 
 
