@@ -107,7 +107,7 @@ def write_allowlist(path: Path, findings: list[str], existing_entries: dict[str,
         allowlist_entries.append(
             {
                 "finding": finding,
-                "justification": "Temporary approved monetary float usage; migrate to Decimal.",
+                "justification": "Temporary approved monetary floating-point usage; convert to Decimal.",
                 "owner": "platform-governance",
                 "review_by": review_by,
             }
