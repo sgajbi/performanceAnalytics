@@ -43,6 +43,18 @@ def test_integration_capabilities_env_override(monkeypatch):
     assert body["supportedInputModes"] == ["pas_ref"]
 
 
+def test_integration_capabilities_limit_guardrails():
+    with TestClient(app) as client:
+        response = client.get(
+            "/integration/capabilities?consumerSystem=BFF&tenantId=default&featureLimit=2&workflowLimit=1"
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["features"]) == 2
+    assert len(body["workflows"]) == 1
+
+
 def test_health_and_metrics_endpoints_available():
     with TestClient(app) as client:
         health = client.get("/health")
