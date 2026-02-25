@@ -57,6 +57,8 @@ def _env_bool(name: str, default: bool) -> bool:
 async def get_integration_capabilities(
     consumer_system: ConsumerSystem = Query("BFF", alias="consumerSystem"),
     tenant_id: str = Query("default", alias="tenantId"),
+    feature_limit: int = Query(default=100, ge=1, le=500, alias="featureLimit"),
+    workflow_limit: int = Query(default=50, ge=1, le=200, alias="workflowLimit"),
 ) -> IntegrationCapabilitiesResponse:
     twr_enabled = _env_bool("PA_CAP_TWR_ENABLED", True)
     mwr_enabled = _env_bool("PA_CAP_MWR_ENABLED", True)
@@ -165,6 +167,6 @@ async def get_integration_capabilities(
         asOfDate=date.today(),
         policyVersion=os.getenv("PA_POLICY_VERSION", "tenant-default-v1"),
         supportedInputModes=supported_input_modes,
-        features=features,
-        workflows=workflows,
+        features=features[:feature_limit],
+        workflows=workflows[:workflow_limit],
     )

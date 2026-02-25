@@ -10,6 +10,7 @@ This repository adopts the platform-wide standard defined in pbwm-platform-docs/
 - Explicit timeout and bounded retry/backoff for inter-service communication where applicable.
 - Health/liveness/readiness endpoints for runtime orchestration.
 - Observability instrumentation for latency/error/throughput diagnostics.
+- API pagination/filter guardrails through bounded query parameters (`featureLimit`, `workflowLimit`).
 
 ## Required Evidence
 

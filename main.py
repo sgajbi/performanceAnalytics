@@ -8,7 +8,14 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 
-from app.api.endpoints import analytics, contribution, integration_capabilities, lineage, performance
+from app.api.endpoints import (
+    analytics,
+    contribution,
+    health,
+    integration_capabilities,
+    lineage,
+    performance,
+)
 from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
 from app.core.handlers import performance_calculator_exception_handler
@@ -104,21 +111,7 @@ app.include_router(contribution.router, prefix="/performance")
 app.include_router(lineage.router, prefix="/performance")
 app.include_router(analytics.router, prefix="/analytics")
 app.include_router(integration_capabilities.router, prefix="/integration")
-
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.get("/health/live")
-async def health_live() -> dict[str, str]:
-    return {"status": "live"}
-
-
-@app.get("/health/ready")
-async def health_ready() -> dict[str, str]:
-    return {"status": "ready"}
+app.include_router(health.router)
 
 
 @app.get("/")
