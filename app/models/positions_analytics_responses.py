@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class PositionAnalyticsResponse(BaseModel):
-    source_mode: str = "pas_ref"
+    source_mode: str = "core_api_ref"
     source_service: str = "lotus-performance"
     portfolio_id: str = Field(..., alias="portfolioId")
     as_of_date: date = Field(..., alias="asOfDate")
@@ -18,7 +18,7 @@ class PositionAnalyticsResponse(BaseModel):
         "populate_by_name": True,
         "json_schema_extra": {
             "example": {
-                "source_mode": "pas_ref",
+                "source_mode": "core_api_ref",
                 "source_service": "lotus-performance",
                 "portfolioId": "DEMO_DPM_EUR_001",
                 "asOfDate": "2026-02-24",

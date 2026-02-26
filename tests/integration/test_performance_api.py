@@ -423,7 +423,7 @@ def test_twr_pas_input_success(client, monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["portfolio_id"] == "PORT-1001"
-    assert body["source_mode"] == "pas_ref"
+    assert body["source_mode"] == "core_api_ref"
     assert body["pasContractVersion"] == "v1"
     assert "YTD" in body["resultsByPeriod"]
     assert body["resultsByPeriod"]["YTD"]["net_cumulative_return"] is not None
