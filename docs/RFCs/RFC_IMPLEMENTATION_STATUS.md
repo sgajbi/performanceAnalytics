@@ -4,9 +4,9 @@
 
 - Service-specific PA implementation RFCs are maintained in this repository.
 - Cross-cutting platform and multi-service architecture decisions are maintained in:
-  `https://github.com/sgajbi/pbwm-platform-docs`
+  `https://github.com/sgajbi/lotus-platform`
 
-This document provides a summary of the implementation status for all RFCs related to the `performanceAnalytics` service. It also outlines a strategic, sequential roadmap for implementing the remaining features to build a cohesive and powerful analytics suite.
+This document provides a summary of the implementation status for all RFCs related to the `lotus-performance` service. It also outlines a strategic, sequential roadmap for implementing the remaining features to build a cohesive and powerful analytics suite.
 
 ---
 
@@ -93,3 +93,4 @@ The following RFCs are not yet implemented. This roadmap presents a logical orde
 
 14. **RFC 022 — Composite & Sleeve Aggregation API**
     * **Reasoning:** **Enable firm-level and GIPS-compliant reporting.** A major enterprise feature that aggregates results from multiple portfolios into composites, representing the pinnacle of the platform's capabilities.
+

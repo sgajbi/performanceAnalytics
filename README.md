@@ -1,7 +1,7 @@
 
 # Portfolio Performance Analytics API (V3 Engine)
 
-An API for calculating portfolio performance metrics, aligned with the `portfolio-analytics-system`. It provides three primary services:
+An API for calculating portfolio performance metrics, aligned with the `lotus-core`. It provides three primary services:
 1.  **Performance Calculation**: Endpoints for calculating **Time-Weighted Return (TWR)** with frequency-based breakdowns and **Money-Weighted Return (MWR)**.
 2.  **Contribution Analysis**: An endpoint for calculating **Position Contribution** to explain the drivers of portfolio performance. Supports both single-level and multi-level hierarchical breakdowns.
 3.  **Attribution Analysis**: An endpoint for calculating single-level, multi-period **Performance Attribution** (Brinson-style) to explain a portfolio's active return against a benchmark.
@@ -13,7 +13,7 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 - Docs-with-code standard: `docs/documentation/implementation-documentation-standard.md`
 - Branch-protection workflow: `docs/documentation/git-branch-protection-workflow.md`
 - PR checklist template: `.github/pull_request_template.md`
-- Platform-wide architecture governance source: `https://github.com/sgajbi/pbwm-platform-docs`
+- Platform-wide architecture governance source: `https://github.com/sgajbi/lotus-platform`
 
 ## Key Features
 
@@ -33,8 +33,8 @@ An API for calculating portfolio performance metrics, aligned with the `portfoli
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/sgajbi/performanceAnalytics](https://github.com/sgajbi/performanceAnalytics)
-    cd performanceAnalytics
+    git clone [https://github.com/sgajbi/lotus-performance](https://github.com/sgajbi/lotus-performance)
+    cd lotus-performance
     ```
 
 2.  **Create and activate a virtual environment:**
@@ -176,3 +176,5 @@ Standards documentation:
 
 - `docs/standards/migration-contract.md`
 - `docs/standards/data-model-ownership.md`
+
+

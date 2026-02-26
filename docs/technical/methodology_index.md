@@ -1,6 +1,6 @@
 # Methodology Index
 
-This index provides a central navigation point for all detailed methodology and technical documentation for the **performanceAnalytics** engine and API. It is designed to help new developers, business analysts, and product teams quickly find the information they need.
+This index provides a central navigation point for all detailed methodology and technical documentation for the **lotus-performance** engine and API. It is designed to help new developers, business analysts, and product teams quickly find the information they need.
 
 ---
 ## Core Technical Documents

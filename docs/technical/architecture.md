@@ -1,7 +1,7 @@
  
 # Engine Architecture & API Structure
 
-The performanceAnalytics system is designed with a clean separation of concerns, split into distinct layers to ensure testability, reusability, and maintainability.
+The lotus-performance system is designed with a clean separation of concerns, split into distinct layers to ensure testability, reusability, and maintainability.
 
 1.  **API Layer (`app/`)**
     * Implemented in FastAPI and located in `app/api/endpoints/`.

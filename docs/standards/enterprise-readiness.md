@@ -1,6 +1,6 @@
 # Enterprise Readiness Baseline (PA)
 
-- Standard reference: `pbwm-platform-docs/Enterprise Readiness Standard.md`
+- Standard reference: `lotus-platform/Enterprise Readiness Standard.md`
 - Scope: advanced analytics API surfaces and PAS-integrated analytics delivery.
 - Change control: RFC for shared standard changes; ADR for temporary deviations.
 
@@ -62,3 +62,4 @@ Evidence:
 ## Deviations
 
 - Any deviation requires ADR with rationale and expiry review date.
+

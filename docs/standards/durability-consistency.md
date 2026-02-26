@@ -1,6 +1,6 @@
 # Durability and Consistency Standard (PA)
 
-- Standard reference: `pbwm-platform-docs/Durability and Consistency Standard.md`
+- Standard reference: `lotus-platform/Durability and Consistency Standard.md`
 - Scope: advanced analytics with PAS-sourced canonical inputs and stateless request mode.
 - Change control: RFC required for rule changes; ADR required for temporary deviations.
 
@@ -62,3 +62,4 @@
 ## Deviations
 
 - Any write-side mutation introduced in PA without idempotency/atomic controls requires ADR with expiry review date.
+
