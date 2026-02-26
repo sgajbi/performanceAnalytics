@@ -40,6 +40,15 @@ router = APIRouter(tags=["Performance"])
 settings = get_settings()
 
 
+def _as_float(value: object, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @router.post(
     "/twr/pas-input",
     response_model=PasInputTwrResponse,
@@ -172,11 +181,11 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             daily_results_df[PortfolioColumns.PERF_DATE.value]
         ).dt.date
 
-        def get_total_cum_ror(row: pd.Series, prefix: str = "") -> float:
+        def get_total_cum_ror(row: pd.Series | None, prefix: str = "") -> float:
             if row is None:
                 return 0.0
-            long_cum = row.get(f"{prefix}long_cum_ror", 0.0)
-            short_cum = row.get(f"{prefix}short_cum_ror", 0.0)
+            long_cum = _as_float(row.get(f"{prefix}long_cum_ror", 0.0))
+            short_cum = _as_float(row.get(f"{prefix}short_cum_ror", 0.0))
             return ((1 + long_cum / 100) * (1 + short_cum / 100) - 1) * 100
 
         def get_total_return_from_slice(df_slice: pd.DataFrame) -> PortfolioReturnDecomposition:
@@ -190,10 +199,10 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 day_before_mask = full_perf_dates < slice_min_date
                 day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
 
-                start_cum_base = (
+                start_cum_base = _as_float(
                     day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0.0
                 )
-                end_cum_base = end_row[PortfolioColumns.FINAL_CUM_ROR.value]
+                end_cum_base = _as_float(end_row[PortfolioColumns.FINAL_CUM_ROR.value])
 
                 start_base_denom = 1 + start_cum_base / 100
                 if start_base_denom == 0:
@@ -220,14 +229,16 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                     local_total = base_total
                     fx_total = 0.0
             else:
-                base_total = ((1 + df_slice[PortfolioColumns.DAILY_ROR.value] / 100).prod() - 1) * 100
+                daily_ror = pd.to_numeric(df_slice[PortfolioColumns.DAILY_ROR.value], errors="coerce").fillna(0.0)
+                base_total = _as_float(((1 + daily_ror / 100).prod() - 1) * 100)
                 if "local_ror" in df_slice.columns:
-                    local_total = ((1 + df_slice["local_ror"] / 100).prod() - 1) * 100
+                    local_ror = pd.to_numeric(df_slice["local_ror"], errors="coerce").fillna(0.0)
+                    local_total = _as_float(((1 + local_ror / 100).prod() - 1) * 100)
                     base_denom_for_fx = 1 + local_total / 100
                     if base_denom_for_fx == 0:
                         fx_total = 0.0
                     else:
-                        fx_total = (((1 + base_total / 100) / base_denom_for_fx) - 1) * 100
+                        fx_total = _as_float((((1 + base_total / 100) / base_denom_for_fx) - 1) * 100)
                 else:
                     local_total = base_total
                     fx_total = 0.0
