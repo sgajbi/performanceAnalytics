@@ -12,6 +12,7 @@ __pycache__/
 # Test artifacts
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 
 # IDE / Editor directories
