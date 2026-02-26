@@ -24,13 +24,11 @@ router = APIRouter()
 settings = get_settings()
 
 
-def _as_float(value: object, default: float = 0.0) -> float:
-    if value is None:
+def _as_numeric(value: object, default=0):
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
         return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+    return numeric
 
 
 @router.post("/contribution", response_model=ContributionResponse, summary="Calculate Position Contribution")
@@ -105,9 +103,9 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 total_portfolio_return = (
                     1 + portfolio_period_slice_df[PortfolioColumns.DAILY_ROR.value] / 100
                 ).prod() - 1
-                sum_of_contributions = _as_float(totals["total_contribution"].sum())
+                sum_of_contributions = _as_numeric(totals["total_contribution"].sum())
                 residual = total_portfolio_return - sum_of_contributions
-                total_avg_weight = _as_float(totals["average_weight"].sum())
+                total_avg_weight = _as_numeric(totals["average_weight"].sum())
 
                 if total_avg_weight > 0 and request.smoothing.method == "CARINO":
                     totals["total_contribution"] += residual * (totals["average_weight"] / total_avg_weight)
@@ -117,11 +115,11 @@ async def calculate_contribution_endpoint(request: ContributionRequest, backgrou
                 position_contributions = [
                     PositionContribution(
                         position_id=row["position_id"],
-                        total_contribution=_as_float(row["total_contribution"]) * 100,
-                        average_weight=_as_float(row["average_weight"]) * 100,
+                        total_contribution=_as_numeric(row["total_contribution"]) * 100,
+                        average_weight=_as_numeric(row["average_weight"]) * 100,
                         total_return=0,
-                        local_contribution=_as_float(row.get("local_contribution", 0.0)) * 100,
-                        fx_contribution=_as_float(row.get("fx_contribution", 0.0)) * 100,
+                        local_contribution=_as_numeric(row.get("local_contribution", 0)) * 100,
+                        fx_contribution=_as_numeric(row.get("fx_contribution", 0)) * 100,
                     )
                     for _, row in totals.iterrows()
                 ]
