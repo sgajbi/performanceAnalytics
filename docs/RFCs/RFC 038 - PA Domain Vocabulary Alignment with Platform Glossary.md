@@ -1,4 +1,4 @@
-# RFC 038 - PA Domain Vocabulary Alignment with Platform Glossary
+# RFC 038 - lotus-performance Domain Vocabulary Alignment with Platform Glossary
 
 ## Status
 Proposed
@@ -17,29 +17,29 @@ Current measurable drift (baseline from `Validate-Domain-Vocabulary.ps1`):
 
 ## Decision
 
-Perform a phased vocabulary migration in PA to align with platform glossary while preserving service stability during rollout.
+Perform a phased vocabulary migration in lotus-performance to align with platform glossary while preserving service stability during rollout.
 
-1. Canonical request/response field names use `snake_case` internally and canonical cross-service aliases (`portfolioId`, `asOfDate`) at BFF-facing integration boundaries where required.
-2. Remove `portfolio_id` from PA public contracts and replace with `portfolio_id`.
+1. Canonical request/response field names use `snake_case` internally and canonical cross-service aliases (`portfolioId`, `asOfDate`) at lotus-gateway-facing integration boundaries where required.
+2. Remove `portfolio_id` from lotus-performance public contracts and replace with `portfolio_id`.
 3. Deprecate `pas-input` naming and replace with `pas-input` terminology in endpoints/docs/contracts.
 4. Keep compatibility shims only for an explicitly time-boxed transition window (if needed), with clear removal milestones.
 
 ## Scope
 
-- PA API contracts and model fields.
-- PA endpoint naming and docs references.
-- PA tests and fixtures.
-- PA docs/examples/RFC references in this repository.
+- lotus-performance API contracts and model fields.
+- lotus-performance endpoint naming and docs references.
+- lotus-performance tests and fixtures.
+- lotus-performance docs/examples/RFC references in this repository.
 
 ## Out of Scope
 
 - Cross-service consumer migrations in the same PR.
-- PAS/DPM/BFF contract changes beyond PA-owned surface.
+- lotus-core/lotus-manage/lotus-gateway contract changes beyond lotus-performance-owned surface.
 
 ## Implementation Plan
 
 ### Phase A - Contract Surface Alignment
-- Introduce canonical PA models using `portfolio_id`.
+- Introduce canonical lotus-performance models using `portfolio_id`.
 - Replace `/performance/twr/pas-input` naming with `pas-input` terminology.
 - Keep temporary alias compatibility only where required by existing tests.
 
@@ -49,12 +49,12 @@ Perform a phased vocabulary migration in PA to align with platform glossary whil
 - Ensure no behavior regression.
 
 ### Phase C - Documentation and RFC Alignment
-- Update README, guides, examples, and PA RFC references.
+- Update README, guides, examples, and lotus-performance RFC references.
 - Replace deprecated terms in public examples and OpenAPI descriptions.
 
 ### Phase D - Compatibility Removal
 - Remove temporary alias support.
-- Enforce zero prohibited terms in PA conformance baseline.
+- Enforce zero prohibited terms in lotus-performance conformance baseline.
 
 ## Risks and Trade-offs
 
@@ -67,9 +67,9 @@ Mitigation:
 
 ## Acceptance Criteria
 
-1. PA has zero `portfolio_id` and zero `pas-input` occurrences in active code/contracts/docs.
+1. lotus-performance has zero `portfolio_id` and zero `pas-input` occurrences in active code/contracts/docs.
 2. OpenAPI reflects canonical vocabulary.
-3. All PA CI gates remain green (`lint`, `typecheck`, `openapi-gate`, tests, coverage, security).
-4. Platform vocabulary conformance report marks PA as `ok`.
+3. All lotus-performance CI gates remain green (`lint`, `typecheck`, `openapi-gate`, tests, coverage, security).
+4. Platform vocabulary conformance report marks lotus-performance as `ok`.
 
 

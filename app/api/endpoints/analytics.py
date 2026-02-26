@@ -22,14 +22,14 @@ _BENCHMARK_FALLBACK_RETURNS = {"MODEL_60_40": 3.1, "MSCI_ACWI": 4.2, "CUSTOM": 2
 @router.post(
     "/positions",
     response_model=PositionAnalyticsResponse,
-    summary="Get position analytics via PA contract",
+    summary="Get position analytics via lotus-performance contract",
     description=(
-        "Returns PA-owned position analytics contract. During migration, PA may source "
-        "underlying position analytics payloads from PAS and normalize for consumers."
+        "Returns lotus-performance-owned position analytics contract. During migration, lotus-performance may source "
+        "underlying position analytics payloads from lotus-core and normalize for consumers."
     ),
     responses={
         200: {"description": "Position analytics contract payload."},
-        502: {"description": "Invalid upstream PAS payload shape for PA contract."},
+        502: {"description": "Invalid upstream lotus-core payload shape for lotus-performance contract."},
     },
 )
 async def get_positions_analytics(request: PositionAnalyticsRequest):
@@ -60,7 +60,7 @@ async def get_positions_analytics(request: PositionAnalyticsRequest):
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Invalid PAS positions analytics payload: missing {exc}",
+            detail=f"Invalid lotus-core positions analytics payload: missing {exc}",
         ) from exc
 
 
@@ -144,10 +144,10 @@ def _top_changes(projected_positions: list[WorkbenchProjectedPositionInput]) -> 
 @router.post(
     "/workbench",
     response_model=WorkbenchAnalyticsResponse,
-    summary="Calculate PA-owned workbench analytics",
+    summary="Calculate lotus-performance-owned workbench analytics",
     description=(
-        "Returns PA-owned allocation and top-change analytics "
-        "for workbench flows. BFF passes normalized holdings and projected positions."
+        "Returns lotus-performance-owned allocation and top-change analytics "
+        "for workbench flows. lotus-gateway passes normalized holdings and projected positions."
     ),
 )
 async def get_workbench_analytics(request: WorkbenchAnalyticsRequest):

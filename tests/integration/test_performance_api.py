@@ -381,7 +381,7 @@ def test_twr_pas_input_success(client, monkeypatch):
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "performanceStartDate": "2026-01-01",
                 "valuationPoints": [
@@ -415,7 +415,7 @@ def test_twr_pas_input_success(client, monkeypatch):
     payload = {
         "portfolioId": "PORT-1001",
         "asOfDate": "2026-02-23",
-        "consumerSystem": "BFF",
+        "consumerSystem": "lotus-gateway",
         "periods": ["YTD"],
     }
 
@@ -435,7 +435,7 @@ def test_twr_pas_input_period_filter(client, monkeypatch):
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "performanceStartDate": "2026-01-01",
                 "valuationPoints": [
@@ -485,7 +485,7 @@ def test_twr_pas_input_invalid_payload_returns_502(client, monkeypatch):
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "performanceStartDate": "2026-01-01",
             },
@@ -530,7 +530,7 @@ def test_twr_pas_input_missing_performance_start_date_returns_502(client, monkey
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "valuationPoints": [{"day": 1, "perf_date": "2026-02-01", "begin_mv": 100, "end_mv": 101}],
             },
@@ -552,7 +552,7 @@ def test_twr_pas_input_invalid_valuation_shape_returns_502(client, monkeypatch):
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "performanceStartDate": "2026-01-01",
                 "valuationPoints": [{"perf_date": "2026-02-01"}],
@@ -566,7 +566,7 @@ def test_twr_pas_input_invalid_valuation_shape_returns_502(client, monkeypatch):
 
     response = client.post("/performance/twr/pas-input", json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23"})
     assert response.status_code == 502
-    assert "Invalid PAS performance input payload" in response.json()["detail"]
+    assert "Invalid lotus-core performance input payload" in response.json()["detail"]
 
 
 def test_twr_pas_input_requested_period_not_found_returns_404(client, monkeypatch):
@@ -575,7 +575,7 @@ def test_twr_pas_input_requested_period_not_found_returns_404(client, monkeypatc
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "performanceStartDate": "2026-01-01",
                 "valuationPoints": [
@@ -631,7 +631,7 @@ def test_twr_pas_input_skips_period_without_summary_and_returns_remaining(client
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "performanceStartDate": "2026-01-01",
                 "valuationPoints": [

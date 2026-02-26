@@ -1,6 +1,6 @@
 # Scalability and Availability Standard Alignment
 
-Service: PA
+Service: lotus-performance
 
 This repository adopts the platform-wide standard defined in lotus-platform/Scalability and Availability Standard.md.
 
@@ -38,7 +38,7 @@ This repository adopts the platform-wide standard defined in lotus-platform/Scal
 
 ## Scale Signal Metrics Coverage
 
-- PA exposes `/metrics` for latency/error/throughput and downstream dependency instrumentation.
+- lotus-performance exposes `/metrics` for latency/error/throughput and downstream dependency instrumentation.
 - Platform-shared metrics for CPU/memory, DB performance, and queue/consumer lag are sourced from:
   - `lotus-platform/platform-stack/prometheus/prometheus.yml`
   - `lotus-platform/platform-stack/docker-compose.yml`

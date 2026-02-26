@@ -11,7 +11,7 @@ class PositionAnalyticsResponse(BaseModel):
     total_market_value: float = Field(..., alias="totalMarketValue")
     positions: list[dict] = Field(
         ...,
-        description="Position-level analytics rows normalized under PA contract.",
+        description="Position-level analytics rows normalized under lotus-performance contract.",
     )
 
     model_config = {

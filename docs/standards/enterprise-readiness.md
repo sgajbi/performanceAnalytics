@@ -1,7 +1,7 @@
-# Enterprise Readiness Baseline (PA)
+# Enterprise Readiness Baseline (lotus-performance)
 
 - Standard reference: `lotus-platform/Enterprise Readiness Standard.md`
-- Scope: advanced analytics API surfaces and PAS-integrated analytics delivery.
+- Scope: advanced analytics API surfaces and lotus-core-integrated analytics delivery.
 - Change control: RFC for shared standard changes; ADR for temporary deviations.
 
 ## Security and IAM Baseline
@@ -36,7 +36,7 @@ Evidence:
 ## Data Quality and Reconciliation Baseline
 
 - Analytics inputs are validated and domain invariants are tested.
-- Data-quality and durability controls remain aligned to PAS ownership boundaries.
+- Data-quality and durability controls remain aligned to lotus-core ownership boundaries.
 
 Evidence:
 - `docs/standards/durability-consistency.md`

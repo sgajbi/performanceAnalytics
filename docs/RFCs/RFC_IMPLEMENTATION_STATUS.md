@@ -2,7 +2,7 @@
 
 ## Governance Boundary
 
-- Service-specific PA implementation RFCs are maintained in this repository.
+- Service-specific lotus-performance implementation RFCs are maintained in this repository.
 - Cross-cutting platform and multi-service architecture decisions are maintained in:
   `https://github.com/sgajbi/lotus-platform`
 
@@ -31,7 +31,7 @@ The following RFCs have been **fully implemented** and their features are part o
 | RFC 024    | Robustness Policies Framework                              | ✅ Fully Implemented |
 | RFC 025    | Deterministic Reproducibility & Drill-Down                 | ✅ Fully Implemented |
 | RFC-028    | Unified `snake_case` API Naming & Legacy Alias Removal     | ✅ Fully Implemented |
-| RFC 031    | PAS Connected TWR Input Mode                               | ✅ Fully Implemented |
+| RFC 031    | lotus-core Connected TWR Input Mode                               | ✅ Fully Implemented |
 
 ---
 
@@ -41,13 +41,13 @@ The following RFCs are not yet implemented. This roadmap presents a logical orde
 
 ### Phase 0: Vocabulary and Contract Hygiene
 
-1.  **RFC 038 — PA Domain Vocabulary Alignment with Platform Glossary**
-    * **Reasoning:** **Eliminate cross-platform semantic drift first.** Aligns PA to canonical platform language (`portfolio_id`, `pas-input`) before further contract expansion.
+1.  **RFC 038 — lotus-performance Domain Vocabulary Alignment with Platform Glossary**
+    * **Reasoning:** **Eliminate cross-platform semantic drift first.** Aligns lotus-performance to canonical platform language (`portfolio_id`, `pas-input`) before further contract expansion.
 
 ### Phase 1: Foundational Enhancements
 
-1.  **RFC 032 — Real-Time Analytics Surfaces for Iterative Advisory and DPM Simulation**
-    * **Reasoning:** **Enable interactive lifecycle UX.** Introduces low-latency analytics panel contracts required for advisor and DPM iterative simulation loops.
+1.  **RFC 032 — Real-Time Analytics Surfaces for Iterative Advisory and lotus-manage Simulation**
+    * **Reasoning:** **Enable interactive lifecycle UX.** Introduces low-latency analytics panel contracts required for advisor and lotus-manage iterative simulation loops.
 
 2.  **RFC 029 — Unified Multi-Period Analysis Framework**
     * **Reasoning:** **Dramatically improve API efficiency and usability.** This is a top priority as it fundamentally changes how clients perform comparative analysis, reducing multiple redundant calls to a single, optimized request.

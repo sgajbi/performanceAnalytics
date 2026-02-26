@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 router = APIRouter()
 
-ConsumerSystem = Literal["BFF", "PA", "DPM", "UI", "UNKNOWN"]
+ConsumerSystem = Literal["lotus-gateway", "lotus-performance", "lotus-manage", "UI", "UNKNOWN"]
 
 
 class FeatureCapability(BaseModel):
@@ -51,11 +51,13 @@ def _env_bool(name: str, default: bool) -> bool:
 @router.get(
     "/capabilities",
     response_model=IntegrationCapabilitiesResponse,
-    summary="Get PA Integration Capabilities",
-    description=("Returns backend-governed PA capability/workflow controls for BFF, PAS, and DPM integration."),
+    summary="Get lotus-performance Integration Capabilities",
+    description=(
+        "Returns backend-governed lotus-performance capability/workflow controls for lotus-gateway, lotus-core, and lotus-manage integration."
+    ),
 )
 async def get_integration_capabilities(
-    consumer_system: ConsumerSystem = Query("BFF", alias="consumerSystem"),
+    consumer_system: ConsumerSystem = Query("lotus-gateway", alias="consumerSystem"),
     tenant_id: str = Query("default", alias="tenantId"),
     feature_limit: int = Query(default=100, ge=1, le=500, alias="featureLimit"),
     workflow_limit: int = Query(default=50, ge=1, le=200, alias="workflowLimit"),
@@ -71,38 +73,38 @@ async def get_integration_capabilities(
         FeatureCapability(
             key="pa.analytics.twr",
             enabled=twr_enabled,
-            owner_service="PA",
+            owner_service="lotus-performance",
             description="Time-weighted return analytics APIs.",
         ),
         FeatureCapability(
             key="pa.analytics.mwr",
             enabled=mwr_enabled,
-            owner_service="PA",
+            owner_service="lotus-performance",
             description="Money-weighted return analytics APIs.",
         ),
         FeatureCapability(
             key="pa.analytics.contribution",
             enabled=contribution_enabled,
-            owner_service="PA",
+            owner_service="lotus-performance",
             description="Contribution analytics APIs.",
         ),
         FeatureCapability(
             key="pa.analytics.attribution",
             enabled=attribution_enabled,
-            owner_service="PA",
+            owner_service="lotus-performance",
             description="Attribution analytics APIs.",
         ),
         FeatureCapability(
             key="pa.execution.stateful_pas_ref",
             enabled=pas_ref_mode_enabled,
-            owner_service="PA",
-            description="PA resolves analytics inputs by API-calling PAS contracts.",
+            owner_service="lotus-performance",
+            description="lotus-performance resolves analytics inputs by API-calling lotus-core contracts.",
         ),
         FeatureCapability(
             key="pa.execution.stateless_inline_bundle",
             enabled=inline_bundle_mode_enabled,
-            owner_service="PA",
-            description="PA executes analytics from request-supplied inline input bundle.",
+            owner_service="lotus-performance",
+            description="lotus-performance executes analytics from request-supplied inline input bundle.",
         ),
     ]
 

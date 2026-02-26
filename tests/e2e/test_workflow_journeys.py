@@ -8,7 +8,7 @@ def test_e2e_platform_readiness_and_capabilities_contract() -> None:
     with TestClient(app) as client:
         health = client.get("/health")
         ready = client.get("/health/ready")
-        capabilities = client.get("/integration/capabilities?consumerSystem=BFF&tenantId=default")
+        capabilities = client.get("/integration/capabilities?consumerSystem=lotus-gateway&tenantId=default")
 
     assert health.status_code == 200
     assert ready.status_code == 200
@@ -151,7 +151,7 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
             200,
             {
                 "contractVersion": "v1",
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "portfolioId": portfolio_id,
                 "performanceStartDate": "2026-01-01",
                 "valuationPoints": [
@@ -220,10 +220,15 @@ def test_e2e_pas_ref_capability_and_execution_contract(monkeypatch) -> None:
         _mock_get_performance_input,
     )
     with TestClient(app) as client:
-        capabilities = client.get("/integration/capabilities?consumerSystem=BFF&tenantId=default")
+        capabilities = client.get("/integration/capabilities?consumerSystem=lotus-gateway&tenantId=default")
         twr_pas = client.post(
             "/performance/twr/pas-input",
-            json={"portfolioId": "PORT-1002", "asOfDate": "2026-02-23", "consumerSystem": "BFF", "periods": ["YTD"]},
+            json={
+                "portfolioId": "PORT-1002",
+                "asOfDate": "2026-02-23",
+                "consumerSystem": "lotus-gateway",
+                "periods": ["YTD"],
+            },
         )
 
     assert capabilities.status_code == 200
@@ -246,7 +251,7 @@ def test_e2e_health_endpoints_contract() -> None:
 
 def test_e2e_pas_ref_upstream_failure_passthrough(monkeypatch) -> None:
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
-        return 503, {"detail": "PAS unavailable"}
+        return 503, {"detail": "lotus-core unavailable"}
 
     monkeypatch.setattr(
         "app.api.endpoints.performance.PasInputService.get_performance_input",
@@ -256,11 +261,11 @@ def test_e2e_pas_ref_upstream_failure_passthrough(monkeypatch) -> None:
     with TestClient(app) as client:
         response = client.post(
             "/performance/twr/pas-input",
-            json={"portfolioId": "PORT-DOWN", "asOfDate": "2026-02-23", "consumerSystem": "BFF"},
+            json={"portfolioId": "PORT-DOWN", "asOfDate": "2026-02-23", "consumerSystem": "lotus-gateway"},
         )
 
     assert response.status_code == 503
-    assert "PAS unavailable" in response.json()["detail"]
+    assert "lotus-core unavailable" in response.json()["detail"]
 
 
 def test_e2e_positions_pas_payload_contract_failure(monkeypatch) -> None:
@@ -279,7 +284,7 @@ def test_e2e_positions_pas_payload_contract_failure(monkeypatch) -> None:
         )
 
     assert response.status_code == 502
-    assert "Invalid PAS positions analytics payload" in response.json()["detail"]
+    assert "Invalid lotus-core positions analytics payload" in response.json()["detail"]
 
 
 def test_e2e_contribution_lineage_roundtrip() -> None:
@@ -369,7 +374,7 @@ def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
     monkeypatch.setenv("PA_CAP_ATTRIBUTION_ENABLED", "false")
 
     with TestClient(app) as client:
-        response = client.get("/integration/capabilities?consumerSystem=DPM&tenantId=tenant-b")
+        response = client.get("/integration/capabilities?consumerSystem=lotus-manage&tenantId=tenant-b")
 
     assert response.status_code == 200
     body = response.json()
