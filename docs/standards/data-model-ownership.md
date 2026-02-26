@@ -6,9 +6,9 @@
 
 ## Boundaries
 
-- PAS remains authoritative for core positions, transactions, valuations, and timeseries.
-- PA consumes PAS API contracts and produces advanced analytics outputs.
-- PA does not redefine PAS-owned core data terms.
+- lotus-core remains authoritative for core positions, transactions, valuations, and timeseries.
+- lotus-performance consumes lotus-core API contracts and produces advanced analytics outputs.
+- lotus-performance does not redefine lotus-core-owned core data terms.
 
 ## Vocabulary
 

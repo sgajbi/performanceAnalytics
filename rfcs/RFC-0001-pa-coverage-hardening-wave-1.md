@@ -1,4 +1,4 @@
-# RFC-0001: PA Coverage Hardening Wave 1
+# RFC-0001: lotus-performance Coverage Hardening Wave 1
 
 ## Status
 
@@ -10,7 +10,7 @@ Proposed
 
 ## Problem Statement
 
-`lotus-performance` was below target meaningful coverage and had concentrated gaps in PAS integration adapter paths, observability helpers, and endpoint negative-path validation.
+`lotus-performance` was below target meaningful coverage and had concentrated gaps in lotus-core integration adapter paths, observability helpers, and endpoint negative-path validation.
 
 ## Decision
 
@@ -24,7 +24,7 @@ Deliver an incremental hardening wave focused on highest-risk uncovered backend 
   - analytics upstream failure passthrough
   - workbench analytics security-group branch
   - contribution edge paths (no resolved periods, empty period slice)
-  - PAS-input TWR negative paths (missing performance start, invalid valuation shape, missing period results)
+  - lotus-core-input TWR negative paths (missing performance start, invalid valuation shape, missing period results)
 
 ## Result
 

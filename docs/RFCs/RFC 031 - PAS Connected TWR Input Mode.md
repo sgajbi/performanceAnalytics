@@ -1,17 +1,17 @@
-# RFC 031 - PAS Connected TWR Input Mode
+# RFC 031 - lotus-core Connected TWR Input Mode
 
 ## Status
 Implemented
 
 ## Context
-PA must support two execution styles:
+lotus-performance must support two execution styles:
 - Stateless analytics using directly supplied portfolio bundles.
-- Integrated analytics that source governed portfolio data from PAS.
+- Integrated analytics that source governed portfolio data from lotus-core.
 
-To align PAS, PA, and DPM contracts, PA needs a first-class PAS-connected API that consumes PAS integration payloads without duplicating PAS core data logic.
+To align lotus-core, lotus-performance, and lotus-manage contracts, lotus-performance needs a first-class lotus-core-connected API that consumes lotus-core integration payloads without duplicating lotus-core core data logic.
 
 ## Decision
-Add a PAS-connected TWR endpoint:
+Add a lotus-core-connected TWR endpoint:
 - `POST /performance/twr/pas-input`
 
 Request contract:
@@ -22,21 +22,21 @@ Request contract:
 - optional `periods` filter
 
 Processing model:
-- Call PAS `POST /integration/portfolios/{portfolio_id}/core-snapshot`.
+- Call lotus-core `POST /integration/portfolios/{portfolio_id}/core-snapshot`.
 - Validate presence and shape of `snapshot.performance.summary`.
-- Map PAS summary to PA response model (`resultsByPeriod`).
+- Map lotus-core summary to lotus-performance response model (`resultsByPeriod`).
 - Preserve upstream errors.
-- Return `502` for malformed PAS payload contracts.
+- Return `502` for malformed lotus-core payload contracts.
 
 ## Consequences
-- PA now supports PAS as canonical source for performance summaries.
-- BFF/UI can use one PA API while PA enforces PAS contract quality.
+- lotus-performance now supports lotus-core as canonical source for performance summaries.
+- lotus-gateway/UI can use one lotus-performance API while lotus-performance enforces lotus-core contract quality.
 - Contract drift becomes test-detectable via integration tests.
-- No business logic is pushed to UI/BFF.
+- No business logic is pushed to UI/lotus-gateway.
 
 ## Tests
 Added integration coverage for:
 - success response mapping
 - requested period filtering
-- malformed PAS payload (`502`)
-- PAS upstream error passthrough
+- malformed lotus-core payload (`502`)
+- lotus-core upstream error passthrough

@@ -1,4 +1,4 @@
-# RFC-0002: PA Coverage Hardening Wave 2
+# RFC-0002: lotus-performance Coverage Hardening Wave 2
 
 - Status: Implemented
 - Authors: Codex
@@ -6,11 +6,11 @@
 
 ## Context
 
-Wave 1 lifted PA coverage and stabilized key API paths, but combined coverage remained below the platform target and key branch behavior was still untested in the performance and engine layers.
+Wave 1 lifted lotus-performance coverage and stabilized key API paths, but combined coverage remained below the platform target and key branch behavior was still untested in the performance and engine layers.
 
 ## Problem
 
-- Combined PA coverage was below the 99% platform objective.
+- Combined lotus-performance coverage was below the 99% platform objective.
 - Several edge branches in core/engine and performance API flows were not validated.
 - Coverage quality needed to remain meaningful (behavioral and failure-path focused), not assertion inflation.
 

@@ -7,13 +7,13 @@ class PasInputTwrRequest(BaseModel):
     portfolio_id: str = Field(
         ...,
         alias="portfolioId",
-        description="Portfolio identifier in PAS.",
+        description="Portfolio identifier in lotus-core.",
         examples=["DEMO_DPM_EUR_001"],
     )
     as_of_date: date = Field(
         ...,
         alias="asOfDate",
-        description="Business date for PAS core snapshot retrieval.",
+        description="Business date for lotus-core core snapshot retrieval.",
         examples=["2026-02-24"],
     )
     periods: list[str] | None = Field(
@@ -22,17 +22,17 @@ class PasInputTwrRequest(BaseModel):
         examples=[["YTD", "MTD"]],
     )
     consumer_system: str = Field(
-        default="PA",
+        default="lotus-performance",
         alias="consumerSystem",
-        description="Consumer system identifier forwarded to PAS integration contract.",
-        examples=["BFF"],
+        description="Consumer system identifier forwarded to lotus-core integration contract.",
+        examples=["lotus-gateway"],
     )
     lookback_days: int = Field(
         400,
         ge=30,
         le=2000,
         alias="lookbackDays",
-        description="Maximum days of PAS raw valuation history requested for PA calculation.",
+        description="Maximum days of lotus-core raw valuation history requested for lotus-performance calculation.",
         examples=[400],
     )
 
@@ -43,7 +43,7 @@ class PasInputTwrRequest(BaseModel):
                 "portfolioId": "DEMO_DPM_EUR_001",
                 "asOfDate": "2026-02-24",
                 "periods": ["YTD"],
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
                 "lookbackDays": 400,
             }
         },

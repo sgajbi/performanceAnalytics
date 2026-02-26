@@ -1,8 +1,8 @@
-# RFC-0003 - PA E2E Workflow Coverage Wave 1
+# RFC-0003 - lotus-performance E2E Workflow Coverage Wave 1
 
 ## Problem Statement
 
-PA currently has a placeholder-only E2E suite, which underrepresents critical end-to-end API workflows in the test pyramid.
+lotus-performance currently has a placeholder-only E2E suite, which underrepresents critical end-to-end API workflows in the test pyramid.
 
 ## Root Cause
 
@@ -16,7 +16,7 @@ Replace placeholder E2E coverage with real API workflow tests that validate:
 - core TWR and MWR performance flows
 - contribution and attribution flow with lineage retrieval
 - workbench analytics orchestration
-- PAS-connected execution mode for TWR and positions analytics
+- lotus-core-connected execution mode for TWR and positions analytics
 
 ## Architectural Impact
 
@@ -31,4 +31,4 @@ No production code changes. Test-only improvement for governance and reliability
 
 1. Remove placeholder E2E test.
 2. Add meaningful workflow-driven E2E tests using `TestClient`.
-3. Use controlled monkeypatching for PAS-connected modes where upstream dependency is external.
+3. Use controlled monkeypatching for lotus-core-connected modes where upstream dependency is external.

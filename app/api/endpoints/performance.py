@@ -43,21 +43,21 @@ settings = get_settings()
 @router.post(
     "/twr/pas-input",
     response_model=PasInputTwrResponse,
-    summary="Calculate TWR from PAS raw performance input contract",
+    summary="Calculate TWR from lotus-core raw performance input contract",
     description=(
-        "Computes PA-owned TWR analytics from PAS-provided raw valuation input series. "
-        "PAS acts as data provider; PA remains analytics authority."
+        "Computes lotus-performance-owned TWR analytics from lotus-core-provided raw valuation input series. "
+        "lotus-core acts as data provider; lotus-performance remains analytics authority."
     ),
     responses={
-        200: {"description": "PA TWR result computed from PAS input contract."},
+        200: {"description": "lotus-performance TWR result computed from lotus-core input contract."},
         404: {"description": "Requested periods not available for the requested as-of context."},
-        502: {"description": "Invalid PAS payload for PA analytics computation."},
+        502: {"description": "Invalid lotus-core payload for lotus-performance analytics computation."},
     },
 )
 async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     """
-    Retrieves PAS raw performance input series and computes PA-owned TWR analytics.
-    PAS acts as data provider only; performance metrics are computed in PA.
+    Retrieves lotus-core raw performance input series and computes lotus-performance-owned TWR analytics.
+    lotus-core acts as data provider only; performance metrics are computed in lotus-performance.
     """
     pas_service = PasInputService(
         base_url=settings.PAS_QUERY_BASE_URL,
@@ -78,14 +78,14 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     if not isinstance(valuation_points, list) or not valuation_points:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid PAS performance input payload: missing valuationPoints.",
+            detail="Invalid lotus-core performance input payload: missing valuationPoints.",
         )
 
     performance_start_date = upstream_payload.get("performanceStartDate")
     if not isinstance(performance_start_date, str):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid PAS performance input payload: missing performanceStartDate.",
+            detail="Invalid lotus-core performance input payload: missing performanceStartDate.",
         )
 
     requested_periods = request.periods or ["YTD"]
@@ -104,7 +104,7 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Invalid PAS performance input payload: {exc}",
+            detail=f"Invalid lotus-core performance input payload: {exc}",
         ) from exc
 
     computed = await calculate_twr_endpoint(performance_request, BackgroundTasks())
