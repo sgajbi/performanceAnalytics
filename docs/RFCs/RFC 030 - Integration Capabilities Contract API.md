@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add `GET /integration/capabilities` so PA publishes backend-governed feature/workflow capability metadata for BFF and cross-service integration.
+Add `GET /integration/capabilities` so lotus-performance publishes backend-governed feature/workflow capability metadata for lotus-gateway and cross-service integration.
 
 ## Contract
 
@@ -26,5 +26,5 @@ Outputs:
 ## Rationale
 
 1. Keeps feature control in backend service boundaries.
-2. Aligns PA contract shape with PAS and DPM capability contracts.
-3. Enables BFF to aggregate platform capabilities without UI hardcoding.
+2. Aligns lotus-performance contract shape with lotus-core and lotus-manage capability contracts.
+3. Enables lotus-gateway to aggregate platform capabilities without UI hardcoding.

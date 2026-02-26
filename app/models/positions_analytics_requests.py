@@ -14,7 +14,7 @@ class PositionAnalyticsRequest(BaseModel):
         default=None,
         alias="performancePeriods",
     )
-    consumer_system: str = Field("PA", alias="consumerSystem", examples=["BFF"])
+    consumer_system: str = Field("lotus-performance", alias="consumerSystem", examples=["lotus-gateway"])
 
     model_config = {
         "populate_by_name": True,
@@ -24,7 +24,7 @@ class PositionAnalyticsRequest(BaseModel):
                 "asOfDate": "2026-02-24",
                 "sections": ["BASE", "INSTRUMENT_DETAILS", "VALUATION", "PERFORMANCE"],
                 "performancePeriods": ["YTD", "MTD"],
-                "consumerSystem": "BFF",
+                "consumerSystem": "lotus-gateway",
             }
         },
     }

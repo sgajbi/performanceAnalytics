@@ -7,7 +7,7 @@ Performance Analytics currently enforces a 95% coverage threshold in local and C
 Coverage thresholds in `Makefile` and GitHub Actions pipeline were not updated after the platform-wide move to 99% meaningful coverage.
 
 ## Proposed Solution
-Raise PA coverage fail-under from 95% to 99% in:
+Raise lotus-performance coverage fail-under from 95% to 99% in:
 1. `Makefile` (`test-all` and `ci-local` coverage report step)
 2. `.github/workflows/ci.yml` (`coverage-gate` job)
 
@@ -20,5 +20,5 @@ No runtime or API contract change. This is a quality-policy hardening change.
 
 ## High-Level Implementation Approach
 1. Update fail-under values to 99 in local and CI paths.
-2. Run full PA coverage locally to validate threshold.
+2. Run full lotus-performance coverage locally to validate threshold.
 3. Merge and monitor pipeline stability.

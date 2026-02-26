@@ -66,14 +66,14 @@ async def test_get_core_snapshot_posts_contract_payload():
         portfolio_id="PORT-1",
         as_of_date=date(2026, 2, 24),
         include_sections=["OVERVIEW", "HOLDINGS"],
-        consumer_system="PA",
+        consumer_system="lotus-performance",
     )
 
     assert status_code == 200
     assert payload["snapshot"] == {"overview": {}}
     assert _FakeAsyncClient.calls[0]["url"] == "http://pas/integration/portfolios/PORT-1/core-snapshot"
     assert _FakeAsyncClient.calls[0]["json"]["includeSections"] == ["OVERVIEW", "HOLDINGS"]
-    assert _FakeAsyncClient.calls[0]["json"]["consumerSystem"] == "PA"
+    assert _FakeAsyncClient.calls[0]["json"]["consumerSystem"] == "lotus-performance"
 
 
 @pytest.mark.asyncio
@@ -85,7 +85,7 @@ async def test_get_performance_input_posts_contract_payload():
         portfolio_id="PORT-2",
         as_of_date=date(2026, 2, 24),
         lookback_days=365,
-        consumer_system="PA",
+        consumer_system="lotus-performance",
     )
 
     assert status_code == 200
@@ -153,7 +153,7 @@ async def test_text_error_payload_is_mapped_to_detail():
         portfolio_id="PORT-4",
         as_of_date=date(2026, 2, 24),
         include_sections=["OVERVIEW"],
-        consumer_system="PA",
+        consumer_system="lotus-performance",
     )
     assert status_code == 503
     assert payload["detail"] == "upstream unavailable"

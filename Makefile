@@ -1,4 +1,4 @@
-.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci ci-local ci-local-docker ci-local-docker-down typecheck lint monetary-float-guard format clean run check-deps security-audit openapi-gate migration-smoke migration-apply pre-commit docker-up docker-down
+.PHONY: install check check-all test test-unit test-integration test-e2e test-all ci ci-local ci-local-docker ci-local-docker-down typecheck lint monetary-float-guard format clean run check-deps security-audit openapi-gate migration-smoke migration-apply pre-commit docker-up docker-down docker-build
 
 install:
 	pip install -r requirements.txt
@@ -85,3 +85,9 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+
+docker-build:
+	docker build -f Dockerfile -t lotus-performance:ci .
+
+

@@ -5,13 +5,13 @@ from main import app
 
 def test_integration_capabilities_default_contract():
     with TestClient(app) as client:
-        response = client.get("/integration/capabilities?consumerSystem=BFF&tenantId=default")
+        response = client.get("/integration/capabilities?consumerSystem=lotus-gateway&tenantId=default")
 
     assert response.status_code == 200
     body = response.json()
     assert body["contractVersion"] == "v1"
     assert body["sourceService"] == "lotus-performance"
-    assert body["consumerSystem"] == "BFF"
+    assert body["consumerSystem"] == "lotus-gateway"
     assert body["tenantId"] == "default"
     assert body["supportedInputModes"] == ["pas_ref", "inline_bundle"]
     assert len(body["features"]) >= 4
@@ -29,11 +29,11 @@ def test_integration_capabilities_env_override(monkeypatch):
     monkeypatch.setenv("PA_CAP_INPUT_MODE_INLINE_BUNDLE_ENABLED", "false")
     monkeypatch.setenv("PA_POLICY_VERSION", "tenant-a-v4")
     with TestClient(app) as client:
-        response = client.get("/integration/capabilities?consumerSystem=DPM&tenantId=tenant-a")
+        response = client.get("/integration/capabilities?consumerSystem=lotus-manage&tenantId=tenant-a")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["consumerSystem"] == "DPM"
+    assert body["consumerSystem"] == "lotus-manage"
     assert body["tenantId"] == "tenant-a"
     assert body["policyVersion"] == "tenant-a-v4"
     features = {item["key"]: item["enabled"] for item in body["features"]}
@@ -44,7 +44,7 @@ def test_integration_capabilities_env_override(monkeypatch):
 def test_integration_capabilities_limit_guardrails():
     with TestClient(app) as client:
         response = client.get(
-            "/integration/capabilities?consumerSystem=BFF&tenantId=default&featureLimit=2&workflowLimit=1"
+            "/integration/capabilities?consumerSystem=lotus-gateway&tenantId=default&featureLimit=2&workflowLimit=1"
         )
 
     assert response.status_code == 200

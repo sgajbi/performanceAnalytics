@@ -147,12 +147,12 @@ pytest --benchmark-only "tests/benchmarks/"
 ### 5\. Integration Capabilities
 
   - **Endpoint:** `GET /integration/capabilities`
-  - **Description:** Returns backend-governed PA capability and workflow metadata for BFF/PAS/DPM integration.
+  - **Description:** Returns backend-governed lotus-performance capability and workflow metadata for lotus-gateway/lotus-core/lotus-manage integration.
 
-### 6\. PAS-Input TWR
+### 6\. lotus-core-Input TWR
 
   - **Endpoint:** `POST /performance/twr/pas-input`
-  - **Description:** Fetches PAS Core Snapshot (`PERFORMANCE` section) and returns PA-normalized period results for UI/BFF consumption.
+  - **Description:** Fetches lotus-core Core Snapshot (`PERFORMANCE` section) and returns lotus-performance-normalized period results for UI/lotus-gateway consumption.
 
 -----
 

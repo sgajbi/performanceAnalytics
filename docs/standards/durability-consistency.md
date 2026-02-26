@@ -1,7 +1,7 @@
-# Durability and Consistency Standard (PA)
+# Durability and Consistency Standard (lotus-performance)
 
 - Standard reference: `lotus-platform/Durability and Consistency Standard.md`
-- Scope: advanced analytics with PAS-sourced canonical inputs and stateless request mode.
+- Scope: advanced analytics with lotus-core-sourced canonical inputs and stateless request mode.
 - Change control: RFC required for rule changes; ADR required for temporary deviations.
 
 ## Workflow Consistency Classification
@@ -10,12 +10,12 @@
   - deterministic analytics output for same canonical input + same `as_of_date`
   - reproducibility metadata in analytics responses
 - Eventual consistency:
-  - external PAS data refresh cadence prior to analysis request execution
+  - external lotus-core data refresh cadence prior to analysis request execution
 
 ## Idempotency and Write Semantics
 
-- PA primary APIs are analytical compute endpoints and are read-only with no core persistent business writes.
-- PA does not mutate PAS core records.
+- lotus-performance primary APIs are analytical compute endpoints and are read-only with no core persistent business writes.
+- lotus-performance does not mutate lotus-core core records.
 - Any future write endpoint must implement `Idempotency-Key` and replay-safe dedupe rules.
 - Evidence:
   - `app/api/endpoints/performance.py`
@@ -61,5 +61,5 @@
 
 ## Deviations
 
-- Any write-side mutation introduced in PA without idempotency/atomic controls requires ADR with expiry review date.
+- Any write-side mutation introduced in lotus-performance without idempotency/atomic controls requires ADR with expiry review date.
 
