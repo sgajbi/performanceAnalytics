@@ -34,7 +34,10 @@ class IntegrationCapabilitiesResponse(BaseModel):
     generated_at: datetime = Field(alias="generatedAt")
     as_of_date: date = Field(alias="asOfDate")
     policy_version: str = Field(alias="policyVersion")
-    supported_input_modes: list[str] = Field(alias="supportedInputModes", description="Supported execution input modes: core_api_ref (lotus-core API-backed) and inline_bundle (stateless payload).")
+    supported_input_modes: list[str] = Field(
+        alias="supportedInputModes",
+        description="Supported execution input modes: core_api_ref (lotus-core API-backed) and inline_bundle (stateless payload).",
+    )
     features: list[FeatureCapability]
     workflows: list[WorkflowCapability]
 
@@ -46,7 +49,6 @@ def _env_bool(name: str, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
-
 
 
 @router.get(
@@ -119,7 +121,8 @@ async def get_integration_capabilities(
             workflow_key="performance_explainability",
             enabled=contribution_enabled and attribution_enabled,
             required_features=["pa.analytics.contribution", "pa.analytics.attribution"],
-        ),        WorkflowCapability(
+        ),
+        WorkflowCapability(
             workflow_key="execution_stateful_core_api_ref",
             enabled=core_api_ref_mode_enabled,
             required_features=["pa.execution.stateful_core_api_ref"],
@@ -149,6 +152,3 @@ async def get_integration_capabilities(
         features=features[:feature_limit],
         workflows=workflows[:workflow_limit],
     )
-
-
-

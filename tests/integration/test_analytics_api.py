@@ -70,6 +70,7 @@ def test_positions_analytics_upstream_error_passthrough(monkeypatch):
     response = client.post("/analytics/positions", json={"portfolioId": "P1", "asOfDate": "2026-02-24"})
     assert response.status_code == 503
 
+
 def test_workbench_analytics_endpoint_removed():
     client = TestClient(app)
     response = client.post("/analytics/workbench", json={})

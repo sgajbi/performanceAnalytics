@@ -346,8 +346,3 @@ def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
     assert body["supportedInputModes"] == []
     features = {item["key"]: item["enabled"] for item in body["features"]}
     assert features["pa.analytics.attribution"] is False
-
-
-
-
-
