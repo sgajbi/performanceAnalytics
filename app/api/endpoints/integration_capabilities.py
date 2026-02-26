@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
-router = APIRouter()
+router = APIRouter(tags=["Integration"])
 
 ConsumerSystem = Literal["lotus-gateway", "lotus-performance", "lotus-manage", "UI", "UNKNOWN"]
 
@@ -34,7 +34,10 @@ class IntegrationCapabilitiesResponse(BaseModel):
     generated_at: datetime = Field(alias="generatedAt")
     as_of_date: date = Field(alias="asOfDate")
     policy_version: str = Field(alias="policyVersion")
-    supported_input_modes: list[str] = Field(alias="supportedInputModes")
+    supported_input_modes: list[str] = Field(
+        alias="supportedInputModes",
+        description="Supported execution input modes: core_api_ref (lotus-core API-backed) and inline_bundle (stateless payload).",
+    )
     features: list[FeatureCapability]
     workflows: list[WorkflowCapability]
 
@@ -66,8 +69,8 @@ async def get_integration_capabilities(
     mwr_enabled = _env_bool("PA_CAP_MWR_ENABLED", True)
     contribution_enabled = _env_bool("PA_CAP_CONTRIBUTION_ENABLED", True)
     attribution_enabled = _env_bool("PA_CAP_ATTRIBUTION_ENABLED", True)
-    pas_ref_mode_enabled = _env_bool("PA_CAP_INPUT_MODE_PAS_REF_ENABLED", True)
-    inline_bundle_mode_enabled = _env_bool("PA_CAP_INPUT_MODE_INLINE_BUNDLE_ENABLED", True)
+    core_api_ref_mode_enabled = _env_bool("PLATFORM_INPUT_MODE_CORE_API_REFERENCE_ENABLED", True)
+    inline_bundle_mode_enabled = _env_bool("PLATFORM_INPUT_MODE_INLINE_BUNDLE_ENABLED", True)
 
     features = [
         FeatureCapability(
@@ -95,8 +98,8 @@ async def get_integration_capabilities(
             description="Attribution analytics APIs.",
         ),
         FeatureCapability(
-            key="pa.execution.stateful_pas_ref",
-            enabled=pas_ref_mode_enabled,
+            key="pa.execution.stateful_core_api_ref",
+            enabled=core_api_ref_mode_enabled,
             owner_service="lotus-performance",
             description="lotus-performance resolves analytics inputs by API-calling lotus-core contracts.",
         ),
@@ -120,16 +123,9 @@ async def get_integration_capabilities(
             required_features=["pa.analytics.contribution", "pa.analytics.attribution"],
         ),
         WorkflowCapability(
-            workflow_key="workbench_analytics",
-            enabled=twr_enabled,
-            required_features=[
-                "pa.analytics.twr",
-            ],
-        ),
-        WorkflowCapability(
-            workflow_key="execution_stateful_pas_ref",
-            enabled=pas_ref_mode_enabled,
-            required_features=["pa.execution.stateful_pas_ref"],
+            workflow_key="execution_stateful_core_api_ref",
+            enabled=core_api_ref_mode_enabled,
+            required_features=["pa.execution.stateful_core_api_ref"],
         ),
         WorkflowCapability(
             workflow_key="execution_stateless_inline_bundle",
@@ -139,8 +135,8 @@ async def get_integration_capabilities(
     ]
 
     supported_input_modes: list[str] = []
-    if pas_ref_mode_enabled:
-        supported_input_modes.append("pas_ref")
+    if core_api_ref_mode_enabled:
+        supported_input_modes.append("core_api_ref")
     if inline_bundle_mode_enabled:
         supported_input_modes.append("inline_bundle")
 

@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from main import app
@@ -17,7 +16,7 @@ def test_e2e_platform_readiness_and_capabilities_contract() -> None:
     body = capabilities.json()
     assert body["contractVersion"] == "v1"
     assert body["sourceService"] == "lotus-performance"
-    assert "pas_ref" in body["supportedInputModes"]
+    assert "core_api_ref" in body["supportedInputModes"]
     assert "inline_bundle" in body["supportedInputModes"]
 
 
@@ -111,40 +110,6 @@ def test_e2e_contribution_attribution_and_lineage() -> None:
     assert attribution_lineage.status_code == 200
 
 
-def test_e2e_workbench_analytics_projection_view() -> None:
-    payload = {
-        "portfolioId": "P1",
-        "asOfDate": "2026-02-24",
-        "period": "YTD",
-        "groupBy": "ASSET_CLASS",
-        "benchmarkCode": "MODEL_60_40",
-        "portfolioReturnPct": 4.2,
-        "currentPositions": [
-            {"securityId": "AAPL.US", "instrumentName": "Apple", "assetClass": "EQUITY", "quantity": 120.0},
-            {"securityId": "UST10Y", "instrumentName": "UST 10Y", "assetClass": "FIXED_INCOME", "quantity": 80.0},
-        ],
-        "projectedPositions": [
-            {
-                "securityId": "AAPL.US",
-                "instrumentName": "Apple",
-                "assetClass": "EQUITY",
-                "baselineQuantity": 120.0,
-                "proposedQuantity": 100.0,
-                "deltaQuantity": -20.0,
-            }
-        ],
-    }
-
-    with TestClient(app) as client:
-        response = client.post("/analytics/workbench", json=payload)
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["portfolioId"] == "P1"
-    assert body["source_mode"] == "pa_calc"
-    assert len(body["allocationBuckets"]) >= 1
-
-
 def test_e2e_pas_connected_modes(monkeypatch) -> None:
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
@@ -195,11 +160,11 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
 
     assert twr_pas_response.status_code == 200
     assert positions_response.status_code == 200
-    assert twr_pas_response.json()["source_mode"] == "pas_ref"
+    assert twr_pas_response.json()["source_mode"] == "core_api_ref"
     assert positions_response.json()["portfolioId"] == "PORT-1001"
 
 
-def test_e2e_pas_ref_capability_and_execution_contract(monkeypatch) -> None:
+def test_e2e_core_api_ref_capability_and_execution_contract(monkeypatch) -> None:
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return (
             200,
@@ -233,8 +198,8 @@ def test_e2e_pas_ref_capability_and_execution_contract(monkeypatch) -> None:
 
     assert capabilities.status_code == 200
     assert twr_pas.status_code == 200
-    assert "pas_ref" in capabilities.json()["supportedInputModes"]
-    assert twr_pas.json()["source_mode"] == "pas_ref"
+    assert "core_api_ref" in capabilities.json()["supportedInputModes"]
+    assert twr_pas.json()["source_mode"] == "core_api_ref"
     assert "YTD" in twr_pas.json()["resultsByPeriod"]
 
 
@@ -249,7 +214,7 @@ def test_e2e_health_endpoints_contract() -> None:
     assert ready.json()["status"] == "ready"
 
 
-def test_e2e_pas_ref_upstream_failure_passthrough(monkeypatch) -> None:
+def test_e2e_core_api_ref_upstream_failure_passthrough(monkeypatch) -> None:
     async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
         return 503, {"detail": "lotus-core unavailable"}
 
@@ -369,8 +334,8 @@ def test_e2e_mwr_lineage_roundtrip() -> None:
 
 
 def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
-    monkeypatch.setenv("PA_CAP_INPUT_MODE_PAS_REF_ENABLED", "false")
-    monkeypatch.setenv("PA_CAP_INPUT_MODE_INLINE_BUNDLE_ENABLED", "false")
+    monkeypatch.setenv("PLATFORM_INPUT_MODE_CORE_API_REFERENCE_ENABLED", "false")
+    monkeypatch.setenv("PLATFORM_INPUT_MODE_INLINE_BUNDLE_ENABLED", "false")
     monkeypatch.setenv("PA_CAP_ATTRIBUTION_ENABLED", "false")
 
     with TestClient(app) as client:
@@ -381,45 +346,3 @@ def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
     assert body["supportedInputModes"] == []
     features = {item["key"]: item["enabled"] for item in body["features"]}
     assert features["pa.analytics.attribution"] is False
-
-
-def test_e2e_workbench_active_return_without_risk_payload() -> None:
-    payload = {
-        "portfolioId": "P2",
-        "asOfDate": "2026-02-24",
-        "period": "YTD",
-        "groupBy": "ASSET_CLASS",
-        "benchmarkCode": "MODEL_60_40",
-        "portfolioReturnPct": 5.4,
-        "currentPositions": [
-            {"securityId": "EQ1", "instrumentName": "Equity 1", "assetClass": "EQUITY", "quantity": 100.0},
-            {"securityId": "FI1", "instrumentName": "Bond 1", "assetClass": "FIXED_INCOME", "quantity": 100.0},
-        ],
-        "projectedPositions": [
-            {
-                "securityId": "EQ1",
-                "instrumentName": "Equity 1",
-                "assetClass": "EQUITY",
-                "baselineQuantity": 100.0,
-                "proposedQuantity": 170.0,
-                "deltaQuantity": 70.0,
-            },
-            {
-                "securityId": "FI1",
-                "instrumentName": "Bond 1",
-                "assetClass": "FIXED_INCOME",
-                "baselineQuantity": 100.0,
-                "proposedQuantity": 30.0,
-                "deltaQuantity": -70.0,
-            },
-        ],
-    }
-
-    with TestClient(app) as client:
-        response = client.post("/analytics/workbench", json=payload)
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["activeReturnPct"] == pytest.approx(2.3)
-    assert "riskProxy" not in body
-    assert len(body["topChanges"]) == 2

@@ -71,74 +71,7 @@ def test_positions_analytics_upstream_error_passthrough(monkeypatch):
     assert response.status_code == 503
 
 
-def test_workbench_analytics_success():
+def test_workbench_analytics_endpoint_removed():
     client = TestClient(app)
-    response = client.post(
-        "/analytics/workbench",
-        json={
-            "portfolioId": "P1",
-            "asOfDate": "2026-02-24",
-            "period": "YTD",
-            "groupBy": "ASSET_CLASS",
-            "benchmarkCode": "MODEL_60_40",
-            "portfolioReturnPct": 4.2,
-            "currentPositions": [
-                {
-                    "securityId": "AAPL.US",
-                    "instrumentName": "Apple Inc",
-                    "assetClass": "EQUITY",
-                    "quantity": 120.0,
-                },
-                {
-                    "securityId": "UST10Y",
-                    "instrumentName": "US Treasury 10Y",
-                    "assetClass": "FIXED_INCOME",
-                    "quantity": 80.0,
-                },
-            ],
-            "projectedPositions": [
-                {
-                    "securityId": "AAPL.US",
-                    "instrumentName": "Apple Inc",
-                    "assetClass": "EQUITY",
-                    "baselineQuantity": 120.0,
-                    "proposedQuantity": 100.0,
-                    "deltaQuantity": -20.0,
-                }
-            ],
-        },
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["source_mode"] == "pa_calc"
-    assert body["portfolioId"] == "P1"
-    assert len(body["allocationBuckets"]) >= 1
-    assert "riskProxy" not in body
-    assert body["activeReturnPct"] is not None
-
-
-def test_workbench_analytics_security_group_uses_security_bucket_keys():
-    client = TestClient(app)
-    response = client.post(
-        "/analytics/workbench",
-        json={
-            "portfolioId": "P1",
-            "asOfDate": "2026-02-24",
-            "period": "YTD",
-            "groupBy": "SECURITY",
-            "benchmarkCode": "CUSTOM",
-            "currentPositions": [
-                {
-                    "securityId": "MSFT.US",
-                    "instrumentName": "Microsoft",
-                    "assetClass": "EQUITY",
-                    "quantity": 50.0,
-                }
-            ],
-            "projectedPositions": [],
-        },
-    )
-    assert response.status_code == 200
-    bucket = response.json()["allocationBuckets"][0]
-    assert bucket["bucketKey"] == "MSFT.US"
-    assert bucket["bucketLabel"] == "Microsoft"
+    response = client.post("/analytics/workbench", json={})
+    assert response.status_code == 404

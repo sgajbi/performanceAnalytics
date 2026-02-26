@@ -142,48 +142,6 @@
       "review_by": "2026-08-24"
     },
     {
-      "finding": "app/models/workbench_analytics_requests.py:33:portfolio_return_pct: float | None = Field(default=None, alias=\"portfolioReturnPct\")",
-      "justification": "Temporary approved monetary float usage; migrate to Decimal.",
-      "owner": "platform-governance",
-      "review_by": "2026-08-24"
-    },
-    {
-      "finding": "app/models/workbench_analytics_requests.py:34:benchmark_return_pct: float | None = Field(default=None, alias=\"benchmarkReturnPct\")",
-      "justification": "Temporary approved monetary float usage; migrate to Decimal.",
-      "owner": "platform-governance",
-      "review_by": "2026-08-24"
-    },
-    {
-      "finding": "app/models/workbench_analytics_responses.py:10:current_weight_pct: float = Field(alias=\"currentWeightPct\")",
-      "justification": "Temporary approved monetary float usage; migrate to Decimal.",
-      "owner": "platform-governance",
-      "review_by": "2026-08-24"
-    },
-    {
-      "finding": "app/models/workbench_analytics_responses.py:11:proposed_weight_pct: float = Field(alias=\"proposedWeightPct\")",
-      "justification": "Temporary approved monetary float usage; migrate to Decimal.",
-      "owner": "platform-governance",
-      "review_by": "2026-08-24"
-    },
-    {
-      "finding": "app/models/workbench_analytics_responses.py:32:portfolio_return_pct: float | None = Field(default=None, alias=\"portfolioReturnPct\")",
-      "justification": "Temporary approved monetary float usage; migrate to Decimal.",
-      "owner": "platform-governance",
-      "review_by": "2026-08-24"
-    },
-    {
-      "finding": "app/models/workbench_analytics_responses.py:33:benchmark_return_pct: float | None = Field(default=None, alias=\"benchmarkReturnPct\")",
-      "justification": "Temporary approved monetary float usage; migrate to Decimal.",
-      "owner": "platform-governance",
-      "review_by": "2026-08-24"
-    },
-    {
-      "finding": "app/models/workbench_analytics_responses.py:34:active_return_pct: float | None = Field(default=None, alias=\"activeReturnPct\")",
-      "justification": "Temporary approved monetary float usage; migrate to Decimal.",
-      "owner": "platform-governance",
-      "review_by": "2026-08-24"
-    },
-    {
       "finding": "core/annualize.py:9:def annualize_return(period_return: float, num_periods: int, periods_per_year: float, basis: BasisType) -> float:",
       "justification": "Temporary approved monetary float usage; migrate to Decimal.",
       "owner": "platform-governance",
@@ -233,3 +191,4 @@
     }
   ]
 }
+
