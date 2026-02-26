@@ -113,7 +113,7 @@ def test_workbench_analytics_success():
     assert body["source_mode"] == "pa_calc"
     assert body["portfolioId"] == "P1"
     assert len(body["allocationBuckets"]) >= 1
-    assert "riskProxy" in body
+    assert "riskProxy" not in body
     assert body["activeReturnPct"] is not None
 
 

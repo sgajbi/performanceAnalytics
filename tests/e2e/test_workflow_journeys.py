@@ -378,7 +378,7 @@ def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
     assert features["pa.analytics.attribution"] is False
 
 
-def test_e2e_workbench_active_return_and_risk_proxy_signal() -> None:
+def test_e2e_workbench_active_return_without_risk_payload() -> None:
     payload = {
         "portfolioId": "P2",
         "asOfDate": "2026-02-24",
@@ -416,5 +416,5 @@ def test_e2e_workbench_active_return_and_risk_proxy_signal() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["activeReturnPct"] == pytest.approx(2.3)
-    assert body["riskProxy"]["hhiDelta"] > 0
+    assert "riskProxy" not in body
     assert len(body["topChanges"]) == 2
