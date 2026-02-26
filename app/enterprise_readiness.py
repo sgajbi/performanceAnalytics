@@ -2,9 +2,9 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Awaitable, Callable
 
-from fastapi import Request
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("enterprise_readiness")
@@ -158,8 +158,8 @@ def emit_audit_event(
     )
 
 
-def build_enterprise_audit_middleware():
-    async def middleware(request: Request, call_next):
+def build_enterprise_audit_middleware() -> Callable[[Request, Callable[[Request], Awaitable[Response]]], Awaitable[Response]]:
+    async def middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         max_write_payload_bytes = _env_int("ENTERPRISE_MAX_WRITE_PAYLOAD_BYTES", 1_048_576)
         try:
             content_length = int(request.headers.get("content-length", "0"))
