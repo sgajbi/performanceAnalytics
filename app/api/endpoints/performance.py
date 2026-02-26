@@ -47,6 +47,85 @@ def _as_numeric(value: object, default=0):
     return numeric
 
 
+def _get_total_cum_ror(row: pd.Series | None, prefix: str = "") -> float:
+    if row is None:
+        return 0.0
+    long_cum = _as_numeric(row.get(f"{prefix}long_cum_ror", 0))
+    short_cum = _as_numeric(row.get(f"{prefix}short_cum_ror", 0))
+    return ((1 + long_cum / 100) * (1 + short_cum / 100) - 1) * 100
+
+
+def _calculate_total_return_from_reset_slice(
+    df_slice: pd.DataFrame, daily_results_df: pd.DataFrame
+) -> PortfolioReturnDecomposition:
+    end_row = df_slice.iloc[-1]
+    full_perf_dates = pd.to_datetime(daily_results_df[PortfolioColumns.PERF_DATE.value]).dt.date
+    slice_min_date = pd.to_datetime(df_slice[PortfolioColumns.PERF_DATE.value].min()).date()
+    day_before_mask = full_perf_dates < slice_min_date
+    day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
+
+    start_cum_base = _as_numeric(
+        day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0
+    )
+    end_cum_base = _as_numeric(end_row[PortfolioColumns.FINAL_CUM_ROR.value])
+
+    start_base_denom = 1 + start_cum_base / 100
+    if start_base_denom == 0:
+        base_total = end_cum_base
+    else:
+        base_total = (((1 + end_cum_base / 100) / start_base_denom) - 1) * 100
+
+    if "local_ror" not in df_slice.columns:
+        return PortfolioReturnDecomposition(local=base_total, fx=0.0, base=base_total)
+
+    start_cum_local = _get_total_cum_ror(day_before_row, "local_ror_")
+    end_cum_local = _get_total_cum_ror(end_row, "local_ror_")
+
+    start_local_denom = 1 + start_cum_local / 100
+    if start_local_denom == 0:
+        local_total = end_cum_local
+    else:
+        local_total = (((1 + end_cum_local / 100) / start_local_denom) - 1) * 100
+
+    base_denom_for_fx = 1 + local_total / 100
+    if base_denom_for_fx == 0:
+        fx_total = 0.0
+    else:
+        fx_total = (((1 + base_total / 100) / base_denom_for_fx) - 1) * 100
+
+    return PortfolioReturnDecomposition(local=local_total, fx=fx_total, base=base_total)
+
+
+def _calculate_total_return_from_non_reset_slice(df_slice: pd.DataFrame) -> PortfolioReturnDecomposition:
+    daily_ror = pd.to_numeric(df_slice[PortfolioColumns.DAILY_ROR.value], errors="coerce").fillna(0.0)
+    base_total = _as_numeric(((1 + daily_ror / 100).prod() - 1) * 100)
+
+    if "local_ror" not in df_slice.columns:
+        return PortfolioReturnDecomposition(local=base_total, fx=0.0, base=base_total)
+
+    local_ror = pd.to_numeric(df_slice["local_ror"], errors="coerce").fillna(0.0)
+    local_total = _as_numeric(((1 + local_ror / 100).prod() - 1) * 100)
+    base_denom_for_fx = 1 + local_total / 100
+    if base_denom_for_fx == 0:
+        fx_total = 0.0
+    else:
+        fx_total = _as_numeric((((1 + base_total / 100) / base_denom_for_fx) - 1) * 100)
+
+    return PortfolioReturnDecomposition(local=local_total, fx=fx_total, base=base_total)
+
+
+def _calculate_total_return_from_slice(
+    df_slice: pd.DataFrame, daily_results_df: pd.DataFrame
+) -> PortfolioReturnDecomposition:
+    if df_slice.empty:
+        return PortfolioReturnDecomposition(local=0.0, fx=0.0, base=0.0)
+
+    if df_slice[PortfolioColumns.PERF_RESET.value].any():
+        return _calculate_total_return_from_reset_slice(df_slice, daily_results_df)
+
+    return _calculate_total_return_from_non_reset_slice(df_slice)
+
+
 @router.post(
     "/twr/pas-input",
     response_model=PasInputTwrResponse,
@@ -179,70 +258,6 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
             daily_results_df[PortfolioColumns.PERF_DATE.value]
         ).dt.date
 
-        def get_total_cum_ror(row: pd.Series | None, prefix: str = "") -> float:
-            if row is None:
-                return 0.0
-            long_cum = _as_numeric(row.get(f"{prefix}long_cum_ror", 0))
-            short_cum = _as_numeric(row.get(f"{prefix}short_cum_ror", 0))
-            return ((1 + long_cum / 100) * (1 + short_cum / 100) - 1) * 100
-
-        def get_total_return_from_slice(df_slice: pd.DataFrame) -> PortfolioReturnDecomposition:
-            if df_slice.empty:
-                return PortfolioReturnDecomposition(local=0.0, fx=0.0, base=0.0)
-
-            if df_slice[PortfolioColumns.PERF_RESET.value].any():
-                end_row = df_slice.iloc[-1]
-                full_perf_dates = pd.to_datetime(daily_results_df[PortfolioColumns.PERF_DATE.value]).dt.date
-                slice_min_date = pd.to_datetime(df_slice[PortfolioColumns.PERF_DATE.value].min()).date()
-                day_before_mask = full_perf_dates < slice_min_date
-                day_before_row = daily_results_df[day_before_mask].iloc[-1] if day_before_mask.any() else None
-
-                start_cum_base = _as_numeric(
-                    day_before_row[PortfolioColumns.FINAL_CUM_ROR.value] if day_before_row is not None else 0
-                )
-                end_cum_base = _as_numeric(end_row[PortfolioColumns.FINAL_CUM_ROR.value])
-
-                start_base_denom = 1 + start_cum_base / 100
-                if start_base_denom == 0:
-                    base_total = end_cum_base
-                else:
-                    base_total = (((1 + end_cum_base / 100) / start_base_denom) - 1) * 100
-
-                if "local_ror" in df_slice.columns:
-                    start_cum_local = get_total_cum_ror(day_before_row, "local_ror_")
-                    end_cum_local = get_total_cum_ror(end_row, "local_ror_")
-
-                    start_local_denom = 1 + start_cum_local / 100
-                    if start_local_denom == 0:
-                        local_total = end_cum_local
-                    else:
-                        local_total = (((1 + end_cum_local / 100) / start_local_denom) - 1) * 100
-
-                    base_denom_for_fx = 1 + local_total / 100
-                    if base_denom_for_fx == 0:
-                        fx_total = 0.0
-                    else:
-                        fx_total = (((1 + base_total / 100) / base_denom_for_fx) - 1) * 100
-                else:
-                    local_total = base_total
-                    fx_total = 0.0
-            else:
-                daily_ror = pd.to_numeric(df_slice[PortfolioColumns.DAILY_ROR.value], errors="coerce").fillna(0.0)
-                base_total = _as_numeric(((1 + daily_ror / 100).prod() - 1) * 100)
-                if "local_ror" in df_slice.columns:
-                    local_ror = pd.to_numeric(df_slice["local_ror"], errors="coerce").fillna(0.0)
-                    local_total = _as_numeric(((1 + local_ror / 100).prod() - 1) * 100)
-                    base_denom_for_fx = 1 + local_total / 100
-                    if base_denom_for_fx == 0:
-                        fx_total = 0.0
-                    else:
-                        fx_total = _as_numeric((((1 + base_total / 100) / base_denom_for_fx) - 1) * 100)
-                else:
-                    local_total = base_total
-                    fx_total = 0.0
-
-            return PortfolioReturnDecomposition(local=local_total, fx=fx_total, base=base_total)
-
         for period in resolved_periods:
             period_slice_df = daily_results_df[
                 (daily_results_df[PortfolioColumns.PERF_DATE.value] >= period.start_date)
@@ -264,7 +279,7 @@ async def calculate_twr_endpoint(request: PerformanceRequest, background_tasks: 
                 breakdowns_data, period_slice_df, request.output.include_timeseries
             )
 
-            period_return_summary = get_total_return_from_slice(period_slice_df)
+            period_return_summary = _calculate_total_return_from_slice(period_slice_df, daily_results_df)
             period_result = SinglePeriodPerformanceResult(
                 breakdowns=formatted_breakdowns, portfolio_return=period_return_summary
             )

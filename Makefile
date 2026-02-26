@@ -46,7 +46,7 @@ ci-local-docker-down:
 check-all: lint typecheck test-all
 
 typecheck:
-	mypy --config-file mypy.ini
+	python -m mypy --config-file mypy.ini
 
 openapi-gate:
 	python scripts/openapi_quality_gate.py
@@ -58,15 +58,15 @@ migration-apply:
 	python scripts/migration_contract_check.py --mode no-schema
 
 lint:
-	ruff check .
-	ruff format --check .
+	python -m ruff check .
+	python -m ruff format --check .
 	$(MAKE) monetary-float-guard
 
 monetary-float-guard:
 	python scripts/check_monetary_float_usage.py
 
 format:
-	ruff format .
+	python -m ruff format .
 
 clean:
 	python -c "import shutil, pathlib; [shutil.rmtree(p, ignore_errors=True) for p in ['__pycache__', '.pytest_cache', 'htmlcov', '.ruff_cache', '.mypy_cache']]; [pathlib.Path(p).unlink(missing_ok=True) for p in ['.coverage', '.coverage.unit', '.coverage.integration', '.coverage.e2e']]"
