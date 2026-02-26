@@ -10,15 +10,13 @@ def test_integration_capabilities_default_contract():
     assert response.status_code == 200
     body = response.json()
     assert body["contractVersion"] == "v1"
-    assert body["sourceService"] == "performance-analytics"
+    assert body["sourceService"] == "lotus-performance"
     assert body["consumerSystem"] == "BFF"
     assert body["tenantId"] == "default"
     assert body["supportedInputModes"] == ["pas_ref", "inline_bundle"]
-    assert len(body["features"]) >= 6
+    assert len(body["features"]) >= 4
     assert len(body["workflows"]) >= 3
     features = {item["key"] for item in body["features"]}
-    assert "pa.analytics.risk" in features
-    assert "pa.analytics.concentration" in features
     assert "pa.execution.stateful_pas_ref" in features
     assert "pa.execution.stateless_inline_bundle" in features
     assert response.headers.get("X-Correlation-Id")

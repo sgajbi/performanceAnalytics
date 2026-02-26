@@ -19,7 +19,7 @@ class JsonFormatter(logging.Formatter):
         payload = {
             "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
-            "service": os.getenv("SERVICE_NAME", "performance-analytics"),
+            "service": os.getenv("SERVICE_NAME", "lotus-performance"),
             "environment": os.getenv("ENVIRONMENT", "local"),
             "logger": record.name,
             "message": record.getMessage(),

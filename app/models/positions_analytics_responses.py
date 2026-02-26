@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class PositionAnalyticsResponse(BaseModel):
     source_mode: str = "pas_ref"
-    source_service: str = "performance-analytics"
+    source_service: str = "lotus-performance"
     portfolio_id: str = Field(..., alias="portfolioId")
     as_of_date: date = Field(..., alias="asOfDate")
     total_market_value: float = Field(..., alias="totalMarketValue")
@@ -19,7 +19,7 @@ class PositionAnalyticsResponse(BaseModel):
         "json_schema_extra": {
             "example": {
                 "source_mode": "pas_ref",
-                "source_service": "performance-analytics",
+                "source_service": "lotus-performance",
                 "portfolioId": "DEMO_DPM_EUR_001",
                 "asOfDate": "2026-02-24",
                 "totalMarketValue": 1250000.0,

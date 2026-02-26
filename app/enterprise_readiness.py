@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("enterprise_readiness")
 
-_SERVICE_NAME = "performance-analytics"
+_SERVICE_NAME = "lotus-performance"
 _WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _REQUIRED_HEADERS = {"x-actor-id", "x-tenant-id", "x-role", "x-correlation-id"}
 _REDACT_FIELDS = {
