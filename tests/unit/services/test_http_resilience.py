@@ -29,7 +29,7 @@ class _FlakyAsyncClient:
             content=jsonlib.dumps({"ok": True}).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             request=httpx.Request("POST", "http://test"),
-        ) 
+        )
 
 
 @pytest.mark.asyncio
