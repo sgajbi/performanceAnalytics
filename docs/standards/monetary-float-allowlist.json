@@ -166,19 +166,19 @@
       "review_by": "2026-08-24"
     },
     {
-      "finding": "app/models/workbench_analytics_responses.py:40:portfolio_return_pct: float | None = Field(default=None, alias=\"portfolioReturnPct\")",
+      "finding": "app/models/workbench_analytics_responses.py:32:portfolio_return_pct: float | None = Field(default=None, alias=\"portfolioReturnPct\")",
       "justification": "Temporary approved monetary float usage; migrate to Decimal.",
       "owner": "platform-governance",
       "review_by": "2026-08-24"
     },
     {
-      "finding": "app/models/workbench_analytics_responses.py:41:benchmark_return_pct: float | None = Field(default=None, alias=\"benchmarkReturnPct\")",
+      "finding": "app/models/workbench_analytics_responses.py:33:benchmark_return_pct: float | None = Field(default=None, alias=\"benchmarkReturnPct\")",
       "justification": "Temporary approved monetary float usage; migrate to Decimal.",
       "owner": "platform-governance",
       "review_by": "2026-08-24"
     },
     {
-      "finding": "app/models/workbench_analytics_responses.py:42:active_return_pct: float | None = Field(default=None, alias=\"activeReturnPct\")",
+      "finding": "app/models/workbench_analytics_responses.py:34:active_return_pct: float | None = Field(default=None, alias=\"activeReturnPct\")",
       "justification": "Temporary approved monetary float usage; migrate to Decimal.",
       "owner": "platform-governance",
       "review_by": "2026-08-24"
