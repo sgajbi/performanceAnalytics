@@ -47,3 +47,33 @@ async def test_post_with_retry_retries_timeout(monkeypatch):
     assert status == 200
     assert payload == {"ok": True}
     assert _FlakyAsyncClient.attempts == 2
+
+
+class _AlwaysTimeoutClient:
+    def __init__(self, timeout: float):
+        _ = timeout
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def post(self, url, json=None, headers=None):
+        _ = url, json, headers
+        raise httpx.TimeoutException("timeout")
+
+
+@pytest.mark.asyncio
+async def test_post_with_retry_raises_after_max_retries(monkeypatch):
+    monkeypatch.setattr("httpx.AsyncClient", _AlwaysTimeoutClient)
+    status, payload = await post_with_retry(
+        url="http://pas/integration",
+        timeout_seconds=1.0,
+        json_body={"x": 1},
+        headers={"X-Correlation-Id": "cid"},
+        max_retries=0,
+        backoff_seconds=0.0,
+    )
+    assert status == 503
+    assert "upstream communication failure" in payload["detail"]

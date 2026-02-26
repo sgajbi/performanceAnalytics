@@ -1,6 +1,9 @@
 # tests/unit/core/test_errors.py
+import importlib
+
 from fastapi import status
 
+import core.errors as errors_module
 from core.errors import APIBadRequestError, APIConflictError, APIUnprocessableEntityError
 
 if hasattr(status, "HTTP_422_UNPROCESSABLE_CONTENT"):
@@ -34,3 +37,11 @@ def test_api_conflict_error():
     except APIConflictError as e:
         assert e.status_code == status.HTTP_409_CONFLICT
         assert e.detail == "Resource already exists"
+
+
+def test_legacy_422_fallback_branch(monkeypatch):
+    if hasattr(status, "HTTP_422_UNPROCESSABLE_CONTENT"):
+        monkeypatch.delattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", raising=False)
+        reloaded = importlib.reload(errors_module)
+        assert reloaded.HTTP_422_UNPROCESSABLE == status.HTTP_422_UNPROCESSABLE_ENTITY
+        importlib.reload(errors_module)

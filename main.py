@@ -20,6 +20,7 @@ from app.api.endpoints import (
 from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
 from app.core.handlers import performance_calculator_exception_handler
+from app.enterprise_readiness import build_enterprise_audit_middleware, validate_enterprise_runtime_config
 from app.observability import setup_observability
 
 
@@ -106,6 +107,8 @@ app = FastAPI(
     lifespan=_app_lifespan,
 )
 setup_observability(app, log_level=settings.LOG_LEVEL)
+validate_enterprise_runtime_config()
+app.middleware("http")(build_enterprise_audit_middleware())
 
 # Create lineage directory if it doesn't exist
 if not os.path.exists(settings.LINEAGE_STORAGE_PATH):
