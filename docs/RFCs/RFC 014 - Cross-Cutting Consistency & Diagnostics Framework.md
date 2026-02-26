@@ -16,7 +16,7 @@ This initiative strengthens correctness, enhances configurability, improves obse
 
 ## 2\. Current State Analysis
 
-An analysis of the current `sgajbi-performanceanalytics` repository reveals a mature but inconsistent API surface across its primary services.
+An analysis of the current `sgajbi-lotus-performance` repository reveals a mature but inconsistent API surface across its primary services.
 
   * **Inconsistent API Contracts:** The request and response models for `/performance/twr`, `/performance/mwr`, `/performance/contribution`, and `/performance/attribution` have evolved independently. They lack common fields for controlling fundamental calculation parameters.
   * **Limited Configurability:** Clients cannot control crucial aspects like calculation precision, annualization logic, or calendar conventions directly via the API.
