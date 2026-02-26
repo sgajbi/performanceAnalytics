@@ -10,7 +10,6 @@ from app.models.workbench_analytics_requests import (
 from app.models.workbench_analytics_responses import (
     WorkbenchAnalyticsBucket,
     WorkbenchAnalyticsResponse,
-    WorkbenchRiskProxy,
     WorkbenchTopChange,
 )
 from app.services.pas_input_service import PasInputService
@@ -142,30 +141,12 @@ def _top_changes(projected_positions: list[WorkbenchProjectedPositionInput]) -> 
     ]
 
 
-def _risk_proxy(buckets: list[WorkbenchAnalyticsBucket]) -> WorkbenchRiskProxy:
-    current_hhi = 0.0
-    proposed_hhi = 0.0
-    for bucket in buckets:
-        current_weight = (bucket.current_weight_pct or 0.0) / 100.0
-        proposed_weight = (bucket.proposed_weight_pct or 0.0) / 100.0
-        current_hhi += current_weight * current_weight
-        proposed_hhi += proposed_weight * proposed_weight
-
-    scaled_current = current_hhi * 10000
-    scaled_proposed = proposed_hhi * 10000
-    return WorkbenchRiskProxy(
-        hhiCurrent=scaled_current,
-        hhiProposed=scaled_proposed,
-        hhiDelta=scaled_proposed - scaled_current,
-    )
-
-
 @router.post(
     "/workbench",
     response_model=WorkbenchAnalyticsResponse,
     summary="Calculate PA-owned workbench analytics",
     description=(
-        "Returns PA-owned allocation, concentration (HHI proxy), and top-change analytics "
+        "Returns PA-owned allocation and top-change analytics "
         "for workbench flows. BFF passes normalized holdings and projected positions."
     ),
 )
@@ -176,7 +157,6 @@ async def get_workbench_analytics(request: WorkbenchAnalyticsRequest):
         group_by=request.group_by,
     )
     top_changes = _top_changes(request.projected_positions)
-    risk_proxy = _risk_proxy(buckets)
 
     benchmark_return = (
         request.benchmark_return_pct
@@ -199,5 +179,4 @@ async def get_workbench_analytics(request: WorkbenchAnalyticsRequest):
         activeReturnPct=active_return,
         allocationBuckets=buckets,
         topChanges=top_changes,
-        riskProxy=risk_proxy,
     )

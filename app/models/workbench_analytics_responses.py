@@ -22,14 +22,6 @@ class WorkbenchTopChange(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-class WorkbenchRiskProxy(BaseModel):
-    hhi_current: float = Field(alias="hhiCurrent")
-    hhi_proposed: float = Field(alias="hhiProposed")
-    hhi_delta: float = Field(alias="hhiDelta")
-
-    model_config = {"populate_by_name": True}
-
-
 class WorkbenchAnalyticsResponse(BaseModel):
     source_mode: str = "pa_calc"
     source_service: str = Field("lotus-performance", alias="sourceService")
@@ -42,6 +34,5 @@ class WorkbenchAnalyticsResponse(BaseModel):
     active_return_pct: float | None = Field(default=None, alias="activeReturnPct")
     allocation_buckets: list[WorkbenchAnalyticsBucket] = Field(default_factory=list, alias="allocationBuckets")
     top_changes: list[WorkbenchTopChange] = Field(default_factory=list, alias="topChanges")
-    risk_proxy: WorkbenchRiskProxy = Field(alias="riskProxy")
 
     model_config = {"populate_by_name": True}
