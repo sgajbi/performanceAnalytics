@@ -1,6 +1,6 @@
 # Migration Contract Standard
 
-- Service: `performanceAnalytics`
+- Service: `lotus-performance`
 - Persistence mode: **no persistent schema** in current architecture.
 - Migration policy: **versioned migration contract** remains mandatory as a governance control.
 
@@ -21,3 +21,4 @@ If storage is introduced:
 1. Adopt versioned migrations.
 2. Add deterministic migration apply checks in CI.
 3. Keep forward-only migration policy with explicit rollback runbook.
+

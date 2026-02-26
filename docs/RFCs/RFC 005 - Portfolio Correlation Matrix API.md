@@ -15,7 +15,7 @@ This document specifies the final design for a new **Portfolio Correlation Matri
 
 The engine will provide a robust, on-demand utility to compute a correlation matrix from a set of time series. It is designed for maximum flexibility, supporting both **Pearson (standard)** and **Spearman (rank-based)** correlation. The API can ingest either raw **prices** or pre-calculated **returns** and includes powerful, configurable policies for **data alignment** and **missing value handling**.
 
-In line with our architectural principles, the API is highly configurable, stateless, and follows the established patterns of the performanceAnalytics suite. It will support advanced features like **pre-aggregation by group** (e.g., sector-level correlations) and **rolling window analysis**. This feature will serve as a key building block for more advanced risk and optimization tools.
+In line with our architectural principles, the API is highly configurable, stateless, and follows the established patterns of the lotus-performance suite. It will support advanced features like **pre-aggregation by group** (e.g., sector-level correlations) and **rolling window analysis**. This feature will serve as a key building block for more advanced risk and optimization tools.
 
 ## 2\. Goals & Non-Goals
 
@@ -170,3 +170,4 @@ The implementation of this RFC is complete when:
 4.  The testing and validation strategy is fully implemented, all tests are passing, and the required coverage targets (**100% for engine**, **≥95% for project**) are met.
 5.  The characterization test passes, confirming numerical results match the external reference library.
 6.  New documentation is added to `docs/guides/` and `docs/technical/` for the Correlation Matrix API, ensuring documentation remains current.
+

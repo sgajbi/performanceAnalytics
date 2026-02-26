@@ -8,8 +8,8 @@ Proposed
 
 ## Problem Statement
 
-`performanceAnalytics` still uses legacy shared terms (`portfolio_id`, `pas-input`) in API contracts, models, tests, and documentation.
-This conflicts with the platform glossary in `pbwm-platform-docs/Domain Vocabulary Glossary.md`, which mandates canonical cross-service terms such as `portfolio_id`, `as_of_date`, and `pas-input` terminology.
+`lotus-performance` still uses legacy shared terms (`portfolio_id`, `pas-input`) in API contracts, models, tests, and documentation.
+This conflicts with the platform glossary in `lotus-platform/Domain Vocabulary Glossary.md`, which mandates canonical cross-service terms such as `portfolio_id`, `as_of_date`, and `pas-input` terminology.
 
 Current measurable drift (baseline from `Validate-Domain-Vocabulary.ps1`):
 - `portfolio_id`: 121 findings
@@ -71,4 +71,5 @@ Mitigation:
 2. OpenAPI reflects canonical vocabulary.
 3. All PA CI gates remain green (`lint`, `typecheck`, `openapi-gate`, tests, coverage, security).
 4. Platform vocabulary conformance report marks PA as `ok`.
+
 

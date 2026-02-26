@@ -10,7 +10,7 @@ Proposed
 
 ## Problem Statement
 
-`performanceAnalytics` was below target meaningful coverage and had concentrated gaps in PAS integration adapter paths, observability helpers, and endpoint negative-path validation.
+`lotus-performance` was below target meaningful coverage and had concentrated gaps in PAS integration adapter paths, observability helpers, and endpoint negative-path validation.
 
 ## Decision
 
@@ -40,4 +40,5 @@ Deliver an incremental hardening wave focused on highest-risk uncovered backend 
 Wave 2 will target remaining concentrated misses in:
 - `app/api/endpoints/performance.py`
 - `app/services/lineage_service.py`
+
 

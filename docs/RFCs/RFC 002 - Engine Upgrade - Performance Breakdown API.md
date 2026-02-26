@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-This document proposes a new plan to upgrade the `performanceAnalytics` engine to be API-compatible with the `portfolio-analytics-system`. This RFC supersedes all previous V3 proposals.
+This document proposes a new plan to upgrade the `lotus-performance` engine to be API-compatible with the `lotus-core`. This RFC supersedes all previous V3 proposals.
 
 The primary goal is to refactor our API to return a **performance breakdown object**. Instead of a flat list of daily results, the engine will aggregate performance data into different time frequencies (**daily, monthly, quarterly, yearly**) as requested by the user.
 
@@ -15,7 +15,7 @@ This version also expands the list of supported **period types** to include `ITD
 
 ## 2. Gap Analysis
 
-A deep review of the `portfolio-analytics-system` reveals the following gaps:
+A deep review of the `lotus-core` reveals the following gaps:
 
 #### 2.1 API Contract & Output Structure
 -   **Input:** The `PerformanceRequest` in the target system accepts a `frequencies: list[Frequency]` parameter to specify the desired time aggregations.

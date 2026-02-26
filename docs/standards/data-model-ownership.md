@@ -1,6 +1,6 @@
 # Data Model Ownership
 
-- Service: `performanceAnalytics`
+- Service: `lotus-performance`
 - Ownership status: no persisted core portfolio ledger entities.
 - Responsibility: advanced analytics computation contracts.
 
@@ -12,5 +12,6 @@
 
 ## Vocabulary
 
-- Canonical terms must align with `pbwm-platform-docs/Domain Vocabulary Glossary.md`.
+- Canonical terms must align with `lotus-platform/Domain Vocabulary Glossary.md`.
 - No service-local synonyms for portfolio, position, transaction, valuation, performance, risk.
+

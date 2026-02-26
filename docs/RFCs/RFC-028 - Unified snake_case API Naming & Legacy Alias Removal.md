@@ -11,7 +11,7 @@ Here is the final, implementable RFC. It has been updated to remove all citation
 
 ## 1. Executive Summary
 
-This document specifies the final plan to standardize the entire public API contract of the `performanceAnalytics` service to a strict `snake_case` naming convention. The current API supports a mix of legacy, Title-Cased names (e.g., `"Perf. Date"`, `"Begin Market Value"`) and modern `snake_case` names through a series of adapters and compatibility flags. This approach has introduced significant technical debt, increased the complexity of models and tests, and created an inconsistent developer experience.
+This document specifies the final plan to standardize the entire public API contract of the `lotus-performance` service to a strict `snake_case` naming convention. The current API supports a mix of legacy, Title-Cased names (e.g., `"Perf. Date"`, `"Begin Market Value"`) and modern `snake_case` names through a series of adapters and compatibility flags. This approach has introduced significant technical debt, increased the complexity of models and tests, and created an inconsistent developer experience.
 
 This initiative will **remove all legacy aliases and compatibility flags**, enforcing `snake_case` for all request and response fields across the TWR, MWR, Contribution, and Attribution endpoints. This change simplifies the codebase, clarifies the API contract, eliminates a class of potential bugs, and aligns our service with modern API design standards, enabling better automated documentation and client generation. The core calculation engine's logic and numerical output will remain **unchanged**, a guarantee enforced by our existing characterization test suite.
 
