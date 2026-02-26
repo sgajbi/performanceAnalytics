@@ -219,7 +219,6 @@ def test_e2e_pas_ref_capability_and_execution_contract(monkeypatch) -> None:
         "app.api.endpoints.performance.PasInputService.get_performance_input",
         _mock_get_performance_input,
     )
-
     with TestClient(app) as client:
         capabilities = client.get("/integration/capabilities?consumerSystem=BFF&tenantId=default")
         twr_pas = client.post(
@@ -232,6 +231,17 @@ def test_e2e_pas_ref_capability_and_execution_contract(monkeypatch) -> None:
     assert "pas_ref" in capabilities.json()["supportedInputModes"]
     assert twr_pas.json()["source_mode"] == "pas_ref"
     assert "YTD" in twr_pas.json()["resultsByPeriod"]
+
+
+def test_e2e_health_endpoints_contract() -> None:
+    with TestClient(app) as client:
+        live = client.get("/health/live")
+        ready = client.get("/health/ready")
+
+    assert live.status_code == 200
+    assert ready.status_code == 200
+    assert live.json()["status"] == "live"
+    assert ready.json()["status"] == "ready"
 
 
 def test_e2e_pas_ref_upstream_failure_passthrough(monkeypatch) -> None:
