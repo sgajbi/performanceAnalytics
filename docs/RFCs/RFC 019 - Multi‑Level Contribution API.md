@@ -1,7 +1,7 @@
 # RFC 019: Multi‑Level Contribution API (Final)
 
 **Status:** Final (For Approval)  
-**Owner:** Sandeep (Cyclops/PerformanceAnalytics)  
+**Owner:** Sandeep (Cyclops/lotus-performance)  
 **Reviewers:** Perf Engine, Risk, Platform  
 **Target Release:** v0.4.x  
 **Related:** RFC‑014 (Envelope/Diagnostics), RFC‑015 (TWR), RFC‑017 (Contribution Enhancements), RFC‑018 (Attribution)

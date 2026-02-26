@@ -52,7 +52,7 @@ The V2 engine will be built on the following principles:
 The project will be restructured to reflect a clear separation of concerns.
 
 ```plaintext
-└── sgajbi-performanceanalytics/
+└── sgajbi-lotus-performance/
     ├── app/                # FastAPI application layer
     │   ├── api/
     │   │   └── endpoints/
