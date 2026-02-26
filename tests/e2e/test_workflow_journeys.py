@@ -16,7 +16,7 @@ def test_e2e_platform_readiness_and_capabilities_contract() -> None:
 
     body = capabilities.json()
     assert body["contractVersion"] == "v1"
-    assert body["sourceService"] == "performance-analytics"
+    assert body["sourceService"] == "lotus-performance"
     assert "pas_ref" in body["supportedInputModes"]
     assert "inline_bundle" in body["supportedInputModes"]
 

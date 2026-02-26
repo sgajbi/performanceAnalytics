@@ -32,7 +32,7 @@ class WorkbenchRiskProxy(BaseModel):
 
 class WorkbenchAnalyticsResponse(BaseModel):
     source_mode: str = "pa_calc"
-    source_service: str = Field("performance-analytics", alias="sourceService")
+    source_service: str = Field("lotus-performance", alias="sourceService")
     portfolio_id: str = Field(alias="portfolioId")
     period: str
     group_by: str = Field(alias="groupBy")

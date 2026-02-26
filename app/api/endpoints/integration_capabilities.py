@@ -64,8 +64,6 @@ async def get_integration_capabilities(
     mwr_enabled = _env_bool("PA_CAP_MWR_ENABLED", True)
     contribution_enabled = _env_bool("PA_CAP_CONTRIBUTION_ENABLED", True)
     attribution_enabled = _env_bool("PA_CAP_ATTRIBUTION_ENABLED", True)
-    risk_enabled = _env_bool("PA_CAP_RISK_ENABLED", True)
-    concentration_enabled = _env_bool("PA_CAP_CONCENTRATION_ENABLED", True)
     pas_ref_mode_enabled = _env_bool("PA_CAP_INPUT_MODE_PAS_REF_ENABLED", True)
     inline_bundle_mode_enabled = _env_bool("PA_CAP_INPUT_MODE_INLINE_BUNDLE_ENABLED", True)
 
@@ -95,18 +93,6 @@ async def get_integration_capabilities(
             description="Attribution analytics APIs.",
         ),
         FeatureCapability(
-            key="pa.analytics.risk",
-            enabled=risk_enabled,
-            owner_service="PA",
-            description="Risk analytics APIs.",
-        ),
-        FeatureCapability(
-            key="pa.analytics.concentration",
-            enabled=concentration_enabled,
-            owner_service="PA",
-            description="Concentration analytics APIs.",
-        ),
-        FeatureCapability(
             key="pa.execution.stateful_pas_ref",
             enabled=pas_ref_mode_enabled,
             owner_service="PA",
@@ -133,11 +119,9 @@ async def get_integration_capabilities(
         ),
         WorkflowCapability(
             workflow_key="workbench_analytics",
-            enabled=risk_enabled and concentration_enabled and twr_enabled,
+            enabled=twr_enabled,
             required_features=[
                 "pa.analytics.twr",
-                "pa.analytics.risk",
-                "pa.analytics.concentration",
             ],
         ),
         WorkflowCapability(
@@ -160,7 +144,7 @@ async def get_integration_capabilities(
 
     return IntegrationCapabilitiesResponse(
         contractVersion="v1",
-        sourceService="performance-analytics",
+        sourceService="lotus-performance",
         consumerSystem=consumer_system,
         tenantId=tenant_id,
         generatedAt=datetime.now(UTC),

@@ -21,7 +21,7 @@ class PasConnectedTwrResponse(BaseModel):
     )
     as_of_date: date
     source_mode: Literal["pas_ref"] = "pas_ref"
-    source_service: str = "performance-analytics"
+    source_service: str = "lotus-performance"
     pas_contract_version: str = Field(..., alias="pasContractVersion")
     consumer_system: str | None = Field(default=None, alias="consumerSystem")
     results_by_period: dict[str, PasConnectedPeriodResult] = Field(alias="resultsByPeriod")
