@@ -110,11 +110,7 @@ def authorize_write_request(method: str, path: str, headers: dict[str, str]) -> 
 
     required_capability = _required_capability(method, path)
     if required_capability:
-        capabilities = {
-            part.strip()
-            for part in normalized.get("x-capabilities", "").split(",")
-            if part.strip()
-        }
+        capabilities = {part.strip() for part in normalized.get("x-capabilities", "").split(",") if part.strip()}
         if required_capability not in capabilities:
             return False, f"missing_capability:{required_capability}"
 
