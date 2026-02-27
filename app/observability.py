@@ -72,6 +72,17 @@ def propagation_headers(correlation_id: str | None = None) -> dict[str, str]:
     }
 
 
+def build_access_log_fields(*, request: Request, duration_ms: float) -> dict[str, str | float]:
+    """Builds standard access-log fields expected by Lotus platform QA checks."""
+    return {
+        "http_method": request.method,
+        "endpoint": request.url.path,
+        "duration_ms": duration_ms,
+        # Keep legacy key for backwards compatibility with existing log consumers.
+        "latency_ms": duration_ms,
+    }
+
+
 def setup_observability(app: FastAPI, *, log_level: str = "INFO") -> None:
     setup_logging(log_level)
     Instrumentator().instrument(app).expose(app)
@@ -91,16 +102,10 @@ def setup_observability(app: FastAPI, *, log_level: str = "INFO") -> None:
         try:
             response = await call_next(request)
         finally:
-            latency_ms = round((time.perf_counter() - started) * 1000, 2)
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
             logger.info(
                 "request.completed",
-                extra={
-                    "extra_fields": {
-                        "http_method": request.method,
-                        "endpoint": request.url.path,
-                        "latency_ms": latency_ms,
-                    }
-                },
+                extra={"extra_fields": build_access_log_fields(request=request, duration_ms=duration_ms)},
             )
             correlation_id_var.reset(correlation_token)
             request_id_var.reset(request_token)

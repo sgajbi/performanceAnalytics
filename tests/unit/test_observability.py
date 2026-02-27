@@ -5,6 +5,7 @@ from fastapi import Request
 
 from app.observability import (
     JsonFormatter,
+    build_access_log_fields,
     correlation_id_var,
     propagation_headers,
     request_id_var,
@@ -78,10 +79,23 @@ def test_json_formatter_includes_standard_and_extra_fields(monkeypatch):
         args=(),
         exc_info=None,
     )
-    record.extra_fields = {"endpoint": "/health", "latency_ms": 12.3}
+    record.extra_fields = {"endpoint": "/health", "duration_ms": 12.3}
     payload = json.loads(formatter.format(record))
     assert payload["service"] == "pa-test"
     assert payload["environment"] == "test"
     assert payload["message"] == "log-message"
     assert payload["endpoint"] == "/health"
-    assert payload["latency_ms"] == 12.3
+    assert payload["duration_ms"] == 12.3
+
+
+def test_build_access_log_fields_contains_platform_duration_and_legacy_latency():
+    request = _request_with_headers({"host": "testserver"})
+    request.scope["method"] = "GET"
+    request.scope["path"] = "/health"
+
+    fields = build_access_log_fields(request=request, duration_ms=10.5)
+
+    assert fields["http_method"] == "GET"
+    assert fields["endpoint"] == "/health"
+    assert fields["duration_ms"] == 10.5
+    assert fields["latency_ms"] == 10.5
