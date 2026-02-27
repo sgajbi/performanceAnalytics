@@ -77,3 +77,17 @@ async def test_post_with_retry_raises_after_max_retries(monkeypatch):
     )
     assert status == 503
     assert "upstream communication failure" in payload["detail"]
+
+
+@pytest.mark.asyncio
+async def test_post_with_retry_returns_exhausted_retries_for_invalid_retry_config():
+    status, payload = await post_with_retry(
+        url="http://pas/integration",
+        timeout_seconds=1.0,
+        json_body={"x": 1},
+        headers={"X-Correlation-Id": "cid"},
+        max_retries=-1,
+        backoff_seconds=0.0,
+    )
+    assert status == 503
+    assert payload["detail"] == "upstream communication failure: exhausted retries"

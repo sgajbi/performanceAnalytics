@@ -340,6 +340,23 @@ def test_twr_returns_400_when_no_periods_resolve(client, mocker):
     assert "No valid periods could be resolved" in response.json()["detail"]
 
 
+def test_twr_returns_empty_results_when_resolved_period_has_no_data(client):
+    payload = {
+        "portfolio_id": "NO_PERIOD_DATA",
+        "performance_start_date": "2024-01-01",
+        "metric_basis": "NET",
+        "report_end_date": "2025-01-05",
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
+        "valuation_points": [
+            {"day": 1, "perf_date": "2024-12-30", "begin_mv": 1000.0, "end_mv": 1005.0},
+            {"day": 2, "perf_date": "2024-12-31", "begin_mv": 1005.0, "end_mv": 1010.0},
+        ],
+    }
+    response = client.post("/performance/twr", json=payload)
+    assert response.status_code == 200
+    assert response.json()["results_by_period"] == {}
+
+
 def test_twr_http_exception_passthrough_branch(client, mocker):
     mocker.patch(
         "app.api.endpoints.performance.resolve_periods",
@@ -504,6 +521,55 @@ def test_twr_pas_input_invalid_payload_returns_502(client, monkeypatch):
     response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 502
     assert "missing valuationPoints" in response.json()["detail"]
+
+
+def test_twr_pas_input_falls_back_to_request_metadata_when_upstream_fields_missing(client, monkeypatch):
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "performanceStartDate": "2026-01-01",
+                "valuationPoints": [
+                    {
+                        "day": 1,
+                        "perf_date": "2026-02-01",
+                        "begin_mv": 100.0,
+                        "bod_cf": 0.0,
+                        "eod_cf": 0.0,
+                        "mgmt_fees": 0.0,
+                        "end_mv": 101.0,
+                    },
+                    {
+                        "day": 2,
+                        "perf_date": "2026-02-23",
+                        "begin_mv": 101.0,
+                        "bod_cf": 0.0,
+                        "eod_cf": 0.0,
+                        "mgmt_fees": 0.0,
+                        "end_mv": 102.0,
+                    },
+                ],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
+        _mock_get_performance_input,
+    )
+
+    payload = {
+        "portfolioId": "PORT-FALLBACK-01",
+        "asOfDate": "2026-02-23",
+        "consumerSystem": "lotus-gateway",
+        "periods": ["YTD"],
+    }
+
+    response = client.post("/performance/twr/pas-input", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["portfolio_id"] == "PORT-FALLBACK-01"
+    assert body["consumerSystem"] == "lotus-gateway"
+    assert body["pasContractVersion"] == "v1"
 
 
 def test_twr_pas_input_upstream_error_passthrough(client, monkeypatch):

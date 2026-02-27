@@ -86,6 +86,14 @@ def test_contribution_request_invalid_weighting_scheme(minimal_contribution_requ
         ContributionRequest.model_validate(payload)
 
 
+def test_contribution_request_rejects_empty_analyses(minimal_contribution_request_payload):
+    payload = minimal_contribution_request_payload.copy()
+    payload["analyses"] = []
+
+    with pytest.raises(ValidationError, match="analyses list cannot be empty"):
+        ContributionRequest.model_validate(payload)
+
+
 def test_contribution_response_new_structure_passes(base_response_footer):
     """Tests that a valid multi-period contribution response is parsed correctly."""
     single_period_payload = {

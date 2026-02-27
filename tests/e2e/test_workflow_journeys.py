@@ -346,3 +346,81 @@ def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
     assert body["supportedInputModes"] == []
     features = {item["key"]: item["enabled"] for item in body["features"]}
     assert features["pa.analytics.attribution"] is False
+
+
+def test_e2e_pas_input_metadata_fallback_contract(monkeypatch) -> None:
+    async def _mock_get_performance_input(self, portfolio_id, as_of_date, lookback_days, consumer_system):  # noqa: ARG001
+        return (
+            200,
+            {
+                "performanceStartDate": "2026-01-01",
+                "valuationPoints": [
+                    {"day": 1, "perf_date": "2026-02-01", "begin_mv": 100.0, "end_mv": 101.0},
+                    {"day": 2, "perf_date": "2026-02-23", "begin_mv": 101.0, "end_mv": 102.0},
+                ],
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.performance.PasInputService.get_performance_input",
+        _mock_get_performance_input,
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/performance/twr/pas-input",
+            json={
+                "portfolioId": "PORT-E2E-FALLBACK",
+                "asOfDate": "2026-02-23",
+                "consumerSystem": "lotus-gateway",
+                "periods": ["YTD"],
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["portfolio_id"] == "PORT-E2E-FALLBACK"
+    assert body["consumerSystem"] == "lotus-gateway"
+    assert body["pasContractVersion"] == "v1"
+
+
+def test_e2e_contribution_rejects_empty_analyses_contract() -> None:
+    payload = {
+        "portfolio_id": "E2E_CONTRIB_INVALID_01",
+        "report_start_date": "2025-01-01",
+        "report_end_date": "2025-01-01",
+        "analyses": [],
+        "portfolio_data": {
+            "metric_basis": "NET",
+            "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1010}],
+        },
+        "positions_data": [
+            {
+                "position_id": "AAPL",
+                "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000, "end_mv": 1010}],
+            }
+        ],
+    }
+    with TestClient(app) as client:
+        response = client.post("/performance/contribution", json=payload)
+
+    assert response.status_code == 422
+    assert "analyses list cannot be empty" in response.text
+
+
+def test_e2e_enterprise_authz_blocks_write_without_identity_headers(monkeypatch) -> None:
+    monkeypatch.setenv("ENTERPRISE_ENFORCE_AUTHZ", "true")
+    payload = {
+        "portfolio_id": "E2E_AUTHZ_01",
+        "performance_start_date": "2024-12-31",
+        "metric_basis": "NET",
+        "report_end_date": "2025-01-01",
+        "analyses": [{"period": "YTD", "frequencies": ["daily"]}],
+        "valuation_points": [{"day": 1, "perf_date": "2025-01-01", "begin_mv": 1000.0, "end_mv": 1010.0}],
+    }
+
+    with TestClient(app) as client:
+        response = client.post("/performance/twr", json=payload)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "authorization_policy_denied"
