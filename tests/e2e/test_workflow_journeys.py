@@ -7,17 +7,17 @@ def test_e2e_platform_readiness_and_capabilities_contract() -> None:
     with TestClient(app) as client:
         health = client.get("/health")
         ready = client.get("/health/ready")
-        capabilities = client.get("/integration/capabilities?consumerSystem=lotus-gateway&tenantId=default")
+        capabilities = client.get("/integration/capabilities?consumer_system=lotus-gateway&tenant_id=default")
 
     assert health.status_code == 200
     assert ready.status_code == 200
     assert capabilities.status_code == 200
 
     body = capabilities.json()
-    assert body["contractVersion"] == "v1"
-    assert body["sourceService"] == "lotus-performance"
-    assert "core_api_ref" in body["supportedInputModes"]
-    assert "inline_bundle" in body["supportedInputModes"]
+    assert body["contract_version"] == "v1"
+    assert body["source_service"] == "lotus-performance"
+    assert "core_api_ref" in body["supported_input_modes"]
+    assert "inline_bundle" in body["supported_input_modes"]
 
 
 def test_e2e_performance_twr_and_mwr_workflow() -> None:
@@ -115,11 +115,11 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {"day": 1, "perf_date": "2026-02-01", "begin_mv": 100.0, "end_mv": 101.0},
                     {"day": 2, "perf_date": "2026-02-23", "begin_mv": 101.0, "end_mv": 102.0},
                 ],
@@ -130,9 +130,9 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
         return (
             200,
             {
-                "portfolioId": portfolio_id,
-                "asOfDate": str(as_of_date),
-                "totalMarketValue": 1000.0,
+                "portfolio_id": portfolio_id,
+                "as_of_date": str(as_of_date),
+                "total_market_value": 1000.0,
                 "positions": [{"securityId": "EQ_1", "quantity": 10}],
             },
         )
@@ -146,10 +146,10 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
         _mock_get_positions_analytics,
     )
 
-    twr_pas_payload = {"portfolioId": "PORT-1001", "asOfDate": "2026-02-23", "periods": ["YTD"]}
+    twr_pas_payload = {"portfolio_id": "PORT-1001", "as_of_date": "2026-02-23", "periods": ["YTD"]}
     positions_payload = {
-        "portfolioId": "PORT-1001",
-        "asOfDate": "2026-02-23",
+        "portfolio_id": "PORT-1001",
+        "as_of_date": "2026-02-23",
         "sections": ["BASE", "VALUATION"],
         "performancePeriods": ["YTD"],
     }
@@ -161,7 +161,7 @@ def test_e2e_pas_connected_modes(monkeypatch) -> None:
     assert twr_pas_response.status_code == 200
     assert positions_response.status_code == 200
     assert twr_pas_response.json()["source_mode"] == "core_api_ref"
-    assert positions_response.json()["portfolioId"] == "PORT-1001"
+    assert positions_response.json()["portfolio_id"] == "PORT-1001"
 
 
 def test_e2e_core_api_ref_capability_and_execution_contract(monkeypatch) -> None:
@@ -169,11 +169,11 @@ def test_e2e_core_api_ref_capability_and_execution_contract(monkeypatch) -> None
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": consumer_system,
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "contract_version": "v1",
+                "consumer_system": consumer_system,
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {"day": 1, "perf_date": "2026-02-01", "begin_mv": 100.0, "end_mv": 101.0},
                     {"day": 2, "perf_date": "2026-02-23", "begin_mv": 101.0, "end_mv": 102.0},
                 ],
@@ -185,22 +185,22 @@ def test_e2e_core_api_ref_capability_and_execution_contract(monkeypatch) -> None
         _mock_get_performance_input,
     )
     with TestClient(app) as client:
-        capabilities = client.get("/integration/capabilities?consumerSystem=lotus-gateway&tenantId=default")
+        capabilities = client.get("/integration/capabilities?consumer_system=lotus-gateway&tenant_id=default")
         twr_pas = client.post(
             "/performance/twr/pas-input",
             json={
-                "portfolioId": "PORT-1002",
-                "asOfDate": "2026-02-23",
-                "consumerSystem": "lotus-gateway",
+                "portfolio_id": "PORT-1002",
+                "as_of_date": "2026-02-23",
+                "consumer_system": "lotus-gateway",
                 "periods": ["YTD"],
             },
         )
 
     assert capabilities.status_code == 200
     assert twr_pas.status_code == 200
-    assert "core_api_ref" in capabilities.json()["supportedInputModes"]
+    assert "core_api_ref" in capabilities.json()["supported_input_modes"]
     assert twr_pas.json()["source_mode"] == "core_api_ref"
-    assert "YTD" in twr_pas.json()["resultsByPeriod"]
+    assert "YTD" in twr_pas.json()["results_by_period"]
 
 
 def test_e2e_health_endpoints_contract() -> None:
@@ -226,7 +226,7 @@ def test_e2e_core_api_ref_upstream_failure_passthrough(monkeypatch) -> None:
     with TestClient(app) as client:
         response = client.post(
             "/performance/twr/pas-input",
-            json={"portfolioId": "PORT-DOWN", "asOfDate": "2026-02-23", "consumerSystem": "lotus-gateway"},
+            json={"portfolio_id": "PORT-DOWN", "as_of_date": "2026-02-23", "consumer_system": "lotus-gateway"},
         )
 
     assert response.status_code == 503
@@ -235,7 +235,7 @@ def test_e2e_core_api_ref_upstream_failure_passthrough(monkeypatch) -> None:
 
 def test_e2e_positions_pas_payload_contract_failure(monkeypatch) -> None:
     async def _mock_get_positions_analytics(self, portfolio_id, as_of_date, sections, performance_periods):  # noqa: ARG001
-        return 200, {"portfolioId": portfolio_id, "asOfDate": str(as_of_date)}
+        return 200, {"portfolio_id": portfolio_id, "as_of_date": str(as_of_date)}
 
     monkeypatch.setattr(
         "app.api.endpoints.analytics.PasInputService.get_positions_analytics",
@@ -245,7 +245,7 @@ def test_e2e_positions_pas_payload_contract_failure(monkeypatch) -> None:
     with TestClient(app) as client:
         response = client.post(
             "/analytics/positions",
-            json={"portfolioId": "P-CONTRACT", "asOfDate": "2026-02-24", "sections": ["BASE"]},
+            json={"portfolio_id": "P-CONTRACT", "as_of_date": "2026-02-24", "sections": ["BASE"]},
         )
 
     assert response.status_code == 502
@@ -339,11 +339,11 @@ def test_e2e_capabilities_toggle_disables_input_modes(monkeypatch) -> None:
     monkeypatch.setenv("PA_CAP_ATTRIBUTION_ENABLED", "false")
 
     with TestClient(app) as client:
-        response = client.get("/integration/capabilities?consumerSystem=lotus-manage&tenantId=tenant-b")
+        response = client.get("/integration/capabilities?consumer_system=lotus-manage&tenant_id=tenant-b")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["supportedInputModes"] == []
+    assert body["supported_input_modes"] == []
     features = {item["key"]: item["enabled"] for item in body["features"]}
     assert features["pa.analytics.attribution"] is False
 
@@ -353,8 +353,8 @@ def test_e2e_pas_input_metadata_fallback_contract(monkeypatch) -> None:
         return (
             200,
             {
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {"day": 1, "perf_date": "2026-02-01", "begin_mv": 100.0, "end_mv": 101.0},
                     {"day": 2, "perf_date": "2026-02-23", "begin_mv": 101.0, "end_mv": 102.0},
                 ],
@@ -370,9 +370,9 @@ def test_e2e_pas_input_metadata_fallback_contract(monkeypatch) -> None:
         response = client.post(
             "/performance/twr/pas-input",
             json={
-                "portfolioId": "PORT-E2E-FALLBACK",
-                "asOfDate": "2026-02-23",
-                "consumerSystem": "lotus-gateway",
+                "portfolio_id": "PORT-E2E-FALLBACK",
+                "as_of_date": "2026-02-23",
+                "consumer_system": "lotus-gateway",
                 "periods": ["YTD"],
             },
         )
@@ -380,8 +380,8 @@ def test_e2e_pas_input_metadata_fallback_contract(monkeypatch) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["portfolio_id"] == "PORT-E2E-FALLBACK"
-    assert body["consumerSystem"] == "lotus-gateway"
-    assert body["pasContractVersion"] == "v1"
+    assert body["consumer_system"] == "lotus-gateway"
+    assert body["pas_contract_version"] == "v1"
 
 
 def test_e2e_contribution_rejects_empty_analyses_contract() -> None:

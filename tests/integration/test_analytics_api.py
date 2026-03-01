@@ -10,9 +10,9 @@ def test_positions_analytics_success(monkeypatch):
         return (
             200,
             {
-                "portfolioId": portfolio_id,
-                "asOfDate": str(as_of_date),
-                "totalMarketValue": 1000.0,
+                "portfolio_id": portfolio_id,
+                "as_of_date": str(as_of_date),
+                "total_market_value": 1000.0,
                 "positions": [{"securityId": "EQ_1", "quantity": 10}],
             },
         )
@@ -25,16 +25,16 @@ def test_positions_analytics_success(monkeypatch):
     response = client.post(
         "/analytics/positions",
         json={
-            "portfolioId": "P1",
-            "asOfDate": "2026-02-24",
+            "portfolio_id": "P1",
+            "as_of_date": "2026-02-24",
             "sections": ["BASE", "VALUATION", "PERFORMANCE"],
             "performancePeriods": ["YTD"],
         },
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["portfolioId"] == "P1"
-    assert body["totalMarketValue"] == 1000.0
+    assert body["portfolio_id"] == "P1"
+    assert body["total_market_value"] == 1000.0
     assert len(body["positions"]) == 1
 
 
@@ -42,7 +42,7 @@ def test_positions_analytics_invalid_payload(monkeypatch):
     client = TestClient(app)
 
     async def _mock_get_positions_analytics(self, portfolio_id, as_of_date, sections, performance_periods):  # noqa: ARG001
-        return (200, {"portfolioId": "P1"})
+        return (200, {"portfolio_id": "P1"})
 
     monkeypatch.setattr(
         "app.api.endpoints.analytics.PasInputService.get_positions_analytics",
@@ -51,7 +51,7 @@ def test_positions_analytics_invalid_payload(monkeypatch):
 
     response = client.post(
         "/analytics/positions",
-        json={"portfolioId": "P1", "asOfDate": "2026-02-24"},
+        json={"portfolio_id": "P1", "as_of_date": "2026-02-24"},
     )
     assert response.status_code == 502
 
@@ -67,7 +67,7 @@ def test_positions_analytics_upstream_error_passthrough(monkeypatch):
         _mock_get_positions_analytics,
     )
 
-    response = client.post("/analytics/positions", json={"portfolioId": "P1", "asOfDate": "2026-02-24"})
+    response = client.post("/analytics/positions", json={"portfolio_id": "P1", "as_of_date": "2026-02-24"})
     assert response.status_code == 503
 
 

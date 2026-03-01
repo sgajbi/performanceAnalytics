@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, status
 
 from app.core.config import get_settings
@@ -7,6 +9,12 @@ from app.services.pas_input_service import PasInputService
 
 router = APIRouter(tags=["Analytics"])
 settings = get_settings()
+
+
+def _pick(payload: dict[str, Any], snake_key: str, camel_key: str) -> Any:
+    if snake_key in payload:
+        return payload[snake_key]
+    return payload[camel_key]
 
 
 @router.post(
@@ -41,10 +49,13 @@ async def get_positions_analytics(request: PositionAnalyticsRequest):
         raise HTTPException(status_code=status_code, detail=str(payload))
 
     try:
+        portfolio_id = _pick(payload, "portfolio_id", "portfolioId")
+        as_of_date = _pick(payload, "as_of_date", "asOfDate")
+        total_market_value = _pick(payload, "total_market_value", "totalMarketValue")
         return PositionAnalyticsResponse(
-            portfolioId=payload["portfolioId"],
-            asOfDate=payload["asOfDate"],
-            totalMarketValue=payload["totalMarketValue"],
+            portfolio_id=portfolio_id,
+            as_of_date=as_of_date,
+            total_market_value=total_market_value,
             positions=payload.get("positions", []),
         )
     except KeyError as exc:

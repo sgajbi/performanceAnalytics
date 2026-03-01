@@ -6,6 +6,7 @@ from typing import Any, AsyncIterator
 import orjson
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
+from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 
@@ -22,6 +23,7 @@ from app.core.exceptions import PerformanceCalculatorError
 from app.core.handlers import performance_calculator_exception_handler
 from app.enterprise_readiness import build_enterprise_audit_middleware, validate_enterprise_runtime_config
 from app.observability import setup_observability
+from app.openapi_enrichment import enrich_openapi_schema
 
 
 # --- FIX START: Create a robust custom JSON response class ---
@@ -106,6 +108,25 @@ app = FastAPI(
     default_response_class=ORJSONResponseExcludeNull,  # Set as the default for the app
     lifespan=_app_lifespan,
 )
+
+
+def custom_openapi() -> dict[str, Any]:
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        tags=app.openapi_tags,
+    )
+    app.openapi_schema = enrich_openapi_schema(schema)
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
 setup_observability(app, log_level=settings.LOG_LEVEL)
 validate_enterprise_runtime_config()
 app.middleware("http")(build_enterprise_audit_middleware())

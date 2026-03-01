@@ -29,9 +29,9 @@ class PasInputService:
     ) -> tuple[int, dict[str, Any]]:
         url = f"{self._base_url}/integration/portfolios/{portfolio_id}/core-snapshot"
         payload = {
-            "asOfDate": str(as_of_date),
-            "includeSections": include_sections,
-            "consumerSystem": consumer_system,
+            "as_of_date": str(as_of_date),
+            "include_sections": include_sections,
+            "consumer_system": consumer_system,
         }
         headers = propagation_headers()
         return await post_with_retry(
@@ -55,9 +55,9 @@ class PasInputService:
     ) -> tuple[int, dict[str, Any]]:
         url = f"{self._base_url}/integration/portfolios/{portfolio_id}/performance-input"
         payload = {
-            "asOfDate": str(as_of_date),
-            "lookbackDays": lookback_days,
-            "consumerSystem": consumer_system,
+            "as_of_date": str(as_of_date),
+            "lookback_days": lookback_days,
+            "consumer_system": consumer_system,
         }
         headers = propagation_headers()
         return await post_with_retry(
@@ -77,9 +77,9 @@ class PasInputService:
         performance_periods: list[str] | None,
     ) -> tuple[int, dict[str, Any]]:
         url = f"{self._base_url}/portfolios/{portfolio_id}/positions-analytics"
-        payload: dict[str, Any] = {"asOfDate": str(as_of_date), "sections": sections}
+        payload: dict[str, Any] = {"as_of_date": str(as_of_date), "sections": sections}
         if performance_periods:
-            payload["performanceOptions"] = {"periods": performance_periods}
+            payload["performance_options"] = {"periods": performance_periods}
         headers = propagation_headers()
         return await post_with_retry(
             url=url,

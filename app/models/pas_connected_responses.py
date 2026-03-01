@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import BaseModel
 
 
 class PasConnectedPeriodResult(BaseModel):
@@ -15,18 +15,13 @@ class PasConnectedPeriodResult(BaseModel):
 
 
 class PasConnectedTwrResponse(BaseModel):
-    portfolio_id: str = Field(
-        validation_alias=AliasChoices("portfolio_id", "portfolioId"),
-        serialization_alias="portfolio_id",
-    )
+    portfolio_id: str
     as_of_date: date
     source_mode: Literal["core_api_ref"] = "core_api_ref"
     source_service: str = "lotus-performance"
-    pas_contract_version: str = Field(..., alias="pasContractVersion")
-    consumer_system: str | None = Field(default=None, alias="consumerSystem")
-    results_by_period: dict[str, PasConnectedPeriodResult] = Field(alias="resultsByPeriod")
-
-    model_config = {"populate_by_name": True}
+    pas_contract_version: str
+    consumer_system: str | None = None
+    results_by_period: dict[str, PasConnectedPeriodResult]
 
 
 PasInputPeriodResult = PasConnectedPeriodResult
