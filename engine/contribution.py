@@ -93,9 +93,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
         hedging=request.hedging,
     )
 
-    portfolio_df = create_engine_dataframe(
-        [item.model_dump(by_alias=True) for item in request.portfolio_data.valuation_points]
-    )
+    portfolio_df = create_engine_dataframe([item.model_dump() for item in request.portfolio_data.valuation_points])
 
     portfolio_twr_config = twr_config
     if twr_config.currency_mode == "BOTH":
@@ -121,7 +119,7 @@ def _prepare_hierarchical_data(request: ContributionRequest) -> Tuple[pd.DataFra
 
     all_positions_data = []
     for position in request.positions_data:
-        position_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in position.valuation_points])
+        position_df = create_engine_dataframe([item.model_dump() for item in position.valuation_points])
         if position_df.empty:
             continue
 

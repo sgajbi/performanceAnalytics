@@ -27,21 +27,18 @@ class WorkflowCapability(BaseModel):
 
 
 class IntegrationCapabilitiesResponse(BaseModel):
-    contract_version: str = Field(alias="contractVersion")
-    source_service: str = Field(alias="sourceService")
-    consumer_system: ConsumerSystem = Field(alias="consumerSystem")
-    tenant_id: str = Field(alias="tenantId")
-    generated_at: datetime = Field(alias="generatedAt")
-    as_of_date: date = Field(alias="asOfDate")
-    policy_version: str = Field(alias="policyVersion")
+    contract_version: str
+    source_service: str
+    consumer_system: ConsumerSystem
+    tenant_id: str
+    generated_at: datetime
+    as_of_date: date
+    policy_version: str
     supported_input_modes: list[str] = Field(
-        alias="supportedInputModes",
         description="Supported execution input modes: core_api_ref (lotus-core API-backed) and inline_bundle (stateless payload).",
     )
     features: list[FeatureCapability]
     workflows: list[WorkflowCapability]
-
-    model_config = {"populate_by_name": True}
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -60,10 +57,10 @@ def _env_bool(name: str, default: bool) -> bool:
     ),
 )
 async def get_integration_capabilities(
-    consumer_system: ConsumerSystem = Query("lotus-gateway", alias="consumerSystem"),
-    tenant_id: str = Query("default", alias="tenantId"),
-    feature_limit: int = Query(default=100, ge=1, le=500, alias="featureLimit"),
-    workflow_limit: int = Query(default=50, ge=1, le=200, alias="workflowLimit"),
+    consumer_system: ConsumerSystem = Query("lotus-gateway"),
+    tenant_id: str = Query("default"),
+    feature_limit: int = Query(default=100, ge=1, le=500),
+    workflow_limit: int = Query(default=50, ge=1, le=200),
 ) -> IntegrationCapabilitiesResponse:
     twr_enabled = _env_bool("PA_CAP_TWR_ENABLED", True)
     mwr_enabled = _env_bool("PA_CAP_MWR_ENABLED", True)
@@ -141,14 +138,14 @@ async def get_integration_capabilities(
         supported_input_modes.append("inline_bundle")
 
     return IntegrationCapabilitiesResponse(
-        contractVersion="v1",
-        sourceService="lotus-performance",
-        consumerSystem=consumer_system,
-        tenantId=tenant_id,
-        generatedAt=datetime.now(UTC),
-        asOfDate=date.today(),
-        policyVersion=os.getenv("PA_POLICY_VERSION", "tenant-default-v1"),
-        supportedInputModes=supported_input_modes,
+        contract_version="v1",
+        source_service="lotus-performance",
+        consumer_system=consumer_system,
+        tenant_id=tenant_id,
+        generated_at=datetime.now(UTC),
+        as_of_date=date.today(),
+        policy_version=os.getenv("PA_POLICY_VERSION", "tenant-default-v1"),
+        supported_input_modes=supported_input_modes,
         features=features[:feature_limit],
         workflows=workflows[:workflow_limit],
     )

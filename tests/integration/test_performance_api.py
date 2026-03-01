@@ -397,11 +397,11 @@ def test_twr_pas_input_success(client, monkeypatch):
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {
                         "day": 1,
                         "perf_date": "2026-02-01",
@@ -430,9 +430,9 @@ def test_twr_pas_input_success(client, monkeypatch):
     )
 
     payload = {
-        "portfolioId": "PORT-1001",
-        "asOfDate": "2026-02-23",
-        "consumerSystem": "lotus-gateway",
+        "portfolio_id": "PORT-1001",
+        "as_of_date": "2026-02-23",
+        "consumer_system": "lotus-gateway",
         "periods": ["YTD"],
     }
 
@@ -441,9 +441,9 @@ def test_twr_pas_input_success(client, monkeypatch):
     body = response.json()
     assert body["portfolio_id"] == "PORT-1001"
     assert body["source_mode"] == "core_api_ref"
-    assert body["pasContractVersion"] == "v1"
-    assert "YTD" in body["resultsByPeriod"]
-    assert body["resultsByPeriod"]["YTD"]["net_cumulative_return"] is not None
+    assert body["pas_contract_version"] == "v1"
+    assert "YTD" in body["results_by_period"]
+    assert body["results_by_period"]["YTD"]["net_cumulative_return"] is not None
 
 
 def test_twr_pas_input_period_filter(client, monkeypatch):
@@ -451,11 +451,11 @@ def test_twr_pas_input_period_filter(client, monkeypatch):
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {
                         "day": 1,
                         "perf_date": "2026-01-01",
@@ -484,16 +484,16 @@ def test_twr_pas_input_period_filter(client, monkeypatch):
     )
 
     payload = {
-        "portfolioId": "PORT-1001",
-        "asOfDate": "2026-02-23",
+        "portfolio_id": "PORT-1001",
+        "as_of_date": "2026-02-23",
         "periods": ["YTD", "MTD"],
     }
 
     response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 200
     body = response.json()
-    assert "YTD" in body["resultsByPeriod"]
-    assert "MTD" in body["resultsByPeriod"]
+    assert "YTD" in body["results_by_period"]
+    assert "MTD" in body["results_by_period"]
 
 
 def test_twr_pas_input_invalid_payload_returns_502(client, monkeypatch):
@@ -501,10 +501,10 @@ def test_twr_pas_input_invalid_payload_returns_502(client, monkeypatch):
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
             },
         )
 
@@ -514,13 +514,13 @@ def test_twr_pas_input_invalid_payload_returns_502(client, monkeypatch):
     )
 
     payload = {
-        "portfolioId": "PORT-1001",
-        "asOfDate": "2026-02-23",
+        "portfolio_id": "PORT-1001",
+        "as_of_date": "2026-02-23",
     }
 
     response = client.post("/performance/twr/pas-input", json=payload)
     assert response.status_code == 502
-    assert "missing valuationPoints" in response.json()["detail"]
+    assert "missing valuation_points" in response.json()["detail"]
 
 
 def test_twr_pas_input_falls_back_to_request_metadata_when_upstream_fields_missing(client, monkeypatch):
@@ -528,8 +528,8 @@ def test_twr_pas_input_falls_back_to_request_metadata_when_upstream_fields_missi
         return (
             200,
             {
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {
                         "day": 1,
                         "perf_date": "2026-02-01",
@@ -558,9 +558,9 @@ def test_twr_pas_input_falls_back_to_request_metadata_when_upstream_fields_missi
     )
 
     payload = {
-        "portfolioId": "PORT-FALLBACK-01",
-        "asOfDate": "2026-02-23",
-        "consumerSystem": "lotus-gateway",
+        "portfolio_id": "PORT-FALLBACK-01",
+        "as_of_date": "2026-02-23",
+        "consumer_system": "lotus-gateway",
         "periods": ["YTD"],
     }
 
@@ -568,8 +568,8 @@ def test_twr_pas_input_falls_back_to_request_metadata_when_upstream_fields_missi
     assert response.status_code == 200
     body = response.json()
     assert body["portfolio_id"] == "PORT-FALLBACK-01"
-    assert body["consumerSystem"] == "lotus-gateway"
-    assert body["pasContractVersion"] == "v1"
+    assert body["consumer_system"] == "lotus-gateway"
+    assert body["pas_contract_version"] == "v1"
 
 
 def test_twr_pas_input_upstream_error_passthrough(client, monkeypatch):
@@ -582,8 +582,8 @@ def test_twr_pas_input_upstream_error_passthrough(client, monkeypatch):
     )
 
     payload = {
-        "portfolioId": "UNKNOWN",
-        "asOfDate": "2026-02-23",
+        "portfolio_id": "UNKNOWN",
+        "as_of_date": "2026-02-23",
     }
 
     response = client.post("/performance/twr/pas-input", json=payload)
@@ -595,10 +595,10 @@ def test_twr_pas_input_missing_performance_start_date_returns_502(client, monkey
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "valuationPoints": [{"day": 1, "perf_date": "2026-02-01", "begin_mv": 100, "end_mv": 101}],
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "valuation_points": [{"day": 1, "perf_date": "2026-02-01", "begin_mv": 100, "end_mv": 101}],
             },
         )
 
@@ -607,9 +607,9 @@ def test_twr_pas_input_missing_performance_start_date_returns_502(client, monkey
         _mock_get_performance_input,
     )
 
-    response = client.post("/performance/twr/pas-input", json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23"})
+    response = client.post("/performance/twr/pas-input", json={"portfolio_id": "PORT-1001", "as_of_date": "2026-02-23"})
     assert response.status_code == 502
-    assert "missing performanceStartDate" in response.json()["detail"]
+    assert "missing performance_start_date" in response.json()["detail"]
 
 
 def test_twr_pas_input_invalid_valuation_shape_returns_502(client, monkeypatch):
@@ -617,11 +617,11 @@ def test_twr_pas_input_invalid_valuation_shape_returns_502(client, monkeypatch):
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [{"perf_date": "2026-02-01"}],
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [{"perf_date": "2026-02-01"}],
             },
         )
 
@@ -630,7 +630,7 @@ def test_twr_pas_input_invalid_valuation_shape_returns_502(client, monkeypatch):
         _mock_get_performance_input,
     )
 
-    response = client.post("/performance/twr/pas-input", json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23"})
+    response = client.post("/performance/twr/pas-input", json={"portfolio_id": "PORT-1001", "as_of_date": "2026-02-23"})
     assert response.status_code == 502
     assert "Invalid lotus-core performance input payload" in response.json()["detail"]
 
@@ -640,11 +640,11 @@ def test_twr_pas_input_requested_period_not_found_returns_404(client, monkeypatc
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {
                         "day": 1,
                         "perf_date": "2026-02-01",
@@ -685,7 +685,7 @@ def test_twr_pas_input_requested_period_not_found_returns_404(client, monkeypatc
 
     response = client.post(
         "/performance/twr/pas-input",
-        json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23", "periods": ["YTD"]},
+        json={"portfolio_id": "PORT-1001", "as_of_date": "2026-02-23", "periods": ["YTD"]},
     )
     assert response.status_code == 404
     assert "Requested periods not found" in response.json()["detail"]
@@ -696,11 +696,11 @@ def test_twr_pas_input_skips_period_without_summary_and_returns_remaining(client
         return (
             200,
             {
-                "contractVersion": "v1",
-                "consumerSystem": "lotus-gateway",
-                "portfolioId": portfolio_id,
-                "performanceStartDate": "2026-01-01",
-                "valuationPoints": [
+                "contract_version": "v1",
+                "consumer_system": "lotus-gateway",
+                "portfolio_id": portfolio_id,
+                "performance_start_date": "2026-01-01",
+                "valuation_points": [
                     {"day": 1, "perf_date": "2026-01-01", "begin_mv": 100.0, "end_mv": 101.0},
                     {"day": 2, "perf_date": "2026-02-23", "begin_mv": 101.0, "end_mv": 102.0},
                 ],
@@ -734,9 +734,9 @@ def test_twr_pas_input_skips_period_without_summary_and_returns_remaining(client
 
     response = client.post(
         "/performance/twr/pas-input",
-        json={"portfolioId": "PORT-1001", "asOfDate": "2026-02-23", "periods": ["YTD", "MTD"]},
+        json={"portfolio_id": "PORT-1001", "as_of_date": "2026-02-23", "periods": ["YTD", "MTD"]},
     )
     assert response.status_code == 200
-    results = response.json()["resultsByPeriod"]
+    results = response.json()["results_by_period"]
     assert "YTD" not in results
     assert "MTD" in results

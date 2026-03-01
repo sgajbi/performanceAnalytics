@@ -12,8 +12,6 @@ from core.envelope import Audit, Diagnostics, Meta
 class PerformanceSummary(BaseModel):
     """A summary of performance for a given period (day, month, etc.)."""
 
-    model_config = ConfigDict(populate_by_name=True)
-
     begin_mv: float
     end_mv: float
     net_cash_flow: float

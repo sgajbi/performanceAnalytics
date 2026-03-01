@@ -72,14 +72,14 @@ async def test_get_core_snapshot_posts_contract_payload():
     assert status_code == 200
     assert payload["snapshot"] == {"overview": {}}
     assert _FakeAsyncClient.calls[0]["url"] == "http://pas/integration/portfolios/PORT-1/core-snapshot"
-    assert _FakeAsyncClient.calls[0]["json"]["includeSections"] == ["OVERVIEW", "HOLDINGS"]
-    assert _FakeAsyncClient.calls[0]["json"]["consumerSystem"] == "lotus-performance"
+    assert _FakeAsyncClient.calls[0]["json"]["include_sections"] == ["OVERVIEW", "HOLDINGS"]
+    assert _FakeAsyncClient.calls[0]["json"]["consumer_system"] == "lotus-performance"
 
 
 @pytest.mark.asyncio
 async def test_get_performance_input_posts_contract_payload():
     service = PasInputService(base_url="http://pas", timeout_seconds=2.0)
-    _FakeAsyncClient.queue_json(200, {"valuationPoints": []})
+    _FakeAsyncClient.queue_json(200, {"valuation_points": []})
 
     status_code, payload = await service.get_performance_input(
         portfolio_id="PORT-2",
@@ -89,16 +89,16 @@ async def test_get_performance_input_posts_contract_payload():
     )
 
     assert status_code == 200
-    assert "valuationPoints" in payload
+    assert "valuation_points" in payload
     assert _FakeAsyncClient.calls[0]["url"] == "http://pas/integration/portfolios/PORT-2/performance-input"
-    assert _FakeAsyncClient.calls[0]["json"]["lookbackDays"] == 365
+    assert _FakeAsyncClient.calls[0]["json"]["lookback_days"] == 365
 
 
 @pytest.mark.asyncio
 async def test_get_positions_analytics_with_and_without_performance_periods():
     service = PasInputService(base_url="http://pas", timeout_seconds=2.0)
-    _FakeAsyncClient.queue_json(200, {"portfolioId": "PORT-3"})
-    _FakeAsyncClient.queue_json(200, {"portfolioId": "PORT-3"})
+    _FakeAsyncClient.queue_json(200, {"portfolio_id": "PORT-3"})
+    _FakeAsyncClient.queue_json(200, {"portfolio_id": "PORT-3"})
 
     status_one, _ = await service.get_positions_analytics(
         portfolio_id="PORT-3",
@@ -116,8 +116,8 @@ async def test_get_positions_analytics_with_and_without_performance_periods():
     assert status_one == 200
     assert status_two == 200
     assert _FakeAsyncClient.calls[0]["url"] == "http://pas/portfolios/PORT-3/positions-analytics"
-    assert _FakeAsyncClient.calls[0]["json"]["performanceOptions"]["periods"] == ["YTD", "MTD"]
-    assert "performanceOptions" not in _FakeAsyncClient.calls[1]["json"]
+    assert _FakeAsyncClient.calls[0]["json"]["performance_options"]["periods"] == ["YTD", "MTD"]
+    assert "performance_options" not in _FakeAsyncClient.calls[1]["json"]
 
 
 @pytest.mark.parametrize(

@@ -50,16 +50,14 @@ def _prepare_data_from_instruments(request: AttributionRequest) -> List[Portfoli
         hedging=request.hedging,
     )
 
-    portfolio_df = create_engine_dataframe(
-        [item.model_dump(by_alias=True) for item in request.portfolio_data.valuation_points]
-    )
+    portfolio_df = create_engine_dataframe([item.model_dump() for item in request.portfolio_data.valuation_points])
     portfolio_df[PortfolioColumns.PERF_DATE.value] = pd.to_datetime(portfolio_df[PortfolioColumns.PERF_DATE.value])
     portfolio_df = portfolio_df.set_index(PortfolioColumns.PERF_DATE.value)
     portfolio_bop_mv = portfolio_df[PortfolioColumns.BEGIN_MV.value] + portfolio_df[PortfolioColumns.BOD_CF.value]
 
     all_instruments = []
     for inst in request.instruments_data:
-        inst_df = create_engine_dataframe([item.model_dump(by_alias=True) for item in inst.valuation_points])
+        inst_df = create_engine_dataframe([item.model_dump() for item in inst.valuation_points])
         if inst_df.empty:
             continue
 

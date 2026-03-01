@@ -1,51 +1,118 @@
-"""Enforce baseline OpenAPI quality for performance analytics service."""
+"""Enforce RFC-0067 OpenAPI quality for lotus-performance."""
 
 from __future__ import annotations
 
-import pathlib
 import sys
+from collections import Counter
+from pathlib import Path
+from typing import Any
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from main import app
+from main import app  # noqa: E402
+
+ALLOWED_METHODS = {"get", "post", "put", "patch", "delete"}
+
+
+def _has_success_response(operation: dict[str, Any]) -> bool:
+    responses = operation.get("responses", {})
+    return any(str(code).startswith("2") for code in responses)
+
+
+def _has_error_response(operation: dict[str, Any]) -> bool:
+    responses = operation.get("responses", {})
+    return any(str(code).startswith("4") or str(code).startswith("5") or str(code) == "default" for code in responses)
+
+
+def _is_ref_only(prop_schema: dict[str, Any]) -> bool:
+    return set(prop_schema.keys()) == {"$ref"}
+
+
+def evaluate_schema(schema: dict[str, Any], *, service_name: str) -> list[str]:
+    errors: list[str] = []
+    missing_docs: list[tuple[str, str, str]] = []
+    missing_fields: list[tuple[str, str, str]] = []
+    operation_ids: list[str] = []
+
+    for path, methods in schema.get("paths", {}).items():
+        if not isinstance(methods, dict):
+            continue
+        for method, operation in methods.items():
+            if method.lower() not in ALLOWED_METHODS:
+                continue
+            if not isinstance(operation, dict):
+                continue
+
+            method_upper = method.upper()
+            operation_id = operation.get("operationId")
+            if operation_id:
+                operation_ids.append(str(operation_id))
+
+            if not operation.get("summary"):
+                missing_docs.append((method_upper, path, "summary"))
+            if not operation.get("description"):
+                missing_docs.append((method_upper, path, "description"))
+            if not operation.get("tags"):
+                missing_docs.append((method_upper, path, "tags"))
+
+            if not operation.get("responses"):
+                missing_docs.append((method_upper, path, "responses"))
+            else:
+                if not _has_success_response(operation):
+                    missing_docs.append((method_upper, path, "2xx response"))
+                if not _has_error_response(operation):
+                    missing_docs.append((method_upper, path, "error response (4xx/5xx/default)"))
+
+    schemas = schema.get("components", {}).get("schemas", {})
+    if isinstance(schemas, dict):
+        for model_name, model_schema in schemas.items():
+            if not isinstance(model_schema, dict):
+                continue
+            properties = model_schema.get("properties", {})
+            if not isinstance(properties, dict):
+                continue
+            for prop_name, prop_schema in properties.items():
+                if not isinstance(prop_schema, dict):
+                    continue
+                if _is_ref_only(prop_schema):
+                    continue
+                if not prop_schema.get("description"):
+                    missing_fields.append((str(model_name), str(prop_name), "description"))
+                if "example" not in prop_schema and "examples" not in prop_schema:
+                    missing_fields.append((str(model_name), str(prop_name), "example"))
+
+    if missing_docs:
+        errors.append(f"OpenAPI quality gate ({service_name}): missing endpoint documentation/response contract")
+        errors.extend(f"  - {method} {path}: missing {field}" for method, path, field in missing_docs)
+
+    if missing_fields:
+        errors.append(f"OpenAPI quality gate ({service_name}): missing schema field metadata")
+        errors.extend(f"  - {model}.{field}: missing {field_name}" for model, field, field_name in missing_fields)
+
+    duplicate_operation_ids = sorted(
+        [operation_id for operation_id, count in Counter(operation_ids).items() if count > 1]
+    )
+    if duplicate_operation_ids:
+        errors.append(f"OpenAPI quality gate ({service_name}): duplicate operationId values")
+        errors.extend(f"  - {operation_id}" for operation_id in duplicate_operation_ids)
+
+    return errors
 
 
 def main() -> int:
     schema = app.openapi()
-    paths = schema.get("paths", {})
-    if not paths:
-        print("OpenAPI quality gate: no paths found")
+    if "paths" not in schema or not schema["paths"]:
+        print("OpenAPI quality gate (lotus-performance): no paths found")
         return 1
 
-    missing_docs: list[str] = []
-    operation_ids: list[str] = []
-
-    for path, operations in paths.items():
-        for method, operation in operations.items():
-            if method.lower() not in {"get", "post", "put", "patch", "delete"}:
-                continue
-            summary = operation.get("summary")
-            description = operation.get("description")
-            if not summary and not description:
-                missing_docs.append(f"{method.upper()} {path}")
-            op_id = operation.get("operationId")
-            if op_id:
-                operation_ids.append(op_id)
-
-    if missing_docs:
-        print("OpenAPI quality gate: missing endpoint documentation")
-        for endpoint in missing_docs:
-            print(f"- {endpoint}")
+    errors = evaluate_schema(schema, service_name="lotus-performance")
+    if errors:
+        print("\n".join(errors))
         return 1
 
-    duplicate_ids = sorted({op_id for op_id in operation_ids if operation_ids.count(op_id) > 1})
-    if duplicate_ids:
-        print("OpenAPI quality gate: duplicate operationId values")
-        for op_id in duplicate_ids:
-            print(f"- {op_id}")
-        return 1
-
-    print("OpenAPI quality gate passed.")
+    print("OpenAPI quality gate passed for lotus-performance.")
     return 0
 
 

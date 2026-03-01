@@ -160,18 +160,20 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     if upstream_status >= status.HTTP_400_BAD_REQUEST:
         raise HTTPException(status_code=upstream_status, detail=str(upstream_payload))
 
-    valuation_points = upstream_payload.get("valuationPoints")
+    valuation_points = upstream_payload.get("valuation_points", upstream_payload.get("valuationPoints"))
     if not isinstance(valuation_points, list) or not valuation_points:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid lotus-core performance input payload: missing valuationPoints.",
+            detail="Invalid lotus-core performance input payload: missing valuation_points.",
         )
 
-    performance_start_date = upstream_payload.get("performanceStartDate")
+    performance_start_date = upstream_payload.get(
+        "performance_start_date", upstream_payload.get("performanceStartDate")
+    )
     if not isinstance(performance_start_date, str):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid lotus-core performance input payload: missing performanceStartDate.",
+            detail="Invalid lotus-core performance input payload: missing performance_start_date.",
         )
 
     requested_periods = request.periods or ["YTD"]
@@ -179,7 +181,9 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     try:
         performance_request = PerformanceRequest.model_validate(
             {
-                "portfolio_id": upstream_payload.get("portfolioId", request.portfolio_id),
+                "portfolio_id": upstream_payload.get(
+                    "portfolio_id", upstream_payload.get("portfolioId", request.portfolio_id)
+                ),
                 "performance_start_date": performance_start_date,
                 "metric_basis": "NET",
                 "report_end_date": str(request.as_of_date),
@@ -222,9 +226,11 @@ async def calculate_twr_from_pas_input(request: PasInputTwrRequest):
     return PasInputTwrResponse(
         portfolio_id=performance_request.portfolio_id,
         as_of_date=request.as_of_date,
-        pasContractVersion=upstream_payload.get("contractVersion", "v1"),
-        consumerSystem=upstream_payload.get("consumerSystem", request.consumer_system),
-        resultsByPeriod=results_by_period,
+        pas_contract_version=upstream_payload.get(
+            "pas_contract_version", upstream_payload.get("contractVersion", "v1")
+        ),
+        consumer_system=upstream_payload.get("consumer_system", request.consumer_system),
+        results_by_period=results_by_period,
     )
 
 
