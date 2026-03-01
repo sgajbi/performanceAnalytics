@@ -17,6 +17,7 @@ from app.api.endpoints import (
     integration_capabilities,
     lineage,
     performance,
+    returns_series,
 )
 from app.core.config import get_settings
 from app.core.exceptions import PerformanceCalculatorError
@@ -145,6 +146,7 @@ app.include_router(contribution.router, prefix="/performance")
 app.include_router(lineage.router, prefix="/performance")
 app.include_router(analytics.router, prefix="/analytics")
 app.include_router(integration_capabilities.router, prefix="/integration")
+app.include_router(returns_series.router, prefix="/integration")
 app.include_router(health.router)
 
 
